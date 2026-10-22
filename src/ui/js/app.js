@@ -390,9 +390,6 @@ class DataToDirtApp {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-refresh-queue">
               🔄 Refresh Queue
             </button>
-            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-return-student">
-              ← Return to Student View
-            </button>
           </div>
         </div>
 
