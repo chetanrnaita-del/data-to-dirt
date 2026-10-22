@@ -113,6 +113,14 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertIn("Singapore", content)
         self.assertIn("Mumbai", content)
 
+    def test_api_config_analytics(self):
+        """GET /api/config/analytics returns external analytics configuration keys."""
+        res = self.client.get("/api/config/analytics")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertIn("cloudflare_token", data)
+        self.assertIn("ga_measurement_id", data)
+
 
 if __name__ == "__main__":
     unittest.main()

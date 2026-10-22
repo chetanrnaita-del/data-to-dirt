@@ -727,6 +727,16 @@ def create_flask_app():
             "has_token": bool(session.get("google_access_token"))
         })
 
+    @app.route("/api/config/analytics", methods=["GET"])
+    def api_config_analytics():
+        """Returns configured external analytics tokens (Cloudflare, Google Analytics, PostHog)."""
+        return jsonify({
+            "cloudflare_token": os.environ.get("CLOUDFLARE_ANALYTICS_TOKEN", ""),
+            "ga_measurement_id": os.environ.get("GA_MEASUREMENT_ID", ""),
+            "posthog_api_key": os.environ.get("POSTHOG_API_KEY", ""),
+            "posthog_host": os.environ.get("POSTHOG_HOST", "https://app.posthog.com"),
+        })
+
     @app.route("/api/health", methods=["GET"])
     def api_health():
         return jsonify({
