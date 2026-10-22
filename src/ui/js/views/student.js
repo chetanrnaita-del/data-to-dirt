@@ -114,7 +114,7 @@ class StudentDashboardView {
             </div>
 
             <!-- File Review List -->
-            <div id="scanned-files-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; padding-right: 4px;">
+            <div id="scanned-files-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; padding-right: 4px;">
               <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px;">
                 Scan your Local Folder or Google Drive to discover duplicate files, unused junk, and more!
               </div>
@@ -692,11 +692,14 @@ class StudentDashboardView {
 
       this.scannedFiles = res.files || [];
       const totalScanned = res.total_scanned || res.files_found || 0;
+      const totalFound = res.files_found || this.scannedFiles.length;
+      const wasteFormatted = res.total_waste_formatted || (this.scannedFiles.reduce((acc, f) => acc + (f.size_bytes || 0), 0) / (1024*1024)).toFixed(1) + " MB";
+      
       if (banner) {
         banner.style.borderColor = "";
         banner.style.backgroundColor = "";
         const scanSourceLabel = scanType === "drive" || scanType === "picker_files" ? "Google Drive" : "Device Storage";
-        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: ${totalScanned} files analyzed — <strong>${res.files_found} junk/duplicate files</strong> flagged by AI</span>`;
+        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: <strong>${Number(totalScanned).toLocaleString()} files analyzed</strong> across entire system — <strong>${Number(totalFound).toLocaleString()} dark data candidates identified (${wasteFormatted} cleanable bloat)</strong>! Showing top storage hogs:</span>`;
       }
       if (btnRevoke) btnRevoke.style.display = "inline-flex";
 
@@ -771,7 +774,14 @@ class StudentDashboardView {
       return;
     }
 
-    container.innerHTML = this.scannedFiles
+    const headerHtml = `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; margin-bottom: 4px; font-size: 11px; font-weight: bold; color: var(--c-wood-border); background: rgba(0,0,0,0.04); border-radius: 4px;">
+        <span>🎯 Cleanable Candidates (${this.scannedFiles.length} listed)</span>
+        <span style="font-size: 10px; color: var(--c-ink-muted);">Sorted by size ⬇️</span>
+      </div>
+    `;
+
+    container.innerHTML = headerHtml + this.scannedFiles
       .map((file) => {
         const tagClass = file.category === "heavy_media" ? "retro-tag-heavy" : file.category === "transient_trash" ? "retro-tag-stale" : file.is_confidential ? "retro-tag-confidential" : "retro-tag-duplicate";
 
