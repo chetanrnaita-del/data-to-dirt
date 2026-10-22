@@ -4,7 +4,7 @@
 SHELL := /bin/bash
 PYTHON ?= python3
 
-.PHONY: all build run test clean check-env
+.PHONY: all build run test clean check-env safety-pipeline
 
 all: build
 
@@ -41,6 +41,9 @@ test:
 	@echo "=================================================="
 	@echo "  [✓] All tests passed!                           "
 	@echo "=================================================="
+
+safety-pipeline:
+	@bash scripts/run_safety_pipeline.sh
 
 clean:
 	@rm -rf `find . -type d -name "__pycache__"`
