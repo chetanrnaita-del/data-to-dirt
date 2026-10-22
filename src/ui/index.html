@@ -17,6 +17,16 @@
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
   <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
   <script>
+    window.deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.deferredInstallPrompt = e;
+      console.log('[+] beforeinstallprompt captured early');
+      if (window.DataToDirt) {
+        window.DataToDirt.showInstallButtons(true);
+      }
+    });
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then(reg => {
         console.log('Service Worker registered', reg);

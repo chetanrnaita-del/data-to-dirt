@@ -684,8 +684,13 @@ class DataToDirtApp {
 
         ${instructionsHtml}
 
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-          <button id="modal-install-close" style="padding: 10px 20px; background: #6c5ce7; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Got it!</button>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px;">
+          <button id="btn-download-app-file" style="padding: 12px; background: #00b894; color: #fff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);">
+            <span>⬇️</span> Download App Desktop Launcher
+          </button>
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px;">
+            <button id="modal-install-close" style="padding: 8px 16px; background: #dfe6e9; color: #2d3436; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+          </div>
         </div>
       </div>
     `;
@@ -694,6 +699,19 @@ class DataToDirtApp {
     const dismiss = () => {
       if (modalBackdrop.parentNode) modalBackdrop.parentNode.removeChild(modalBackdrop);
     };
+
+    modalBackdrop.querySelector("#btn-download-app-file")?.addEventListener("click", () => {
+      const targetUrl = window.location.origin;
+      const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${targetUrl}"><title>Data-to-Dirt</title><script>window.location.href="${targetUrl}";<\/script></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h2>Data-to-Dirt</h2><p>Redirecting to <a href="${targetUrl}">${targetUrl}</a>...</p></body></html>`;
+      const blob = new Blob([htmlContent], { type: "text/html" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "Data-to-Dirt.html";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
     modalBackdrop.querySelector("#modal-install-close")?.addEventListener("click", dismiss);
     modalBackdrop.addEventListener("click", (e) => {
       if (e.target === modalBackdrop) dismiss();
