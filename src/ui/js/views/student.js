@@ -100,8 +100,8 @@ class StudentDashboardView {
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
                   <span id="btn-scan-local-text">📱 Device</span>
                 </button>
-                <input type="file" id="device-file-input" multiple style="display: none;" />
-                <input type="file" id="device-folder-input" webkitdirectory directory multiple style="display: none;" />
+                <input type="file" id="device-file-input" multiple style="position: fixed; top: -1000px; left: -1000px; opacity: 0; pointer-events: none; width: 1px; height: 1px;" />
+                <input type="file" id="device-folder-input" webkitdirectory directory multiple style="position: fixed; top: -1000px; left: -1000px; opacity: 0; pointer-events: none; width: 1px; height: 1px;" />
                 <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-revoke-scan" style="display: none;">
                   🔒 Revoke
                 </button>
@@ -212,7 +212,12 @@ class StudentDashboardView {
     if (btnScanAutoDevice) {
       btnScanAutoDevice.addEventListener("click", async () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        await this.executeScan(null, true, "auto_device");
+        btnScanAutoDevice.disabled = true;
+        try {
+          await this.executeScan(null, true, "auto_device");
+        } finally {
+          btnScanAutoDevice.disabled = false;
+        }
       });
     }
 
@@ -222,11 +227,13 @@ class StudentDashboardView {
       // Handler shared by both file and folder inputs
       const handleDeviceFiles = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
-          const fileList = Array.from(e.target.files).map(f => ({
+          const files = Array.from(e.target.files);
+          const fileList = files.map(f => ({
             name: f.webkitRelativePath || f.name,
             size: f.size,
             lastModified: f.lastModified
           }));
+          e.target.value = ""; // Reset value so change event fires again reliably
           await this.executeScan(null, true, "browser_files", fileList);
         }
       };
@@ -353,51 +360,53 @@ class StudentDashboardView {
   }
 
   showGoogleDriveModal() {
-    const modalHtml = `
-      <div class="retro-modal-backdrop" id="modal-gdrive-options">
-        <div class="retro-modal" style="max-width: 420px;">
-          <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
-            ☁️ Google Drive Cleaner
-          </div>
-          <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
-            Choose how to scan your Google Drive:
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button class="retro-btn retro-btn-green" id="btn-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-              <strong>📁 Google Drive Picker (Select All / Any Folder)</strong>
-              <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-                Official Google window. Select your "My Drive" folder or multi-select files. Works for any account.
-              </div>
-            </button>
-            <button class="retro-btn retro-btn-gold" id="btn-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-              <strong>⚡ Live Google Drive Scan</strong>
-              <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-                Directly queries Google Drive API for all files owned by your account.
-              </div>
-            </button>
-            <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-gdrive-cancel" style="width: 100%; margin-top: 4px;">
-              ✖ Cancel
-            </button>
-          </div>
+    document.getElementById("modal-gdrive-options")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-gdrive-options";
+    modal.style.zIndex = "10000";
+    modal.innerHTML = `
+      <div class="retro-modal" style="max-width: 420px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
+          ☁️ Google Drive Cleaner
+        </div>
+        <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
+          Choose how to scan your Google Drive:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="retro-btn retro-btn-green" id="btn-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
+            <strong>📁 Google Drive Picker (Select All / Any Folder)</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Official Google window. Select your "My Drive" folder or multi-select files. Works for any account.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-gold" id="btn-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
+            <strong>⚡ Live Google Drive Scan</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Directly queries Google Drive API for all files owned by your account.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-gdrive-cancel" style="width: 100%; margin-top: 4px;">
+            ✖ Cancel
+          </button>
         </div>
       </div>
     `;
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    document.body.appendChild(modal);
 
-    const modal = document.getElementById("modal-gdrive-options");
-    const dismiss = () => modal && modal.remove();
+    const dismiss = () => modal.remove();
 
-    document.getElementById("btn-gdrive-picker").addEventListener("click", () => {
+    modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {
       dismiss();
       this.openGooglePicker();
     });
 
-    document.getElementById("btn-gdrive-direct").addEventListener("click", async () => {
+    modal.querySelector("#btn-gdrive-direct")?.addEventListener("click", async () => {
       dismiss();
       await this.executeScan("__google_drive__", true, "drive");
     });
 
-    document.getElementById("btn-gdrive-cancel").addEventListener("click", dismiss);
+    modal.querySelector("#btn-gdrive-cancel")?.addEventListener("click", dismiss);
     modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
   }
 
@@ -485,117 +494,133 @@ class StudentDashboardView {
   }
 
   showDeviceScanModal() {
-    const modalHtml = `
-      <div class="retro-modal-backdrop" id="modal-device-scan">
-        <div class="retro-modal" style="max-width: 420px;">
-          <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
-            📱 Scan Device & Cloud Sync Storage
-          </div>
-          <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
-            Choose how you want to scan your device:
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button class="retro-btn retro-btn-gold" id="btn-device-auto-all" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-              <strong>🚀 1-Click System Scan (Disk, Downloads, OneDrive, iCloud)</strong>
-              <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-                Automatically scans all connected disk and cloud sync folders without picking folders.
-              </div>
-            </button>
-            <button class="retro-btn retro-btn-green" id="btn-device-pick-folder" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-              <strong>📂 Select Specific Folder</strong>
-              <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-                Choose any folder on your computer to scan.
-              </div>
-            </button>
-            <button class="retro-btn retro-btn-wood" id="btn-device-pick-files" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-              <strong>📄 Select Individual Files</strong>
-              <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-                Pick specific videos, photos, or documents.
-              </div>
-            </button>
-            <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-device-cancel" style="width: 100%; margin-top: 4px;">
-              ✖ Cancel
-            </button>
-          </div>
+    document.getElementById("modal-device-scan")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-device-scan";
+    modal.style.zIndex = "10000";
+    modal.innerHTML = `
+      <div class="retro-modal" style="max-width: 440px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
+          📱 Scan Device & Cloud Sync Storage
+        </div>
+        <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
+          Choose how you want to scan your device:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="retro-btn retro-btn-gold" id="btn-device-auto-all" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>🚀 1-Click System Scan (Disk, Downloads, OneDrive, iCloud)</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Automatically scans all connected disk and cloud sync folders without picking folders.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-green" id="btn-device-pick-folder" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>📂 Select Specific Folder</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Choose any folder on your computer to scan.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-wood" id="btn-device-pick-files" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>📄 Select Individual Files</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Pick specific videos, photos, or documents.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-device-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
+            ✖ Cancel
+          </button>
         </div>
       </div>
     `;
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    document.body.appendChild(modal);
 
-    const modal = document.getElementById("modal-device-scan");
-    const dismiss = () => modal && modal.remove();
+    const dismiss = () => modal.remove();
 
-    document.getElementById("btn-device-auto-all").addEventListener("click", async () => {
+    modal.querySelector("#btn-device-auto-all")?.addEventListener("click", async () => {
+      if (window.RetroAudio) window.RetroAudio.playBlip();
       dismiss();
       await this.executeScan(null, true, "auto_device");
     });
 
-    document.getElementById("btn-device-pick-folder").addEventListener("click", () => {
+    modal.querySelector("#btn-device-pick-folder")?.addEventListener("click", () => {
+      if (window.RetroAudio) window.RetroAudio.playBlip();
+      const folderInput = document.getElementById("device-folder-input");
       dismiss();
-      document.getElementById("device-folder-input").click();
+      if (folderInput) {
+        folderInput.click();
+      }
     });
 
-    document.getElementById("btn-device-pick-files").addEventListener("click", () => {
+    modal.querySelector("#btn-device-pick-files")?.addEventListener("click", () => {
+      if (window.RetroAudio) window.RetroAudio.playBlip();
+      const fileInput = document.getElementById("device-file-input");
       dismiss();
-      document.getElementById("device-file-input").click();
+      if (fileInput) {
+        fileInput.click();
+      }
     });
 
-    document.getElementById("btn-device-cancel").addEventListener("click", dismiss);
+    modal.querySelector("#btn-device-cancel")?.addEventListener("click", () => {
+      if (window.RetroAudio) window.RetroAudio.playBlip();
+      dismiss();
+    });
+    
     modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
   }
 
   openFolderPermissionModal() {
-    const modalHtml = `
-      <div class="retro-modal-backdrop" id="modal-permission">
-        <div class="retro-card retro-modal">
-          <div class="retro-modal-header">
-            <span>🛡️ Privacy-First Folder Permission</span>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-modal-close">✕</button>
+    document.getElementById("modal-permission")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-permission";
+    modal.style.zIndex = "10000";
+    modal.innerHTML = `
+      <div class="retro-card retro-modal">
+        <div class="retro-modal-header">
+          <span>🛡️ Privacy-First Folder Permission</span>
+          <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-modal-close">✕</button>
+        </div>
+        <div class="retro-modal-body">
+          <p style="margin-bottom: 10px;">
+            <strong>Zero-Trust Privacy Guarantee:</strong> Data-to-Dirt reads file metadata (name, size, date) strictly inside process memory. No file contents are transmitted off your device.
+          </p>
+          <div class="retro-inset" style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 6px;">Folder Path to Clean:</label>
+            <input type="text" id="modal-folder-path" class="retro-input" value="~/Downloads/Project_Archive" />
           </div>
-          <div class="retro-modal-body">
-            <p style="margin-bottom: 10px;">
-              <strong>Zero-Trust Privacy Guarantee:</strong> Data-to-Dirt reads file metadata (name, size, date) strictly inside process memory. No file contents are transmitted off your device.
-            </p>
-            <div class="retro-inset" style="margin-bottom: 12px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 6px;">Folder Path to Clean:</label>
-              <input type="text" id="modal-folder-path" class="retro-input" value="~/Downloads/Project_Archive" />
-            </div>
-            <div style="font-size: 12px; color: var(--c-ink-muted);">
-              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="modal-session-only" checked />
-                <span><strong>Session-Only Access</strong> (Revoke automatically when app closes)</span>
-              </label>
-            </div>
+          <div style="font-size: 12px; color: var(--c-ink-muted);">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="modal-session-only" checked />
+              <span><strong>Session-Only Access</strong> (Revoke automatically when app closes)</span>
+            </label>
           </div>
-          <div class="retro-modal-actions">
-            <button class="retro-btn retro-btn-wood" id="btn-modal-cancel">Remain Blind</button>
-            <button class="retro-btn retro-btn-green" id="btn-modal-grant">Grant Access</button>
-          </div>
+        </div>
+        <div class="retro-modal-actions">
+          <button class="retro-btn retro-btn-wood" id="btn-modal-cancel">Remain Blind</button>
+          <button class="retro-btn retro-btn-green" id="btn-modal-grant">Grant Access</button>
         </div>
       </div>
     `;
 
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    document.body.appendChild(modal);
 
-    const modal = document.getElementById("modal-permission");
-    const btnClose = document.getElementById("btn-modal-close");
-    const btnCancel = document.getElementById("btn-modal-cancel");
-    const btnGrant = document.getElementById("btn-modal-grant");
+    const btnClose = modal.querySelector("#btn-modal-close");
+    const btnCancel = modal.querySelector("#btn-modal-cancel");
+    const btnGrant = modal.querySelector("#btn-modal-grant");
 
-    const dismiss = () => {
-      if (modal) modal.remove();
-    };
+    const dismiss = () => modal.remove();
 
     if (btnClose) btnClose.onclick = dismiss;
     if (btnCancel) btnCancel.onclick = dismiss;
     if (btnGrant) {
       btnGrant.onclick = async () => {
-        const folder = document.getElementById("modal-folder-path").value;
-        const sessionOnly = document.getElementById("modal-session-only").checked;
+        const folder = modal.querySelector("#modal-folder-path")?.value;
+        const sessionOnly = modal.querySelector("#modal-session-only")?.checked;
         dismiss();
         await this.executeScan(folder, sessionOnly, "local");
       };
     }
+    modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
   }
 
   async executeScan(folderPath, sessionOnly, scanType = "local", fileList = [], oauthToken = null) {
@@ -670,7 +695,8 @@ class StudentDashboardView {
       if (banner) {
         banner.style.borderColor = "";
         banner.style.backgroundColor = "";
-        banner.innerHTML = `<span>✅ <strong>Drive Connected</strong>: ${totalScanned} files analyzed — <strong>${res.files_found} junk/duplicate files</strong> flagged by AI</span>`;
+        const scanSourceLabel = scanType === "drive" || scanType === "picker_files" ? "Google Drive" : "Device Storage";
+        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: ${totalScanned} files analyzed — <strong>${res.files_found} junk/duplicate files</strong> flagged by AI</span>`;
       }
       if (btnRevoke) btnRevoke.style.display = "inline-flex";
 
@@ -739,7 +765,7 @@ class StudentDashboardView {
     if (this.scannedFiles.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px;">
-          No junk or duplicate files found in your Drive!
+          No junk or duplicate files found! Click 'Auto-Scan System', 'Device', or 'Drive' to start cleaning.
         </div>
       `;
       return;
@@ -788,54 +814,57 @@ class StudentDashboardView {
   }
 
   openDeletionReasonModal(file) {
-    const modalHtml = `
-      <div class="retro-modal-backdrop" id="modal-deletion">
-        <div class="retro-card retro-modal">
-          <div class="retro-modal-header">
-            <span>🗑️ Deletion Reason & AI Accountability (R3)</span>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-del-close">✕</button>
+    document.getElementById("modal-deletion")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-deletion";
+    modal.style.zIndex = "10000";
+    modal.innerHTML = `
+      <div class="retro-card retro-modal">
+        <div class="retro-modal-header">
+          <span>🗑️ Deletion Reason & AI Accountability (R3)</span>
+          <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-del-close">✕</button>
+        </div>
+        <div class="retro-modal-body">
+          <p style="margin-bottom: 8px;">
+            File: <strong>${file.file_name}</strong> (${file.size_formatted})
+          </p>
+          <div style="font-size: 12px; color: var(--c-ink-muted); margin-bottom: 12px;">
+            To prevent accidental deletion, our <strong>AI Analysis Engine</strong> verifies why this file is unnecessary before queueing it for teacher approval.
           </div>
-          <div class="retro-modal-body">
-            <p style="margin-bottom: 8px;">
-              File: <strong>${file.file_name}</strong> (${file.size_formatted})
-            </p>
-            <div style="font-size: 12px; color: var(--c-ink-muted); margin-bottom: 12px;">
-              To prevent accidental deletion, our <strong>AI Analysis Engine</strong> verifies why this file is unnecessary before queueing it for teacher approval.
-            </div>
-            
-            <label style="display: block; font-weight: bold; margin-bottom: 6px;">
-              Why is this file a duplicate or junk? (Reason for removal):
-            </label>
-            <textarea id="modal-del-reason" class="retro-input" rows="3" placeholder="e.g. Uncut rough video take already trimmed and merged into final submission..."></textarea>
-            
-            <div id="ai-feedback-banner" style="margin-top: 10px; display: none;" class="retro-inset"></div>
-          </div>
-          <div class="retro-modal-actions">
-            <button class="retro-btn retro-btn-wood" id="btn-del-cancel">Keep File</button>
-            <button class="retro-btn retro-btn-green" id="btn-del-verify">Verify & Queue</button>
-          </div>
+          
+          <label style="display: block; font-weight: bold; margin-bottom: 6px;">
+            Why is this file a duplicate or junk? (Reason for removal):
+          </label>
+          <textarea id="modal-del-reason" class="retro-input" rows="3" placeholder="e.g. Uncut rough video take already trimmed and merged into final submission..."></textarea>
+          
+          <div id="ai-feedback-banner" style="margin-top: 10px; display: none;" class="retro-inset"></div>
+        </div>
+        <div class="retro-modal-actions">
+          <button class="retro-btn retro-btn-wood" id="btn-del-cancel">Keep File</button>
+          <button class="retro-btn retro-btn-green" id="btn-del-verify">Verify & Queue</button>
         </div>
       </div>
     `;
 
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    document.body.appendChild(modal);
 
-    const modal = document.getElementById("modal-deletion");
-    const btnClose = document.getElementById("btn-del-close");
-    const btnCancel = document.getElementById("btn-del-cancel");
-    const btnVerify = document.getElementById("btn-del-verify");
+    const btnClose = modal.querySelector("#btn-del-close");
+    const btnCancel = modal.querySelector("#btn-del-cancel");
+    const btnVerify = modal.querySelector("#btn-del-verify");
 
     const dismiss = () => {
-      if (modal) modal.remove();
+      modal.remove();
     };
 
     if (btnClose) btnClose.onclick = dismiss;
     if (btnCancel) btnCancel.onclick = dismiss;
+    modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
 
     if (btnVerify) {
       btnVerify.onclick = async () => {
-        const reason = document.getElementById("modal-del-reason").value.trim();
-        const feedback = document.getElementById("ai-feedback-banner");
+        const reason = modal.querySelector("#modal-del-reason")?.value.trim() || "";
+        const feedback = modal.querySelector("#ai-feedback-banner");
 
         if (!reason) {
           feedback.style.display = "block";
