@@ -105,8 +105,18 @@ class DataToDirtApp {
     this.classCode = classCode || localStorage.getItem("d2d_class_code") || "";
     document.getElementById("nav-logout-btn").style.display = "inline-block";
     document.getElementById("header-role-badge").style.display = "inline-block";
+    
+    // Show role navigation buttons
+    const btnStudent = document.getElementById("nav-student-view");
+    const btnTeacher = document.getElementById("nav-teacher-view");
+    const btnAdmin = document.getElementById("nav-admin-view");
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
+
+    if (btnStudent) btnStudent.style.display = "inline-block";
+    if (btnTeacher) btnTeacher.style.display = "inline-block";
+    if (btnAdmin) btnAdmin.style.display = "inline-block";
     if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+
     this.switchRole(role);
     this.detectAndTrackLocation(`User Login (${role.toUpperCase()})`, { user_id: userId, role: role });
   }
@@ -123,6 +133,15 @@ class DataToDirtApp {
     localStorage.removeItem("d2d_class_code");
     document.getElementById("nav-logout-btn").style.display = "none";
     document.getElementById("header-role-badge").style.display = "none";
+
+    // Hide role navigation buttons on logout
+    const btnStudent = document.getElementById("nav-student-view");
+    const btnTeacher = document.getElementById("nav-teacher-view");
+    const btnAdmin = document.getElementById("nav-admin-view");
+    if (btnStudent) btnStudent.style.display = "none";
+    if (btnTeacher) btnTeacher.style.display = "none";
+    if (btnAdmin) btnAdmin.style.display = "none";
+
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
     if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
     
