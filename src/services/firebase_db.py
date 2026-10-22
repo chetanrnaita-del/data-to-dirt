@@ -7,6 +7,8 @@ Handles 2,000 - 3,000+ users, class codes, teachers, deletion queues & stats.
 
 import os
 import time
+import json
+import base64
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -35,11 +37,20 @@ class FirestoreDB:
             print("[-] firebase-admin not installed. Running in local fallback mode.")
             return
 
-        # Check if service account JSON is passed via environment variable (e.g. Render / Cloud)
+        # 1. Check if service account JSON or Base64 is passed via environment variable
+        env_b64 = os.environ.get("FIREBASE_KEY_BASE64")
         env_key_json = os.environ.get("FIREBASE_KEY_JSON")
+        if env_b64:
+            try:
+                env_key_json = base64.b64decode(env_b64).decode("utf-8")
+            except Exception as b_err:
+                print(f"[!] FIREBASE_KEY_BASE64 decode notice: {b_err}")
+
         if env_key_json:
             try:
                 cert_dict = json.loads(env_key_json)
+                if "private_key" in cert_dict and isinstance(cert_dict["private_key"], str):
+                    cert_dict["private_key"] = cert_dict["private_key"].replace("\\n", "\n")
                 cred = credentials.Certificate(cert_dict)
                 if not firebase_admin._apps:
                     firebase_admin.initialize_app(cred)
@@ -49,13 +60,15 @@ class FirestoreDB:
                 except Exception:
                     self.db = firestore.client()
                 self.is_connected = True
-                print(f"[✓] Connected to Cloud Firestore database '{db_name}' using FIREBASE_KEY_JSON env var")
+                print(f"[✓] Connected to Cloud Firestore database '{db_name}' using environment variable credentials")
                 return
             except Exception as e:
                 print(f"[!] FIREBASE_KEY_JSON parse notice: {e}")
 
-        # Check for service account key file in common locations
+        # 2. Check for service account key file in common locations (including Render /etc/secrets)
         key_paths = [
+            Path("/etc/secrets/firebase_key.json"),
+            Path("/etc/secrets/serviceAccountKey.json"),
             Path("firebase_key.json"),
             Path("firebase_key.json.json"),
             Path("serviceAccountKey.json"),
