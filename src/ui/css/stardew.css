@@ -1,0 +1,339 @@
+/* ==============================================================================
+   DATA-TO-DIRT — Stardew Valley & Celeste Retro Frame Styles
+   Wooden borders, parchment surfaces, brass rivets, pixelated buttons & badges
+   ============================================================================== */
+
+/* Master Application Shell Container */
+#app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 20%, var(--c-celeste-night) 0%, var(--c-celeste-deep) 100%);
+  padding: 12px;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Stardew Valley Wooden Frame Card */
+.retro-card {
+  background-color: var(--c-parchment-bg);
+  color: var(--c-ink-text);
+  border: 4px solid var(--c-wood-border);
+  box-shadow: 
+    inset 3px 3px 0px var(--c-wood-light),
+    inset -3px -3px 0px var(--c-wood-medium),
+    4px 4px 0px rgba(0, 0, 0, 0.55);
+  position: relative;
+  border-radius: 0;
+  padding: 16px;
+}
+
+/* Brass Corner Rivets on Cards */
+.retro-card::before,
+.retro-card::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--c-brass-bright);
+  border: 1px solid var(--c-brass-dark);
+  box-shadow: inset 1px 1px 0px var(--c-gold-shine), inset -1px -1px 0px var(--c-dark-wood);
+  z-index: 10;
+}
+
+.retro-card::before {
+  top: 4px;
+  left: 4px;
+}
+
+.retro-card::after {
+  bottom: 4px;
+  right: 4px;
+}
+
+/* Inset Parchment Well / Panel */
+.retro-inset {
+  background-color: var(--c-parchment-inset);
+  border: 3px solid var(--c-parchment-border);
+  box-shadow: 
+    inset 2px 2px 4px rgba(44, 30, 17, 0.35),
+    1px 1px 0px rgba(255, 255, 255, 0.4);
+  padding: 12px;
+  border-radius: 0;
+}
+
+/* Retro Pixel Header Banner */
+.retro-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--c-dark-wood);
+  border: 4px solid var(--c-wood-border);
+  box-shadow: 
+    inset 2px 2px 0px var(--c-wood-highlight),
+    inset -2px -2px 0px #180c04,
+    0 4px 6px rgba(0, 0, 0, 0.5);
+  padding: 10px 18px;
+  color: var(--c-gold-shine);
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0px #000;
+}
+
+.app-title-badge {
+  background: var(--c-eco-green);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border: 1px solid var(--c-forest-deep);
+  box-shadow: inset 1px 1px 0 var(--c-eco-sprout);
+}
+
+/* Header Action Controls */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Top Stats Pills */
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #19140f;
+  border: 2px solid var(--c-wood-medium);
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--c-parchment-bg);
+  box-shadow: inset 1px 1px 0 #33261a;
+}
+
+.stat-pill .icon {
+  font-size: 14px;
+}
+
+.stat-pill .value {
+  color: var(--c-gold-shine);
+  font-weight: bold;
+}
+
+/* Stardew Retro Button Base */
+.retro-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: 3px solid var(--c-wood-border);
+  border-radius: 0;
+  transition: none; /* Instant pixel transition */
+  outline: none;
+  position: relative;
+  text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.6);
+}
+
+.retro-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none !important;
+}
+
+/* Button Variants */
+.retro-btn-wood {
+  background: var(--c-wood-medium);
+  color: var(--c-parchment-bg);
+  box-shadow: 
+    inset 2px 2px 0px var(--c-wood-light),
+    inset -2px -2px 0px var(--c-dark-wood),
+    2px 2px 0px #000;
+}
+.retro-btn-wood:hover {
+  background: var(--c-wood-highlight);
+}
+
+.retro-btn-green {
+  background: var(--c-eco-green);
+  color: #ffffff;
+  border-color: var(--c-forest-deep);
+  box-shadow: 
+    inset 2px 2px 0px var(--c-eco-sprout),
+    inset -2px -2px 0px var(--c-forest-dark),
+    2px 2px 0px #000;
+}
+.retro-btn-green:hover {
+  background: var(--c-eco-leaf);
+}
+
+.retro-btn-gold {
+  background: var(--c-brass-mid);
+  color: #1a1005;
+  text-shadow: 1px 1px 0px var(--c-gold-shine);
+  border-color: var(--c-brass-dark);
+  box-shadow: 
+    inset 2px 2px 0px var(--c-gold-shine),
+    inset -2px -2px 0px #4d3008,
+    2px 2px 0px #000;
+}
+.retro-btn-gold:hover {
+  background: var(--c-brass-bright);
+}
+
+.retro-btn-danger {
+  background: var(--c-danger-red);
+  color: #ffffff;
+  border-color: #591111;
+  box-shadow: 
+    inset 2px 2px 0px #ff7b7b,
+    inset -2px -2px 0px #420808,
+    2px 2px 0px #000;
+}
+.retro-btn-danger:hover {
+  background: var(--c-danger-bright);
+}
+
+.retro-btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+/* Pixel Progress Bar (Stardew EXP Bar Style) */
+.pixel-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pixel-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--c-ink-muted);
+}
+
+.pixel-progress-bar {
+  height: 18px;
+  background: #251d14;
+  border: 2px solid var(--c-wood-border);
+  box-shadow: inset 2px 2px 0 #120e0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.pixel-progress-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--c-eco-leaf),
+    var(--c-eco-leaf) 10px,
+    var(--c-eco-green) 10px,
+    var(--c-eco-green) 12px
+  );
+  box-shadow: inset 0 2px 0 var(--c-eco-sprout), inset 0 -2px 0 var(--c-forest-dark);
+  transition: width 0.4s ease-out;
+}
+
+/* Stardew Badges & Tags */
+.retro-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 0;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.retro-tag-stale {
+  background: #dfb274;
+  color: #3b230a;
+}
+
+.retro-tag-heavy {
+  background: #e26e58;
+  color: #ffffff;
+}
+
+.retro-tag-duplicate {
+  background: #5d98cf;
+  color: #ffffff;
+}
+
+.retro-tag-confidential {
+  background: #473e3a;
+  color: #f7d26b;
+}
+
+/* Modal Window Backdrop */
+.retro-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(14, 18, 30, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.retro-modal {
+  width: 520px;
+  max-width: 90vw;
+  animation: modalPop 0.15s ease-out;
+}
+
+.retro-modal-header {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--c-wood-border);
+  border-bottom: 2px dashed var(--c-parchment-border);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.retro-modal-body {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.retro-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Retro Form Controls */
+.retro-input {
+  width: 100%;
+  background: #fff;
+  border: 3px solid var(--c-parchment-border);
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--c-ink-text);
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.15);
+  outline: none;
+  border-radius: 0;
+}
+
+.retro-input:focus {
+  border-color: var(--c-brass-bright);
+}

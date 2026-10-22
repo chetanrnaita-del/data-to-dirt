@@ -1,0 +1,130 @@
+/* ==============================================================================
+   DATA-TO-DIRT — Retro Base Stylesheet & Color Palette
+   Stardew Valley / Celeste 16-bit earthen and alpine aesthetic
+   ============================================================================== */
+
+:root {
+  /* Earthen & Wood Hues (Stardew Valley Farmstead) */
+  --c-dark-wood: #2a1508;
+  --c-wood-border: #4d2d14;
+  --c-wood-medium: #784824;
+  --c-wood-highlight: #b07542;
+  --c-wood-light: #e0ac75;
+
+  /* Parchment Surfaces & Ink */
+  --c-parchment-bg: #f8f1de;
+  --c-parchment-inset: #ebdcb9;
+  --c-parchment-border: #9c7b50;
+  --c-ink-text: #2c1e11;
+  --c-ink-muted: #5e4630;
+  --c-ink-light: #8a6a4d;
+
+  /* Eco Forest & Canopy Greens */
+  --c-forest-deep: #112915;
+  --c-forest-dark: #1e4a23;
+  --c-eco-green: #37802b;
+  --c-eco-leaf: #5cb339;
+  --c-eco-sprout: #9be05c;
+  --c-eco-glow: #e2f7b0;
+
+  /* Celeste Alpine Night & Accents */
+  --c-celeste-deep: #0e121e;
+  --c-celeste-night: #1c2338;
+  --c-celeste-slate: #384666;
+  --c-celeste-cloud: #6882a8;
+  --c-celeste-ice: #a8cae6;
+  --c-celeste-snow: #e6f3fc;
+
+  /* Brass & Gold Trim */
+  --c-brass-dark: #63400d;
+  --c-brass-mid: #b87714;
+  --c-brass-bright: #e8a72b;
+  --c-gold-shine: #ffea78;
+
+  /* Action & Status Accents */
+  --c-danger-red: #a82424;
+  --c-danger-bright: #e04848;
+  --c-warning-amber: #d97725;
+  --c-info-cyan: #2288a6;
+
+  /* Dimensions */
+  --font-retro: "Courier New", "Lucida Console", "VT323", Monaco, monospace;
+}
+
+/* Crisp Retro Pixel Rendering Engine */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input, textarea, select, button {
+  user-select: text;
+  -webkit-user-select: text;
+  font-family: var(--font-retro);
+}
+
+body {
+  background-color: var(--c-celeste-deep);
+  color: var(--c-ink-text);
+  font-family: var(--font-retro);
+  font-size: 14px;
+  line-height: 1.4;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* CRT Scanlines Overlay (Toggleable) */
+.scanlines-overlay {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.18) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.02),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.02)
+  );
+  background-size: 100% 4px, 6px 100%;
+  z-index: 9999;
+  opacity: 0.6;
+}
+
+.scanlines-overlay.disabled {
+  display: none;
+}
+
+/* Retro Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--c-wood-border);
+  border: 2px solid var(--c-dark-wood);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-wood-highlight);
+  border: 2px solid var(--c-wood-light);
+  box-shadow: inset 1px 1px 0px var(--c-gold-shine), inset -1px -1px 0px var(--c-dark-wood);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-brass-bright);
+}

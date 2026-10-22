@@ -1,0 +1,15 @@
+.env
+.env.*
+firebase_key.json
+firebase_key.json.json
+serviceAccountKey.json
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.pytest_cache/
+tests/e2e/test_results.json

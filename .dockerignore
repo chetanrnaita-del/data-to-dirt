@@ -1,0 +1,14 @@
+.git
+.agents
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.pytest_cache/
+tests/
+scripts/keep_tunnel_alive.sh
+data/test_app_state.json
+.DS_Store

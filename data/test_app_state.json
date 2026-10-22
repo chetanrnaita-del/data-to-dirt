@@ -1,0 +1,402 @@
+{
+  "student": {
+    "student_id": "STU-001",
+    "name": "Alex River",
+    "bytes_cleared": 1761607680,
+    "eco_points": 820,
+    "streak_days": 1,
+    "last_deletion_date": "2026-10-22",
+    "daily_deletions_today": 5,
+    "daily_deletion_limit": 5,
+    "strikes": 4
+  },
+  "leaderboard": [
+    {
+      "rank": 1,
+      "name": "Sarah Chen",
+      "eco_points": 480,
+      "data_cleared_bytes": 1420584960,
+      "streak_days": 8,
+      "trees": 3
+    },
+    {
+      "rank": 2,
+      "name": "Alex River (You)",
+      "eco_points": 340,
+      "data_cleared_bytes": 713031680,
+      "streak_days": 5,
+      "trees": 1
+    },
+    {
+      "rank": 3,
+      "name": "Marcus Vance",
+      "eco_points": 290,
+      "data_cleared_bytes": 524288000,
+      "streak_days": 4,
+      "trees": 0
+    },
+    {
+      "rank": 4,
+      "name": "Emily Rodriguez",
+      "eco_points": 210,
+      "data_cleared_bytes": 367001600,
+      "streak_days": 3,
+      "trees": 0
+    },
+    {
+      "rank": 5,
+      "name": "David Kim",
+      "eco_points": 180,
+      "data_cleared_bytes": 280000000,
+      "streak_days": 2,
+      "trees": 0
+    }
+  ],
+  "scanner": {
+    "state": "COMPLETED",
+    "current_folder": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmptzxdpaq_",
+    "files": [
+      {
+        "file_id": "f_bf525e10190763c2",
+        "file_name": "build_artifact.tmp",
+        "absolute_path": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmptzxdpaq_/build_artifact.tmp",
+        "relative_path": "build_artifact.tmp",
+        "size_bytes": 20,
+        "extension": "tmp",
+        "mime_category": "other",
+        "last_modified_epoch_s": 1792674318.2219028,
+        "last_accessed_epoch_s": 1792674318.2218497,
+        "is_confidential": false,
+        "is_dark_data_candidate": true,
+        "dark_data_reason": "Temporary cache/artifact",
+        "preview_blurred": true,
+        "size_formatted": "20 B",
+        "category": "dark_data",
+        "dark_data_tag": "Temporary cache/artifact",
+        "age_days": 0
+      },
+      {
+        "file_id": "f_d1a8342f213b501f",
+        "file_name": "notes.txt",
+        "absolute_path": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmptzxdpaq_/notes.txt",
+        "relative_path": "notes.txt",
+        "size_bytes": 32,
+        "extension": "txt",
+        "mime_category": "document",
+        "last_modified_epoch_s": 1792674318.221806,
+        "last_accessed_epoch_s": 1792674318.221744,
+        "is_confidential": false,
+        "is_dark_data_candidate": false,
+        "dark_data_reason": "",
+        "preview_blurred": true,
+        "size_formatted": "32 B",
+        "category": "normal",
+        "dark_data_tag": "Normal",
+        "age_days": 0
+      }
+    ],
+    "confidential_ids": [],
+    "error": null
+  },
+  "teacher_queue": [
+    {
+      "request_id": "REQ-1001",
+      "student_id": "STU-001",
+      "student_name": "Alex River",
+      "file_id": "file_sample_01",
+      "file_name": "Screen_Recording_Draft_v1.mov",
+      "file_path": "/Users/student/Movies/Screen_Recording_Draft_v1.mov",
+      "file_size_bytes": 367001600,
+      "file_age_days": 45,
+      "reason": "Rough unedited screen recording already trimmed into final presentation.",
+      "ai_evaluation": {
+        "confidence_score": 0.88,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: High-waste redundant video (350 MB .mov). Reason aligns with file age and extension.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "submitted_at": "2026-10-22 11:33:07"
+    },
+    {
+      "request_id": "REQ-95795",
+      "student_id": "STU-001",
+      "student_name": "Alex River",
+      "class_code": "env101",
+      "file_id": "test_01_1792648995795",
+      "file_name": "Presentation_Draft_Old.mov",
+      "file_path": "/mock/path/Presentation_Draft_Old.mov",
+      "file_size_bytes": 262144000,
+      "file_age_days": 30,
+      "reason": "Rough unedited screen recording already merged into final project video.",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (250.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "APPROVED",
+      "submitted_at": "2026-10-22 11:33:15",
+      "decided_by": "TEACHER-001",
+      "decided_at": 1792674318.226177
+    },
+    {
+      "request_id": "REQ-94812",
+      "student_id": "STU-001",
+      "student_name": "Alex River",
+      "class_code": "env101",
+      "file_id": "test_01_1792673394812",
+      "file_name": "Presentation_Draft_Old.mov",
+      "file_path": "/mock/path/Presentation_Draft_Old.mov",
+      "file_size_bytes": 262144000,
+      "file_age_days": 30,
+      "reason": "Rough unedited screen recording already merged into final project video.",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (250.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "submitted_at": "2026-10-22 18:19:54"
+    },
+    {
+      "request_id": "REQ-92772",
+      "student_id": "STU-001",
+      "student_name": "Alex River",
+      "class_code": "env101",
+      "file_id": "test_01_1792673492772",
+      "file_name": "Presentation_Draft_Old.mov",
+      "file_path": "/mock/path/Presentation_Draft_Old.mov",
+      "file_size_bytes": 262144000,
+      "file_age_days": 30,
+      "reason": "Rough unedited screen recording already merged into final project video.",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (250.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "submitted_at": "2026-10-22 18:21:32"
+    },
+    {
+      "request_id": "REQ-16933",
+      "student_id": "STU-001",
+      "student_name": "Alex River",
+      "class_code": "env101",
+      "file_id": "test_01_1792674316933",
+      "file_name": "Presentation_Draft_Old.mov",
+      "file_path": "/mock/path/Presentation_Draft_Old.mov",
+      "file_size_bytes": 262144000,
+      "file_age_days": 30,
+      "reason": "Rough unedited screen recording already merged into final project video.",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (250.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "submitted_at": "2026-10-22 18:35:16"
+    }
+  ],
+  "ecofund": {
+    "budget_usd": 100.0,
+    "balance_usd": 95.5,
+    "trees_planted": 3,
+    "cumulative_waste_bytes": 3563061248,
+    "threshold_bytes": 1073741824,
+    "cost_per_tree_usd": 1.5,
+    "donations_history": [
+      {
+        "tree_id": "TN-MOCK-101",
+        "species": "Mangrove (Rhizophora mucronata)",
+        "co2_offset_kg": 250.0,
+        "certificate_url": "datatodirt://certificates/TN-MOCK-101",
+        "planted_at": "2026-09-04 14:20:00"
+      },
+      {
+        "tree_id": "TN-MOCK-102",
+        "species": "Pixel Oak (Quercus pixelata)",
+        "co2_offset_kg": 200.0,
+        "certificate_url": "datatodirt://certificates/TN-MOCK-102",
+        "planted_at": "2026-09-05 11:05:00"
+      },
+      {
+        "tree_id": "TN-MOCK-103",
+        "species": "Pixel Mangrove (Rhizophora pixelata)",
+        "co2_offset_kg": 250.0,
+        "certificate_url": "datatodirt://certificates/TN-MOCK-103",
+        "planted_at": "2026-10-22 18:21:34"
+      }
+    ]
+  },
+  "auth": {
+    "current_role": "student",
+    "teacher_pin": "teacher123",
+    "admin_pin": "admin123"
+  },
+  "students": [
+    {
+      "student_id": "STU-001",
+      "name": "Alex River",
+      "class_code": "env101",
+      "created_by": "TEACHER-001",
+      "created_at_iso": "2026-09-01 10:00:00",
+      "eco_points": 340,
+      "bytes_cleared": 713031680,
+      "trees": 1
+    },
+    {
+      "student_id": "STU-002",
+      "name": "Sarah Chen",
+      "class_code": "env101",
+      "created_by": "TEACHER-001",
+      "created_at_iso": "2026-09-01 10:05:00",
+      "eco_points": 480,
+      "bytes_cleared": 1420584960,
+      "trees": 3
+    },
+    {
+      "user_id": "STU-TEST-2EC7B7",
+      "student_id": "STU-TEST-2EC7B7",
+      "name": "Alice Student 2EC7B7",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 11:33:17"
+    },
+    {
+      "user_id": "STU-4D51E8",
+      "student_id": "STU-4D51E8",
+      "name": "Bob AutoGen 2EC7B7",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 11:33:19"
+    },
+    {
+      "user_id": "STU-TEST-DFCEBC",
+      "student_id": "STU-TEST-DFCEBC",
+      "name": "Alice Student DFCEBC",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 18:19:56"
+    },
+    {
+      "user_id": "STU-590E8E",
+      "student_id": "STU-590E8E",
+      "name": "Bob AutoGen DFCEBC",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 18:19:58"
+    },
+    {
+      "user_id": "STU-TEST-7BAC34",
+      "student_id": "STU-TEST-7BAC34",
+      "name": "Alice Student 7BAC34",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 18:21:34"
+    },
+    {
+      "user_id": "STU-9953C2",
+      "student_id": "STU-9953C2",
+      "name": "Bob AutoGen 7BAC34",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 18:21:37"
+    },
+    {
+      "user_id": "STU-TEST-82CED0",
+      "student_id": "STU-TEST-82CED0",
+      "name": "Alice Student 82CED0",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 18:35:18"
+    },
+    {
+      "user_id": "STU-68FF30",
+      "student_id": "STU-68FF30",
+      "name": "Bob AutoGen 82CED0",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 0,
+      "carbon_offset_g": 0.0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 18:35:21"
+    }
+  ]
+}

@@ -1,0 +1,2471 @@
+{
+  "timestamp": "2026-09-05T18:18:46Z",
+  "total_tests": 345,
+  "total_passed": 345,
+  "total_failed": 0,
+  "total_errors": 0,
+  "total_skipped": 0,
+  "overall_status": "PASSED",
+  "duration_seconds": 5.754,
+  "tiers": [
+    {
+      "tier_name": "Tier 1: Feature Coverage (F-01..F-30)",
+      "total": 150,
+      "passed": 150,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "elapsed_seconds": 0.041,
+      "records": [
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F01_01_kwh_calculation",
+          "name": "test_T1_F01_01_kwh_calculation",
+          "doc": "F-01: Validates kWh per GB year calculation against 0.28 kWh/GB constant.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F01_02_carbon_grams_calculation",
+          "name": "test_T1_F01_02_carbon_grams_calculation",
+          "doc": "F-01: Validates grams of CO2e using Singapore grid factor (405.7 g/kWh).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F01_03_avoided_carbon_offset_kg",
+          "name": "test_T1_F01_03_avoided_carbon_offset_kg",
+          "doc": "F-01: Validates avoided carbon offset in kg for 10 GB deleted data.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F01_04_tree_equivalent_absorption",
+          "name": "test_T1_F01_04_tree_equivalent_absorption",
+          "doc": "F-01: Validates tree annual absorption equivalency (20.0 kg/tree/year).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F01_05_secondary_equivalencies",
+          "name": "test_T1_F01_05_secondary_equivalencies",
+          "doc": "F-01: Validates smartphone charges (8.22g) and car km (170g) translation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F02_01_initial_counter_zero",
+          "name": "test_T1_F02_01_initial_counter_zero",
+          "doc": "F-02: Counter starts at zero prior to file operations.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F02_02_counter_increments_on_staged_data",
+          "name": "test_T1_F02_02_counter_increments_on_staged_data",
+          "doc": "F-02: Counter tracks active footprint when multiple files are identified.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F02_03_counter_decrements_on_deletion",
+          "name": "test_T1_F02_03_counter_decrements_on_deletion",
+          "doc": "F-02: Net active footprint decreases when a file is deleted.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F02_04_counter_precision_rounding",
+          "name": "test_T1_F02_04_counter_precision_rounding",
+          "doc": "F-02: Verifies counter values maintain sub-gram precision for UI display.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F02_05_avoided_lifetime_projection",
+          "name": "test_T1_F02_05_avoided_lifetime_projection",
+          "doc": "F-02: Counter projects avoided emissions across multi-year horizons (3-year).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F03_01_minimum_entries",
+          "name": "test_T1_F03_01_minimum_entries",
+          "doc": "F-03: Leaderboard contains at least 3 initial test entries.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F03_02_ranked_order_by_points",
+          "name": "test_T1_F03_02_ranked_order_by_points",
+          "doc": "F-03: Leaderboard ranks entries in descending order of points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F03_03_rank_attribute_populated",
+          "name": "test_T1_F03_03_rank_attribute_populated",
+          "doc": "F-03: Ranks are sequential integers starting at 1.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F03_04_tie_breaking_by_streak",
+          "name": "test_T1_F03_04_tie_breaking_by_streak",
+          "doc": "F-03: Tie in points is broken by longer consecutive streak.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F03_05_leaderboard_includes_streak_and_bytes",
+          "name": "test_T1_F03_05_leaderboard_includes_streak_and_bytes",
+          "doc": "F-03: Every leaderboard card displays points, streak, and bytes cleared.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F04_01_streak_increments_on_deletion",
+          "name": "test_T1_F04_01_streak_increments_on_deletion",
+          "doc": "F-04: Valid deletion increments the student's streak counter.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F04_02_streak_initial_state",
+          "name": "test_T1_F04_02_streak_initial_state",
+          "doc": "F-04: Existing student profiles report active streak.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F04_03_streak_reset_to_zero",
+          "name": "test_T1_F04_03_streak_reset_to_zero",
+          "doc": "F-04: Disciplinary flag or reset forces streak to 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F04_04_multiple_deletions_accumulate_points",
+          "name": "test_T1_F04_04_multiple_deletions_accumulate_points",
+          "doc": "F-04: Multiple deletions in same session accrue points continuously.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F04_05_streak_freeze_on_strike",
+          "name": "test_T1_F04_05_streak_freeze_on_strike",
+          "doc": "F-04: Strike 2 freezes streak from advancing.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F05_01_default_limit_is_five",
+          "name": "test_T1_F05_01_default_limit_is_five",
+          "doc": "F-05: Default daily deletion limit is 5 deletions per student.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F05_02_limit_allows_under_cap",
+          "name": "test_T1_F05_02_limit_allows_under_cap",
+          "doc": "F-05: Deletions below cap are permitted.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F05_03_limit_reached_blocks_deletion",
+          "name": "test_T1_F05_03_limit_reached_blocks_deletion",
+          "doc": "F-05: Hitting the daily cap prevents further deletions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F05_04_limit_configurable_by_admin",
+          "name": "test_T1_F05_04_limit_configurable_by_admin",
+          "doc": "F-05: Admin can adjust daily limit threshold.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F05_05_limit_counter_increments_per_deletion",
+          "name": "test_T1_F05_05_limit_counter_increments_per_deletion",
+          "doc": "F-05: Today deletions counter increases by exactly 1 per deletion.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F06_01_stage_0_soil",
+          "name": "test_T1_F06_01_stage_0_soil",
+          "doc": "F-06: 0 bytes deleted displays Stage 0: Prepared Soil.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F06_02_stage_1_sprout",
+          "name": "test_T1_F06_02_stage_1_sprout",
+          "doc": "F-06: >= 1 MB deleted displays Stage 1: The Sprout.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F06_03_stage_2_sapling",
+          "name": "test_T1_F06_03_stage_2_sapling",
+          "doc": "F-06: >= 50 MB deleted displays Stage 2: The Sapling.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F06_04_stage_3_young_oak",
+          "name": "test_T1_F06_04_stage_3_young_oak",
+          "doc": "F-06: >= 250 MB deleted displays Stage 3: Young Oak.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F06_05_stage_5_legendary_tree",
+          "name": "test_T1_F06_05_stage_5_legendary_tree",
+          "doc": "F-06: >= 5 GB deleted displays Stage 5: Legendary Eco-Tree.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F07_01_particle_emitter_spec_types",
+          "name": "test_T1_F07_01_particle_emitter_spec_types",
+          "doc": "F-07: Emitter defines required particle types: shards, sparkles, confetti.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F07_02_particle_pool_preallocation",
+          "name": "test_T1_F07_02_particle_pool_preallocation",
+          "doc": "F-07: Particle system operates on pre-allocated pool to prevent GC spikes.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F07_03_particle_lifecycle_decay",
+          "name": "test_T1_F07_03_particle_lifecycle_decay",
+          "doc": "F-07: Particle lifespans decay each frame according to alpha falloff.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F07_04_screen_shake_duration",
+          "name": "test_T1_F07_04_screen_shake_duration",
+          "doc": "F-07: Screen shake intensity oscillates and decays within 300ms.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F07_05_floating_eco_number_format",
+          "name": "test_T1_F07_05_floating_eco_number_format",
+          "doc": "F-07: Floating eco-number renders exact grams offset with plus prefix.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F08_01_ui_blip_frequencies",
+          "name": "test_T1_F08_01_ui_blip_frequencies",
+          "doc": "F-08: UI_BLIP glides from 440 Hz to 880 Hz.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F08_02_coin_ding_arpeggio",
+          "name": "test_T1_F08_02_coin_ding_arpeggio",
+          "doc": "F-08: COIN_DING plays two-tone arpeggio B5 (987 Hz) -> E6 (1318 Hz).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F08_03_deletion_poof_noise_decay",
+          "name": "test_T1_F08_03_deletion_poof_noise_decay",
+          "doc": "F-08: DELETION_POOF filters noise down to 60 Hz over 220ms.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F08_04_victory_fanfare_chord",
+          "name": "test_T1_F08_04_victory_fanfare_chord",
+          "doc": "F-08: VICTORY_FANFARE plays 4-note major chord (C5, E5, G5, C6).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F08_05_gaming_buzzer_low_frequency",
+          "name": "test_T1_F08_05_gaming_buzzer_low_frequency",
+          "doc": "F-08: GAMING_BUZZER uses low 130 Hz sawtooth with amplitude modulation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F09_01_carousel_selects_unreviewed_files",
+          "name": "test_T1_F09_01_carousel_selects_unreviewed_files",
+          "doc": "F-09: Carousel extracts files marked as dark data candidates.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F09_02_carousel_skips_confidential_files",
+          "name": "test_T1_F09_02_carousel_skips_confidential_files",
+          "doc": "F-09: Carousel omits files flagged as confidential.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F09_03_carousel_presents_metadata",
+          "name": "test_T1_F09_03_carousel_presents_metadata",
+          "doc": "F-09: Carousel card presents name, size, and age for student review.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F09_04_carousel_empty_state",
+          "name": "test_T1_F09_04_carousel_empty_state",
+          "doc": "F-09: Carousel handles clean folder with zero dark data gracefully.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F09_05_carousel_random_selection",
+          "name": "test_T1_F09_05_carousel_random_selection",
+          "doc": "F-09: Carousel samples from available candidate pool.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F10_01_initial_state_is_blind",
+          "name": "test_T1_F10_01_initial_state_is_blind",
+          "doc": "F-10: Cold startup initializes scanner in BLIND state.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F10_02_no_cached_paths_on_boot",
+          "name": "test_T1_F10_02_no_cached_paths_on_boot",
+          "doc": "F-10: No directory path is retained prior to explicit grant.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F10_03_unauthorized_scan_raises_error",
+          "name": "test_T1_F10_03_unauthorized_scan_raises_error",
+          "doc": "F-10: Invoking scan while BLIND raises PermissionError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F10_04_empty_scanned_files_on_boot",
+          "name": "test_T1_F10_04_empty_scanned_files_on_boot",
+          "doc": "F-10: File list vector is empty on startup.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F10_05_state_transitions_to_scoped_on_grant",
+          "name": "test_T1_F10_05_state_transitions_to_scoped_on_grant",
+          "doc": "F-10: Explicit grant transitions scanner to ACCESS_ACTIVE_SCOPED.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F11_01_grant_valid_directory",
+          "name": "test_T1_F11_01_grant_valid_directory",
+          "doc": "F-11: Granting valid directory updates active path.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F11_02_grant_invalid_path_raises_error",
+          "name": "test_T1_F11_02_grant_invalid_path_raises_error",
+          "doc": "F-11: Attempting to grant non-existent directory raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F11_03_grant_empty_path_raises_error",
+          "name": "test_T1_F11_03_grant_empty_path_raises_error",
+          "doc": "F-11: Passing empty string raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F11_04_session_only_flag_supported",
+          "name": "test_T1_F11_04_session_only_flag_supported",
+          "doc": "F-11: Session-only grant is supported.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F11_05_regrant_updates_scope",
+          "name": "test_T1_F11_05_regrant_updates_scope",
+          "doc": "F-11: Granting a different directory updates active target.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F12_01_revocation_sets_blind_state",
+          "name": "test_T1_F12_01_revocation_sets_blind_state",
+          "doc": "F-12: Calling revoke_access transitions state back to BLIND.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F12_02_revocation_clears_active_path",
+          "name": "test_T1_F12_02_revocation_clears_active_path",
+          "doc": "F-12: Revocation clears the active path reference.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F12_03_revocation_purges_scanned_files",
+          "name": "test_T1_F12_03_revocation_purges_scanned_files",
+          "doc": "F-12: In-memory list of scanned files is emptied.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F12_04_revocation_purges_confidential_ids",
+          "name": "test_T1_F12_04_revocation_purges_confidential_ids",
+          "doc": "F-12: Confidential file set is cleared on revocation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F12_05_scan_after_revocation_fails",
+          "name": "test_T1_F12_05_scan_after_revocation_fails",
+          "doc": "F-12: Scan attempts immediately after revocation raise PermissionError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F13_01_enumerates_nested_files",
+          "name": "test_T1_F13_01_enumerates_nested_files",
+          "doc": "F-13: Recursively discovers files in subdirectories.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F13_02_extracts_exact_file_size",
+          "name": "test_T1_F13_02_extracts_exact_file_size",
+          "doc": "F-13: Correctly extracts size in bytes.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F13_03_extracts_extension",
+          "name": "test_T1_F13_03_extracts_extension",
+          "doc": "F-13: Extracts lowercase extension without leading dot.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F13_04_extracts_modification_time",
+          "name": "test_T1_F13_04_extracts_modification_time",
+          "doc": "F-13: Extracts epoch timestamp for modified date.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F13_05_skips_ignored_folders",
+          "name": "test_T1_F13_05_skips_ignored_folders",
+          "doc": "F-13: Subfolder containing .data_to_dirt_ignore is completely omitted.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F14_01_flags_stale_files",
+          "name": "test_T1_F14_01_flags_stale_files",
+          "doc": "F-14: Files unmodified for > 180 days are flagged as stale dark data.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F14_02_recent_files_not_stale",
+          "name": "test_T1_F14_02_recent_files_not_stale",
+          "doc": "F-14: Files modified within 180 days are not flagged as stale.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F14_03_flags_heavy_media",
+          "name": "test_T1_F14_03_flags_heavy_media",
+          "doc": "F-14: Files > 500 MB are flagged as heavy media bloat.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F14_04_flags_transient_trash",
+          "name": "test_T1_F14_04_flags_transient_trash",
+          "doc": "F-14: Temporary extensions (.tmp, .bak, .log) flagged as transient dark data.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F14_05_clean_files_not_dark_data",
+          "name": "test_T1_F14_05_clean_files_not_dark_data",
+          "doc": "F-14: Small recent files are not tagged as dark data.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F15_01_mark_confidential_sets_flag",
+          "name": "test_T1_F15_01_mark_confidential_sets_flag",
+          "doc": "F-15: Marking a file confidential sets is_confidential=True.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F15_02_confidential_clears_dark_data",
+          "name": "test_T1_F15_02_confidential_clears_dark_data",
+          "doc": "F-15: Confidential file is immediately removed from dark data candidate pool.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F15_03_unmark_confidential_restores_status",
+          "name": "test_T1_F15_03_unmark_confidential_restores_status",
+          "doc": "F-15: Unmarking confidential file restores its status.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F15_04_confidential_ids_persist_across_scans",
+          "name": "test_T1_F15_04_confidential_ids_persist_across_scans",
+          "doc": "F-15: Confidential IDs persist in scanner session across rescans.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F15_05_deletion_rejection_for_confidential",
+          "name": "test_T1_F15_05_deletion_rejection_for_confidential",
+          "doc": "F-15: Attempting deletion on confidential item is blocked.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F16_01_skips_dot_env",
+          "name": "test_T1_F16_01_skips_dot_env",
+          "doc": "F-16: Automatically marks .env files as confidential.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F16_02_skips_ssh_keys",
+          "name": "test_T1_F16_02_skips_ssh_keys",
+          "doc": "F-16: Automatically marks id_rsa files as confidential.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F16_03_skips_password_files",
+          "name": "test_T1_F16_03_skips_password_files",
+          "doc": "F-16: Automatically marks files containing 'password' as confidential.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F16_04_skips_certificates",
+          "name": "test_T1_F16_04_skips_certificates",
+          "doc": "F-16: Automatically marks .pem, .key, .kdbx files as confidential.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F16_05_does_not_falsely_flag_regular_files",
+          "name": "test_T1_F16_05_does_not_falsely_flag_regular_files",
+          "doc": "F-16: Regular educational documents are not flagged by pattern.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F17_01_scrubs_email_addresses",
+          "name": "test_T1_F17_01_scrubs_email_addresses",
+          "doc": "F-17: Replaces email addresses with [REDACTED_EMAIL].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F17_02_scrubs_phone_numbers",
+          "name": "test_T1_F17_02_scrubs_phone_numbers",
+          "doc": "F-17: Replaces phone numbers with [REDACTED_PHONE].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F17_03_scrubs_credit_card_patterns",
+          "name": "test_T1_F17_03_scrubs_credit_card_patterns",
+          "doc": "F-17: Replaces credit card numbers with [REDACTED_CARD].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F17_04_scrubs_api_secrets",
+          "name": "test_T1_F17_04_scrubs_api_secrets",
+          "doc": "F-17: Replaces API keys and secrets with [REDACTED_SECRET].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F17_05_preserves_non_pii_text",
+          "name": "test_T1_F17_05_preserves_non_pii_text",
+          "doc": "F-17: Benign text content is preserved without alterations.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F18_01_default_state_is_blurred",
+          "name": "test_T1_F18_01_default_state_is_blurred",
+          "doc": "F-18: Visual thumbnail metadata specifies blurred=True by default.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F18_02_pixel_grid_dimensions",
+          "name": "test_T1_F18_02_pixel_grid_dimensions",
+          "doc": "F-18: Downsampling uses 16x16 pixel blocks.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F18_03_custom_grid_dimensions",
+          "name": "test_T1_F18_03_custom_grid_dimensions",
+          "doc": "F-18: Downsampling supports configurable block resolutions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F18_04_reveal_token_initial_none",
+          "name": "test_T1_F18_04_reveal_token_initial_none",
+          "doc": "F-18: Thumbnail is locked until explicit reveal action.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F18_05_image_extension_detection",
+          "name": "test_T1_F18_05_image_extension_detection",
+          "doc": "F-18: Applies blurring specifically to image extensions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F19_01_connect_success",
+          "name": "test_T1_F19_01_connect_success",
+          "doc": "F-19: Connecting with valid token sets connected=True.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F19_02_disconnect_resets_connection",
+          "name": "test_T1_F19_02_disconnect_resets_connection",
+          "doc": "F-19: Calling disconnect resets connection state.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F19_03_list_files_requires_connection",
+          "name": "test_T1_F19_03_list_files_requires_connection",
+          "doc": "F-19: Listing files while disconnected raises ConnectionError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F19_04_stage_deletion_requires_connection",
+          "name": "test_T1_F19_04_stage_deletion_requires_connection",
+          "doc": "F-19: Staging deletion while disconnected raises ConnectionError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F19_05_quota_structure",
+          "name": "test_T1_F19_05_quota_structure",
+          "doc": "F-19: Cloud provider exposes total, used, and trash bytes.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F20_01_initial_file_count",
+          "name": "test_T1_F20_01_initial_file_count",
+          "doc": "F-20: Mock cloud drive loads pre-populated student files.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F20_02_stage_deletion_moves_to_trash",
+          "name": "test_T1_F20_02_stage_deletion_moves_to_trash",
+          "doc": "F-20: Staging deletion marks file trashed and hides it from list.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F20_03_stage_deletion_updates_quota",
+          "name": "test_T1_F20_03_stage_deletion_updates_quota",
+          "doc": "F-20: Trashing cloud file decrements used_bytes and increments trash_bytes.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F20_04_restore_file_reverses_trash",
+          "name": "test_T1_F20_04_restore_file_reverses_trash",
+          "doc": "F-20: Restoring file recovers it back to active list.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F20_05_invalid_file_id_returns_false",
+          "name": "test_T1_F20_05_invalid_file_id_returns_false",
+          "doc": "F-20: Staging deletion for invalid ID returns False without crashing.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F21_01_forward_pass_executes_offline",
+          "name": "test_T1_F21_01_forward_pass_executes_offline",
+          "doc": "F-21: Neural network forward pass runs locally without sockets.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F21_02_score_bounded_between_zero_and_one",
+          "name": "test_T1_F21_02_score_bounded_between_zero_and_one",
+          "doc": "F-21: Output probability S is strictly in [0.0, 1.0].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F21_03_latency_sub_5ms",
+          "name": "test_T1_F21_03_latency_sub_5ms",
+          "doc": "F-21: Forward pass finishes within sub-5ms CPU latency budget.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F21_04_evaluates_system_file_threat",
+          "name": "test_T1_F21_04_evaluates_system_file_threat",
+          "doc": "F-21: Detects attempts to delete OS system files.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F21_05_summary_contains_file_name",
+          "name": "test_T1_F21_05_summary_contains_file_name",
+          "doc": "F-21: Generated evaluation summary references target file.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F22_01_token_length_fixed",
+          "name": "test_T1_F22_01_token_length_fixed",
+          "doc": "F-22: Output token array matches fixed sequence length (64).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F22_02_starts_with_bos_and_ends_with_eos",
+          "name": "test_T1_F22_02_starts_with_bos_and_ends_with_eos",
+          "doc": "F-22: Sequence contains BOS at start and EOS after words.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F22_03_maps_known_vocabulary",
+          "name": "test_T1_F22_03_maps_known_vocabulary",
+          "doc": "F-22: Maps recognized domain terms to specific IDs.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F22_04_unknown_words_mapped_to_unk",
+          "name": "test_T1_F22_04_unknown_words_mapped_to_unk",
+          "doc": "F-22: Out-of-vocabulary words map cleanly to [UNK] (1).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F22_05_pads_with_zero",
+          "name": "test_T1_F22_05_pads_with_zero",
+          "doc": "F-22: Remaining slots are padded with [PAD] (0).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F23_01_plausible_reason_scores_high",
+          "name": "test_T1_F23_01_plausible_reason_scores_high",
+          "doc": "F-23: Plausible deletion reason yields confidence score >= 0.50.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F23_02_cache_reason_scores_high",
+          "name": "test_T1_F23_02_cache_reason_scores_high",
+          "doc": "F-23: Stale cache reason yields high confidence.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F23_03_gibberish_scores_low",
+          "name": "test_T1_F23_03_gibberish_scores_low",
+          "doc": "F-23: Nonsensical gibberish reason yields confidence score < 0.50.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F23_04_score_farming_detected",
+          "name": "test_T1_F23_04_score_farming_detected",
+          "doc": "F-23: Score farming phrases flagged with score < 0.50.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F23_05_vague_reason_moderate_insufficient",
+          "name": "test_T1_F23_05_vague_reason_moderate_insufficient",
+          "doc": "F-23: Vague single-word reason yields insufficient score.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F24_01_verified_summary_prefix",
+          "name": "test_T1_F24_01_verified_summary_prefix",
+          "doc": "F-24: High confidence summary begins with 'Verified:'.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F24_02_flagged_summary_prefix",
+          "name": "test_T1_F24_02_flagged_summary_prefix",
+          "doc": "F-24: Gaming attempt summary begins with 'Flagged:'.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F24_03_insufficient_summary_prefix",
+          "name": "test_T1_F24_03_insufficient_summary_prefix",
+          "doc": "F-24: Vague reason summary begins with 'Insufficient:'.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F24_04_critical_summary_prefix",
+          "name": "test_T1_F24_04_critical_summary_prefix",
+          "doc": "F-24: Critical system asset deletion begins with 'Critical:'.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F24_05_summary_concise_under_200_chars",
+          "name": "test_T1_F24_05_summary_concise_under_200_chars",
+          "doc": "F-24: Summary text is concise and under 200 characters.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F25_01_strike_1_soft_warning",
+          "name": "test_T1_F25_01_strike_1_soft_warning",
+          "doc": "F-25: Strike 1 issues soft warning with 0 point deduction.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F25_02_strike_2_freeze_streak",
+          "name": "test_T1_F25_02_strike_2_freeze_streak",
+          "doc": "F-25: Strike 2 freezes streak and deducts 10 points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F25_03_strike_3_resets_streak",
+          "name": "test_T1_F25_03_strike_3_resets_streak",
+          "doc": "F-25: Strike 3 resets streak to 0 and deducts 50 points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F25_04_strike_tracking_per_student",
+          "name": "test_T1_F25_04_strike_tracking_per_student",
+          "doc": "F-25: Strikes are tracked independently per student ID.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F25_05_strike_count_increments_sequentially",
+          "name": "test_T1_F25_05_strike_count_increments_sequentially",
+          "doc": "F-25: Strike counts increment sequentially (1, 2, 3, 4).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F26_01_default_pin_valid",
+          "name": "test_T1_F26_01_default_pin_valid",
+          "doc": "F-26: Default teacher PIN (teacher123) verifies successfully.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F26_02_invalid_pin_rejected",
+          "name": "test_T1_F26_02_invalid_pin_rejected",
+          "doc": "F-26: Incorrect PIN is rejected.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F26_03_empty_pin_rejected",
+          "name": "test_T1_F26_03_empty_pin_rejected",
+          "doc": "F-26: Empty PIN is rejected.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F26_04_student_cannot_access_teacher_actions",
+          "name": "test_T1_F26_04_student_cannot_access_teacher_actions",
+          "doc": "F-26: Gated actions verify teacher credentials.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F26_05_pin_case_sensitive",
+          "name": "test_T1_F26_05_pin_case_sensitive",
+          "doc": "F-26: PIN verification is case-sensitive.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F27_01_submit_request_generates_id",
+          "name": "test_T1_F27_01_submit_request_generates_id",
+          "doc": "F-27: Submitting request returns unique formatted request ID.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F27_02_request_appended_to_queue",
+          "name": "test_T1_F27_02_request_appended_to_queue",
+          "doc": "F-27: Queue contains newly submitted request.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F27_03_initial_status_is_pending",
+          "name": "test_T1_F27_03_initial_status_is_pending",
+          "doc": "F-27: Submitted requests have status PENDING.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F27_04_queue_stores_ai_score_and_summary",
+          "name": "test_T1_F27_04_queue_stores_ai_score_and_summary",
+          "doc": "F-27: Queue preserves AI evaluation score and summary.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F27_05_multiple_requests_ordered",
+          "name": "test_T1_F27_05_multiple_requests_ordered",
+          "doc": "F-27: Queue stores multiple student requests in submission order.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F28_01_approve_action_marks_approved",
+          "name": "test_T1_F28_01_approve_action_marks_approved",
+          "doc": "F-28: Approve transition marks item APPROVED.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F28_02_approve_credits_student",
+          "name": "test_T1_F28_02_approve_credits_student",
+          "doc": "F-28: Approving request awards points and streak to student.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F28_03_reject_action_marks_rejected",
+          "name": "test_T1_F28_03_reject_action_marks_rejected",
+          "doc": "F-28: Reject transition marks item REJECTED with feedback note.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F28_04_reject_does_not_penalize_student",
+          "name": "test_T1_F28_04_reject_does_not_penalize_student",
+          "doc": "F-28: Honest mistake rejection does not deduct student points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F28_05_flag_penalizes_points_and_streak",
+          "name": "test_T1_F28_05_flag_penalizes_points_and_streak",
+          "doc": "F-28: Flag action marks item FLAGGED, resets streak to 0, deducts 50 points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F29_01_initial_budget_allocation",
+          "name": "test_T1_F29_01_initial_budget_allocation",
+          "doc": "F-29: Initial budget is recorded accurately in ledger.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F29_02_budget_allocation_transaction_logged",
+          "name": "test_T1_F29_02_budget_allocation_transaction_logged",
+          "doc": "F-29: First transaction in ledger is BUDGET_ALLOCATION.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F29_03_budget_deducted_on_donation",
+          "name": "test_T1_F29_03_budget_deducted_on_donation",
+          "doc": "F-29: Executing tree donation reduces available budget.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F29_04_tamper_evident_sha256_hash_chain",
+          "name": "test_T1_F29_04_tamper_evident_sha256_hash_chain",
+          "doc": "F-29: Transactions are chained via SHA-256 hashes.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F29_05_cloud_savings_calculation",
+          "name": "test_T1_F29_05_cloud_savings_calculation",
+          "doc": "F-29: Evaluates projected cloud storage savings ($0.02 / GB / month).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F30_01_waste_accumulates_under_threshold",
+          "name": "test_T1_F30_01_waste_accumulates_under_threshold",
+          "doc": "F-30: Bytes accumulate under 1 GB without triggering donation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F30_02_threshold_crossing_triggers_donation",
+          "name": "test_T1_F30_02_threshold_crossing_triggers_donation",
+          "doc": "F-30: Crossing 1 GB (1,073,741,824 bytes) triggers 1 tree donation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F30_03_multi_gb_batch_triggers_multiple_trees",
+          "name": "test_T1_F30_03_multi_gb_batch_triggers_multiple_trees",
+          "doc": "F-30: Approving 3.5 GB triggers 3 trees and retains 0.5 GB surplus.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F30_04_fractional_surplus_carryover",
+          "name": "test_T1_F30_04_fractional_surplus_carryover",
+          "doc": "F-30: Retains remainder toward subsequent tree.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F30_05_lifetime_tree_counter_increments",
+          "name": "test_T1_F30_05_lifetime_tree_counter_increments",
+          "doc": "F-30: Total lifetime trees count updates monotonically.",
+          "status": "PASSED",
+          "error": null
+        }
+      ]
+    },
+    {
+      "tier_name": "Tier 2: Boundary & Corner Cases (F-01..F-30)",
+      "total": 150,
+      "passed": 150,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "elapsed_seconds": 0.075,
+      "records": [
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F01_01_zero_bytes_carbon",
+          "name": "test_T2_F01_01_zero_bytes_carbon",
+          "doc": "F-01 Boundary: 0 bytes calculates exactly 0.0 kWh and 0.0 grams.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F01_02_single_byte_carbon",
+          "name": "test_T2_F01_02_single_byte_carbon",
+          "doc": "F-01 Boundary: 1 byte calculates non-negative micro-gram footprint.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F01_03_massive_terabyte_scale",
+          "name": "test_T2_F01_03_massive_terabyte_scale",
+          "doc": "F-01 Boundary: 100 TB (100 * 2^40 bytes) computes without overflow.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F01_04_negative_size_raises_value_error",
+          "name": "test_T2_F01_04_negative_size_raises_value_error",
+          "doc": "F-01 Boundary: Negative byte size raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F01_05_zero_grid_intensity_renewable",
+          "name": "test_T2_F01_05_zero_grid_intensity_renewable",
+          "doc": "F-01 Boundary: 100% renewable grid intensity (0.0 g/kWh) yields 0.0 g CO2e.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F02_01_counter_zero_files",
+          "name": "test_T2_F02_01_counter_zero_files",
+          "doc": "F-02 Boundary: Footprint for empty state evaluates to 0.0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F02_02_rapid_incremental_stress",
+          "name": "test_T2_F02_02_rapid_incremental_stress",
+          "doc": "F-02 Boundary: 1000 incremental additions maintain floating point precision.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F02_03_sub_centigram_display",
+          "name": "test_T2_F02_03_sub_centigram_display",
+          "doc": "F-02 Boundary: Formats correctly for tiny files (sub-centigram).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F02_04_zero_year_projection",
+          "name": "test_T2_F02_04_zero_year_projection",
+          "doc": "F-02 Boundary: 0.0 year projection horizon yields 0.0 emissions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F02_05_century_horizon_linear_scaling",
+          "name": "test_T2_F02_05_century_horizon_linear_scaling",
+          "doc": "F-02 Boundary: 100-year horizon scales exactly 100x compared to 1 year.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F03_01_single_student_board",
+          "name": "test_T2_F03_01_single_student_board",
+          "doc": "F-03 Boundary: Single student in database is ranked #1.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F03_02_stress_1000_students_sorting",
+          "name": "test_T2_F03_02_stress_1000_students_sorting",
+          "doc": "F-03 Boundary: 1000 synthetic students sort in under 20ms.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F03_03_exact_tie_all_metrics",
+          "name": "test_T2_F03_03_exact_tie_all_metrics",
+          "doc": "F-03 Boundary: Identical points and streak sort deterministically.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F03_04_negative_points_handling",
+          "name": "test_T2_F03_04_negative_points_handling",
+          "doc": "F-03 Boundary: Students with negative points rank at bottom.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F03_05_in_place_mutation_updates_ranks",
+          "name": "test_T2_F03_05_in_place_mutation_updates_ranks",
+          "doc": "F-03 Boundary: Mutating points in place dynamically updates rank on next call.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F04_01_multiple_deletions_same_day_no_extra_streak",
+          "name": "test_T2_F04_01_multiple_deletions_same_day_no_extra_streak",
+          "doc": "F-04 Boundary: Deleting multiple files in one day increments streak by 1 overall.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F04_02_streak_reset_to_zero_explicit",
+          "name": "test_T2_F04_02_streak_reset_to_zero_explicit",
+          "doc": "F-04 Boundary: Student streak can be set to 0 without errors.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F04_03_first_day_streak",
+          "name": "test_T2_F04_03_first_day_streak",
+          "doc": "F-04 Boundary: New student starting at streak 0 increments to streak 1.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F04_04_leap_year_366_streak",
+          "name": "test_T2_F04_04_leap_year_366_streak",
+          "doc": "F-04 Boundary: High streak values (366 days) handle cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F04_05_max_integer_streak_bounds",
+          "name": "test_T2_F04_05_max_integer_streak_bounds",
+          "doc": "F-04 Boundary: Extreme streak values (10,000) do not overflow.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F05_01_zero_limit_blocks_immediately",
+          "name": "test_T2_F05_01_zero_limit_blocks_immediately",
+          "doc": "F-05 Boundary: Limit = 0 prevents all deletions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F05_02_exact_boundary_hitting_limit",
+          "name": "test_T2_F05_02_exact_boundary_hitting_limit",
+          "doc": "F-05 Boundary: 4th deletion succeeds, 5th succeeds, 6th fails when limit=5.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F05_03_high_limit_stress",
+          "name": "test_T2_F05_03_high_limit_stress",
+          "doc": "F-05 Boundary: High daily limit (1000) handles high-volume activity.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F05_04_counter_reset_reauthorizes_deletions",
+          "name": "test_T2_F05_04_counter_reset_reauthorizes_deletions",
+          "doc": "F-05 Boundary: Resetting today_deletions to 0 unblocks student.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F05_05_unknown_student_limit_check",
+          "name": "test_T2_F05_05_unknown_student_limit_check",
+          "doc": "F-05 Boundary: Checking limit on non-existent student returns False.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F06_01_exact_one_byte_below_sprout",
+          "name": "test_T2_F06_01_exact_one_byte_below_sprout",
+          "doc": "F-06 Boundary: Exactly 1 MB - 1 byte (1,048,575) remains Stage 0 Soil.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F06_02_exact_sprout_threshold",
+          "name": "test_T2_F06_02_exact_sprout_threshold",
+          "doc": "F-06 Boundary: Exactly 1 MB (1,048,576) transitions to Stage 1 Sprout.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F06_03_exact_sapling_boundary",
+          "name": "test_T2_F06_03_exact_sapling_boundary",
+          "doc": "F-06 Boundary: Exactly 50 MB (52,428,800) transitions to Stage 2 Sapling.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F06_04_exact_legendary_tree_boundary",
+          "name": "test_T2_F06_04_exact_legendary_tree_boundary",
+          "doc": "F-06 Boundary: Exactly 5 GB (5,368,709,120) transitions to Stage 5 Legendary.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F06_05_excessive_deletion_caps_at_stage_5",
+          "name": "test_T2_F06_05_excessive_deletion_caps_at_stage_5",
+          "doc": "F-06 Boundary: 100 GB deleted stays capped cleanly at Stage 5.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F07_01_zero_particle_spawn_request",
+          "name": "test_T2_F07_01_zero_particle_spawn_request",
+          "doc": "F-07 Boundary: Spawning 0 particles executes cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F07_02_extreme_particle_burst_capped",
+          "name": "test_T2_F07_02_extreme_particle_burst_capped",
+          "doc": "F-07 Boundary: Spawning 5000 particles is clamped to max pool (e.g. 500).",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F07_03_screen_shake_clamping",
+          "name": "test_T2_F07_03_screen_shake_clamping",
+          "doc": "F-07 Boundary: Screen shake intensity clamped to 20px max to prevent nausea.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F07_04_negative_coordinates_clamped",
+          "name": "test_T2_F07_04_negative_coordinates_clamped",
+          "doc": "F-07 Boundary: Negative canvas coordinates clamped to 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F07_05_alpha_floor_zero",
+          "name": "test_T2_F07_05_alpha_floor_zero",
+          "doc": "F-07 Boundary: Particle alpha cannot fall below 0.0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F08_01_zero_volume_muted",
+          "name": "test_T2_F08_01_zero_volume_muted",
+          "doc": "F-08 Boundary: Master volume 0.0 enforces absolute silence.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F08_02_volume_above_one_clamped",
+          "name": "test_T2_F08_02_volume_above_one_clamped",
+          "doc": "F-08 Boundary: Volume > 1.0 clamped to 1.0 to avoid audio clipping.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F08_03_negative_volume_clamped",
+          "name": "test_T2_F08_03_negative_volume_clamped",
+          "doc": "F-08 Boundary: Negative volume clamped to 0.0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F08_04_rapid_fire_100_audio_triggers",
+          "name": "test_T2_F08_04_rapid_fire_100_audio_triggers",
+          "doc": "F-08 Boundary: Triggering 100 simultaneous sound calls executes without memory leaks.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F08_05_unknown_sound_cue_fallback",
+          "name": "test_T2_F08_05_unknown_sound_cue_fallback",
+          "doc": "F-08 Boundary: Unknown sound cue ID defaults gracefully without exception.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F09_01_empty_directory_carousel",
+          "name": "test_T2_F09_01_empty_directory_carousel",
+          "doc": "F-09 Boundary: Carousel on empty folder returns empty list without error.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F09_02_single_file_directory",
+          "name": "test_T2_F09_02_single_file_directory",
+          "doc": "F-09 Boundary: Carousel on 1-file folder returns exactly 1 item.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F09_03_all_confidential_directory",
+          "name": "test_T2_F09_03_all_confidential_directory",
+          "doc": "F-09 Boundary: When all files are confidential, dark data carousel is empty.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F09_04_sampling_stress_1000_files",
+          "name": "test_T2_F09_04_sampling_stress_1000_files",
+          "doc": "F-09 Boundary: Directory with 1000 files samples without latency lag.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F09_05_carousel_path_immutability",
+          "name": "test_T2_F09_05_carousel_path_immutability",
+          "doc": "F-09 Boundary: Reading carousel items preserves absolute path integrity.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F10_01_access_ungranted_path_fails",
+          "name": "test_T2_F10_01_access_ungranted_path_fails",
+          "doc": "F-10 Boundary: Attempting scan on arbitrary path without grant fails.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F10_02_null_byte_path_rejection",
+          "name": "test_T2_F10_02_null_byte_path_rejection",
+          "doc": "F-10 Boundary: Path with null byte injection is rejected with ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F10_03_whitespace_path_rejection",
+          "name": "test_T2_F10_03_whitespace_path_rejection",
+          "doc": "F-10 Boundary: Whitespace-only path raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F10_04_non_directory_file_grant_fails",
+          "name": "test_T2_F10_04_non_directory_file_grant_fails",
+          "doc": "F-10 Boundary: Granting a regular file instead of a folder raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F10_05_repeated_access_in_blind_state",
+          "name": "test_T2_F10_05_repeated_access_in_blind_state",
+          "doc": "F-10 Boundary: 10 consecutive unauthorized scans all raise PermissionError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F11_01_trailing_slash_normalization",
+          "name": "test_T2_F11_01_trailing_slash_normalization",
+          "doc": "F-11 Boundary: Path with trailing slash normalizes cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F11_02_read_only_folder_grant",
+          "name": "test_T2_F11_02_read_only_folder_grant",
+          "doc": "F-11 Boundary: Read-only directory grants metadata scan access.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F11_03_granting_same_path_idempotent",
+          "name": "test_T2_F11_03_granting_same_path_idempotent",
+          "doc": "F-11 Boundary: Granting same path repeatedly preserves state.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F11_04_session_only_flag_default",
+          "name": "test_T2_F11_04_session_only_flag_default",
+          "doc": "F-11 Boundary: Default grant is session-only.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F11_05_regrant_after_revocation",
+          "name": "test_T2_F11_05_regrant_after_revocation",
+          "doc": "F-11 Boundary: Can regrant access after explicit revocation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F12_01_revocation_idempotent",
+          "name": "test_T2_F12_01_revocation_idempotent",
+          "doc": "F-12 Boundary: Revoking access when already in BLIND state causes no errors.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F12_02_rapid_ten_revocations",
+          "name": "test_T2_F12_02_rapid_ten_revocations",
+          "doc": "F-12 Boundary: 10 rapid revocations execute cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F12_03_memory_freed_on_revocation",
+          "name": "test_T2_F12_03_memory_freed_on_revocation",
+          "doc": "F-12 Boundary: Scanned files list is empty and points to no elements.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F12_04_confidential_set_cleared",
+          "name": "test_T2_F12_04_confidential_set_cleared",
+          "doc": "F-12 Boundary: Confidential IDs cleared on revocation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F12_05_active_path_becomes_none",
+          "name": "test_T2_F12_05_active_path_becomes_none",
+          "doc": "F-12 Boundary: Active path becomes strictly None.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F13_01_deeply_nested_directory",
+          "name": "test_T2_F13_01_deeply_nested_directory",
+          "doc": "F-13 Boundary: 15-level deeply nested subfolders traversed without crashing.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F13_02_zero_byte_file_traversed",
+          "name": "test_T2_F13_02_zero_byte_file_traversed",
+          "doc": "F-13 Boundary: 0-byte file traversed with size = 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F13_03_unicode_filename_traversed",
+          "name": "test_T2_F13_03_unicode_filename_traversed",
+          "doc": "F-13 Boundary: Non-ASCII/Unicode filename handled properly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F13_04_file_without_extension",
+          "name": "test_T2_F13_04_file_without_extension",
+          "doc": "F-13 Boundary: File without extension parses extension as empty string.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F13_05_multiple_dots_extension",
+          "name": "test_T2_F13_05_multiple_dots_extension",
+          "doc": "F-13 Boundary: File with multiple dots (archive.tar.gz) extracts final extension.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F14_01_exact_179_days_not_stale",
+          "name": "test_T2_F14_01_exact_179_days_not_stale",
+          "doc": "F-14 Boundary: 179.9 days old is NOT flagged as stale.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F14_02_exact_180_days_is_stale",
+          "name": "test_T2_F14_02_exact_180_days_is_stale",
+          "doc": "F-14 Boundary: 180.1 days old IS flagged as stale.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F14_03_exact_500mb_heavy_media",
+          "name": "test_T2_F14_03_exact_500mb_heavy_media",
+          "doc": "F-14 Boundary: File > 500 MB is heavy; <= 500 MB is not heavy.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F14_04_0byte_temp_file_marked_transient",
+          "name": "test_T2_F14_04_0byte_temp_file_marked_transient",
+          "doc": "F-14 Boundary: 0-byte .tmp file is transient.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F14_05_hidden_cache_folder_transient",
+          "name": "test_T2_F14_05_hidden_cache_folder_transient",
+          "doc": "F-14 Boundary: .cache extension is recognized as transient.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F15_01_mark_non_existent_id_safe",
+          "name": "test_T2_F15_01_mark_non_existent_id_safe",
+          "doc": "F-15 Boundary: Marking non-existent file ID causes no crash.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F15_02_idempotent_mark_confidential",
+          "name": "test_T2_F15_02_idempotent_mark_confidential",
+          "doc": "F-15 Boundary: Calling mark_confidential multiple times is idempotent.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F15_03_unmark_non_marked_id_safe",
+          "name": "test_T2_F15_03_unmark_non_marked_id_safe",
+          "doc": "F-15 Boundary: Unmarking an un-marked ID causes no error.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F15_04_rapid_toggle_consistency",
+          "name": "test_T2_F15_04_rapid_toggle_consistency",
+          "doc": "F-15 Boundary: Toggling confidential 10 times ends with correct final state.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F15_05_confidential_deletion_rejection_message",
+          "name": "test_T2_F15_05_confidential_deletion_rejection_message",
+          "doc": "F-15 Boundary: Attempting deletion on confidential item explicitly blocked.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F16_01_uppercase_env_matched",
+          "name": "test_T2_F16_01_uppercase_env_matched",
+          "doc": "F-16 Boundary: Mixed case .ENV is matched.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F16_02_id_rsa_variants",
+          "name": "test_T2_F16_02_id_rsa_variants",
+          "doc": "F-16 Boundary: ID_RSA and id_rsa_backup are matched.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F16_03_key_extension_matched",
+          "name": "test_T2_F16_03_key_extension_matched",
+          "doc": "F-16 Boundary: Private keys (.key) matched.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F16_04_benign_word_environmental_not_matched",
+          "name": "test_T2_F16_04_benign_word_environmental_not_matched",
+          "doc": "F-16 Boundary: 'environmental_science.pdf' is NOT matched as .env.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F16_05_empty_ignore_file_honored",
+          "name": "test_T2_F16_05_empty_ignore_file_honored",
+          "doc": "F-16 Boundary: Empty 0-byte .data_to_dirt_ignore is honored.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F17_01_hundred_repeated_emails",
+          "name": "test_T2_F17_01_hundred_repeated_emails",
+          "doc": "F-17 Boundary: Text with 100 emails scrubs all instances.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F17_02_email_at_string_boundaries",
+          "name": "test_T2_F17_02_email_at_string_boundaries",
+          "doc": "F-17 Boundary: Email at very beginning and end of string is scrubbed.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F17_03_empty_string_scrubbing",
+          "name": "test_T2_F17_03_empty_string_scrubbing",
+          "doc": "F-17 Boundary: Scrubbing empty string returns empty string.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F17_04_whitespace_only_scrubbing",
+          "name": "test_T2_F17_04_whitespace_only_scrubbing",
+          "doc": "F-17 Boundary: Scrubbing whitespace string preserves spaces without crash.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F17_05_speed_stress_100k_chars",
+          "name": "test_T2_F17_05_speed_stress_100k_chars",
+          "doc": "F-17 Boundary: 100,000 characters scrubbed within 50ms.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F18_01_1x1_pixel_thumbnail",
+          "name": "test_T2_F18_01_1x1_pixel_thumbnail",
+          "doc": "F-18 Boundary: 1x1 block downsampling executes safely.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F18_02_large_grid_downsampling",
+          "name": "test_T2_F18_02_large_grid_downsampling",
+          "doc": "F-18 Boundary: 64x64 block grid supported.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F18_03_zero_block_clamped",
+          "name": "test_T2_F18_03_zero_block_clamped",
+          "doc": "F-18 Boundary: Block dimensions of 0 or negative clamped to at least 1.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F18_04_reveal_token_assignment",
+          "name": "test_T2_F18_04_reveal_token_assignment",
+          "doc": "F-18 Boundary: Revealing generates one-time session reveal token.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F18_05_all_image_extensions_covered",
+          "name": "test_T2_F18_05_all_image_extensions_covered",
+          "doc": "F-18 Boundary: Verifies image set contains standard graphic extensions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F19_01_empty_token_fails",
+          "name": "test_T2_F19_01_empty_token_fails",
+          "doc": "F-19 Boundary: Empty token connection returns False.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F19_02_double_disconnect_safe",
+          "name": "test_T2_F19_02_double_disconnect_safe",
+          "doc": "F-19 Boundary: Calling disconnect twice in a row causes no error.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F19_03_restore_while_disconnected_fails",
+          "name": "test_T2_F19_03_restore_while_disconnected_fails",
+          "doc": "F-19 Boundary: Restoring file when disconnected returns False.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F19_04_cloud_used_bytes_non_negative",
+          "name": "test_T2_F19_04_cloud_used_bytes_non_negative",
+          "doc": "F-19 Boundary: Cloud used bytes never drops below 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F19_05_path_slash_normalization",
+          "name": "test_T2_F19_05_path_slash_normalization",
+          "doc": "F-19 Boundary: Cloud paths with backslashes normalize cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F20_01_stage_all_files_to_trash",
+          "name": "test_T2_F20_01_stage_all_files_to_trash",
+          "doc": "F-20 Boundary: Trashing all files results in empty active file list.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F20_02_restore_untrashed_file_returns_false",
+          "name": "test_T2_F20_02_restore_untrashed_file_returns_false",
+          "doc": "F-20 Boundary: Attempting to restore a file that is not trashed returns False.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F20_03_double_trash_returns_false",
+          "name": "test_T2_F20_03_double_trash_returns_false",
+          "doc": "F-20 Boundary: Trashing an already trashed file returns False.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F20_04_zero_byte_cloud_file_trash",
+          "name": "test_T2_F20_04_zero_byte_cloud_file_trash",
+          "doc": "F-20 Boundary: Trashing 0-byte cloud file handles size change of 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F20_05_mock_quota_consistency",
+          "name": "test_T2_F20_05_mock_quota_consistency",
+          "doc": "F-20 Boundary: Sum of used and trash does not exceed total quota.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F21_01_10k_char_reason_truncation",
+          "name": "test_T2_F21_01_10k_char_reason_truncation",
+          "doc": "F-21 Boundary: 10,000 character reason string truncates safely without error.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F21_02_empty_reason_string",
+          "name": "test_T2_F21_02_empty_reason_string",
+          "doc": "F-21 Boundary: Empty reason string yields low score.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F21_03_whitespace_only_reason",
+          "name": "test_T2_F21_03_whitespace_only_reason",
+          "doc": "F-21 Boundary: Whitespace-only reason yields low score.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F21_04_control_characters_in_reason",
+          "name": "test_T2_F21_04_control_characters_in_reason",
+          "doc": "F-21 Boundary: Control characters (\u0000, \u001b) handled safely.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F21_05_extreme_file_age_20_years",
+          "name": "test_T2_F21_05_extreme_file_age_20_years",
+          "doc": "F-21 Boundary: 20-year-old file (7300 days) evaluates without overflow.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F22_01_all_out_of_vocab_words",
+          "name": "test_T2_F22_01_all_out_of_vocab_words",
+          "doc": "F-22 Boundary: All words out of vocab map to [UNK].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F22_02_empty_text_tokenization",
+          "name": "test_T2_F22_02_empty_text_tokenization",
+          "doc": "F-22 Boundary: Empty string yields BOS, EOS, and PADs.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F22_03_consecutive_whitespace",
+          "name": "test_T2_F22_03_consecutive_whitespace",
+          "doc": "F-22 Boundary: 100 consecutive spaces handled cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F22_04_length_always_sixty_four",
+          "name": "test_T2_F22_04_length_always_sixty_four",
+          "doc": "F-22 Boundary: Sequence length is strictly 64 across any input.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F22_05_punctuation_stripped",
+          "name": "test_T2_F22_05_punctuation_stripped",
+          "doc": "F-22 Boundary: Punctuation (cache!) stripped to match known word 'cache'.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F23_01_score_clamped_strictly_0_to_1",
+          "name": "test_T2_F23_01_score_clamped_strictly_0_to_1",
+          "doc": "F-23 Boundary: Score output strictly bounded [0.0, 1.0].",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F23_02_mixed_case_plausible_reason",
+          "name": "test_T2_F23_02_mixed_case_plausible_reason",
+          "doc": "F-23 Boundary: Mixed-case 'TeMpOrArY cAcHe' evaluated properly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F23_03_sql_injection_in_reason",
+          "name": "test_T2_F23_03_sql_injection_in_reason",
+          "doc": "F-23 Boundary: SQL injection string treated as text, scores low.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F23_04_xss_script_tag_in_reason",
+          "name": "test_T2_F23_04_xss_script_tag_in_reason",
+          "doc": "F-23 Boundary: HTML script tag in reason treated as text, scores low.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F23_05_0byte_file_plausible_reason",
+          "name": "test_T2_F23_05_0byte_file_plausible_reason",
+          "doc": "F-23 Boundary: 0-byte file with plausible reason evaluated without error.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F24_01_summary_zero_bytes",
+          "name": "test_T2_F24_01_summary_zero_bytes",
+          "doc": "F-24 Boundary: Summary handles 0-byte file description.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F24_02_summary_no_extension",
+          "name": "test_T2_F24_02_summary_no_extension",
+          "doc": "F-24 Boundary: Summary handles file without extension.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F24_03_summary_long_filename_truncation",
+          "name": "test_T2_F24_03_summary_long_filename_truncation",
+          "doc": "F-24 Boundary: Summary with 100-char filename executes cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F24_04_summary_no_null_bytes",
+          "name": "test_T2_F24_04_summary_no_null_bytes",
+          "doc": "F-24 Boundary: Summary contains no null characters.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F24_05_summary_length_bounded",
+          "name": "test_T2_F24_05_summary_length_bounded",
+          "doc": "F-24 Boundary: Summary length stays under 250 chars.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F25_01_strike_4_and_beyond_capped_action",
+          "name": "test_T2_F25_01_strike_4_and_beyond_capped_action",
+          "doc": "F-25 Boundary: Strike 4+ continues enforcing maximum penalty.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F25_02_point_floor_at_zero",
+          "name": "test_T2_F25_02_point_floor_at_zero",
+          "doc": "F-25 Boundary: Deducting points cannot reduce balance below 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F25_03_zero_point_student_penalized",
+          "name": "test_T2_F25_03_zero_point_student_penalized",
+          "doc": "F-25 Boundary: Flagging student with 0 points remains at 0 points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F25_04_stress_50_strikes_registered",
+          "name": "test_T2_F25_04_stress_50_strikes_registered",
+          "doc": "F-25 Boundary: Registering 50 strikes handles integer counter without overflow.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F25_05_strike_tracking_isolation",
+          "name": "test_T2_F25_05_strike_tracking_isolation",
+          "doc": "F-25 Boundary: Striking student X does not affect student Y.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F26_01_whitespace_padded_pin_rejected",
+          "name": "test_T2_F26_01_whitespace_padded_pin_rejected",
+          "doc": "F-26 Boundary: PIN with whitespace (' teacher123 ') is rejected.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F26_02_ten_rapid_failed_pins",
+          "name": "test_T2_F26_02_ten_rapid_failed_pins",
+          "doc": "F-26 Boundary: 10 failed PIN attempts handled safely without crash.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F26_03_none_pin_rejected",
+          "name": "test_T2_F26_03_none_pin_rejected",
+          "doc": "F-26 Boundary: Passing None or empty PIN returns False.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F26_04_sql_injection_in_pin",
+          "name": "test_T2_F26_04_sql_injection_in_pin",
+          "doc": "F-26 Boundary: SQL injection in PIN field rejected.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F26_05_extremely_long_pin_rejected",
+          "name": "test_T2_F26_05_extremely_long_pin_rejected",
+          "doc": "F-26 Boundary: 10,000 char PIN rejected.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F27_01_empty_queue_length",
+          "name": "test_T2_F27_01_empty_queue_length",
+          "doc": "F-27 Boundary: Fresh queue reports length 0.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F27_02_stress_100_requests",
+          "name": "test_T2_F27_02_stress_100_requests",
+          "doc": "F-27 Boundary: 100 requests submitted in sequence.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F27_03_zero_byte_request_queued",
+          "name": "test_T2_F27_03_zero_byte_request_queued",
+          "doc": "F-27 Boundary: 0-byte file request queued successfully.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F27_04_filter_non_existent_status",
+          "name": "test_T2_F27_04_filter_non_existent_status",
+          "doc": "F-27 Boundary: Querying queue for non-existent status returns empty list.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F27_05_identical_ai_scores_ordered",
+          "name": "test_T2_F27_05_identical_ai_scores_ordered",
+          "doc": "F-27 Boundary: Requests with identical AI scores maintain FIFO order.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F28_01_approve_non_existent_id_raises_keyerror",
+          "name": "test_T2_F28_01_approve_non_existent_id_raises_keyerror",
+          "doc": "F-28 Boundary: Approving non-existent request ID raises KeyError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F28_02_double_approval_raises_value_error",
+          "name": "test_T2_F28_02_double_approval_raises_value_error",
+          "doc": "F-28 Boundary: Approving an already approved request raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F28_03_reject_empty_feedback_allowed",
+          "name": "test_T2_F28_03_reject_empty_feedback_allowed",
+          "doc": "F-28 Boundary: Rejecting with empty string feedback operates cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F28_04_flag_already_processed_raises_error",
+          "name": "test_T2_F28_04_flag_already_processed_raises_error",
+          "doc": "F-28 Boundary: Flagging already rejected request raises ValueError.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F28_05_approve_zero_byte_file",
+          "name": "test_T2_F28_05_approve_zero_byte_file",
+          "doc": "F-28 Boundary: Approving 0-byte deletion executes without division errors.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F29_01_zero_budget_allocation",
+          "name": "test_T2_F29_01_zero_budget_allocation",
+          "doc": "F-29 Boundary: Starting with $0.00 budget executes cleanly.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F29_02_insufficient_funds_pending_state",
+          "name": "test_T2_F29_02_insufficient_funds_pending_state",
+          "doc": "F-29 Boundary: Threshold crossed with $0.00 budget enters PENDING_FUNDS state.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F29_03_partial_funds_insufficient",
+          "name": "test_T2_F29_03_partial_funds_insufficient",
+          "doc": "F-29 Boundary: Fund has $1.00 when $1.50 needed -> enters PENDING_FUNDS.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F29_04_million_dollar_budget_precision",
+          "name": "test_T2_F29_04_million_dollar_budget_precision",
+          "doc": "F-29 Boundary: $1,000,000.00 budget operates without precision loss.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F29_05_tamper_detected_on_corrupted_hash",
+          "name": "test_T2_F29_05_tamper_detected_on_corrupted_hash",
+          "doc": "F-29 Boundary: Modifying transaction hash causes integrity check to fail.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F30_01_zero_byte_accumulation",
+          "name": "test_T2_F30_01_zero_byte_accumulation",
+          "doc": "F-30 Boundary: Accumulating 0 bytes causes 0 change in cumulative waste.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F30_02_exact_threshold_minus_one_byte",
+          "name": "test_T2_F30_02_exact_threshold_minus_one_byte",
+          "doc": "F-30 Boundary: Accumulating exactly 1 GB - 1 byte triggers 0 trees.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F30_03_exact_threshold_bytes",
+          "name": "test_T2_F30_03_exact_threshold_bytes",
+          "doc": "F-30 Boundary: Accumulating exactly 1 GB (1,073,741,824) triggers exactly 1 tree.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F30_04_massive_100gb_batch_trees",
+          "name": "test_T2_F30_04_massive_100gb_batch_trees",
+          "doc": "F-30 Boundary: 100 GB in single transaction triggers 100 trees.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F30_05_multiple_one_byte_additions",
+          "name": "test_T2_F30_05_multiple_one_byte_additions",
+          "doc": "F-30 Boundary: 1000 x 1 MB additions sum accurately to 1000 MB.",
+          "status": "PASSED",
+          "error": null
+        }
+      ]
+    },
+    {
+      "tier_name": "Tier 3: Cross-Feature Interactions",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "elapsed_seconds": 3.222,
+      "records": [
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_01_confidential_marked_file_cannot_enter_queue",
+          "name": "test_T3_01_confidential_marked_file_cannot_enter_queue",
+          "doc": "T3-01: Scanned file marked confidential is omitted from deletion candidate pool.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_02_confidential_pattern_bypasses_carbon_pool",
+          "name": "test_T3_02_confidential_pattern_bypasses_carbon_pool",
+          "doc": "T3-02: Files matching .env or credentials pattern are excluded from total carbon.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_03_pii_redaction_before_queue_presentation",
+          "name": "test_T3_03_pii_redaction_before_queue_presentation",
+          "doc": "T3-03: Preview snippet is scrubbed of PII before attaching to deletion request.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_04_ignore_folder_excludes_entire_tree_from_footprint",
+          "name": "test_T3_04_ignore_folder_excludes_entire_tree_from_footprint",
+          "doc": "T3-04: Folder with .data_to_dirt_ignore prevents child files from altering footprint.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_05_thumbnail_pixelation_flag_attached_to_image_queue_items",
+          "name": "test_T3_05_thumbnail_pixelation_flag_attached_to_image_queue_items",
+          "doc": "T3-05: Image files in queue retain pixelated thumbnail preferences.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_06_low_ai_score_triggers_strike_1_warning",
+          "name": "test_T3_06_low_ai_score_triggers_strike_1_warning",
+          "doc": "T3-06: Reason with AI score < 0.50 triggers Strike 1 warning without point deduction.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_07_repeated_gaming_triggers_strike_2_streak_freeze",
+          "name": "test_T3_07_repeated_gaming_triggers_strike_2_streak_freeze",
+          "doc": "T3-07: Second gaming attempt freezes student streak and deducts 10 points.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_08_strike_3_resets_streak_and_applies_50pt_penalty",
+          "name": "test_T3_08_strike_3_resets_streak_and_applies_50pt_penalty",
+          "doc": "T3-08: Third gaming attempt resets streak to 0 and flags incident.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_09_critical_system_file_triggers_instant_strike_3",
+          "name": "test_T3_09_critical_system_file_triggers_instant_strike_3",
+          "doc": "T3-09: Attempting to delete system32 file triggers immediate severe penalty.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_10_high_ai_score_allows_unimpeded_queue_entry",
+          "name": "test_T3_10_high_ai_score_allows_unimpeded_queue_entry",
+          "doc": "T3-10: Plausible reason (score >= 0.50) enters teacher queue without strike.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_11_approval_credits_student_points_based_on_size",
+          "name": "test_T3_11_approval_credits_student_points_based_on_size",
+          "doc": "T3-11: Teacher approving 50 MB deletion awards 5 points to student.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_12_approval_increments_student_streak",
+          "name": "test_T3_12_approval_increments_student_streak",
+          "doc": "T3-12: Teacher approving deletion increments student's daily streak.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_13_approval_advances_pixel_tree_stage",
+          "name": "test_T3_13_approval_advances_pixel_tree_stage",
+          "doc": "T3-13: Deletions crossing 50 MB advance tree to Stage 2: The Sapling.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_14_rejection_preserves_student_points_and_streak",
+          "name": "test_T3_14_rejection_preserves_student_points_and_streak",
+          "doc": "T3-14: Teacher rejection does NOT penalize student points or streak.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_15_flag_action_penalizes_and_logs_feedback",
+          "name": "test_T3_15_flag_action_penalizes_and_logs_feedback",
+          "doc": "T3-15: Teacher flag resets streak to 0, deducts 50 points, records feedback.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_16_approvals_accumulate_toward_1gb_threshold",
+          "name": "test_T3_16_approvals_accumulate_toward_1gb_threshold",
+          "doc": "T3-16: Two approvals summing to 1.2 GB cross threshold and trigger 1 tree.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_17_tree_donation_deducts_eco_fund_balance",
+          "name": "test_T3_17_tree_donation_deducts_eco_fund_balance",
+          "doc": "T3-17: Executing tree donation reduces Eco-Fund budget by $1.50.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_18_donation_transaction_sha256_chained",
+          "name": "test_T3_18_donation_transaction_sha256_chained",
+          "doc": "T3-18: Tree donation transaction is chained via SHA-256 in ledger.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_19_insufficient_budget_enters_pending_funds_state",
+          "name": "test_T3_19_insufficient_budget_enters_pending_funds_state",
+          "doc": "T3-19: Crossing threshold when budget is $0 transitions to PENDING_FUNDS.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_20_budget_topup_resolves_pending_donations",
+          "name": "test_T3_20_budget_topup_resolves_pending_donations",
+          "doc": "T3-20: Adding budget allows subsequent accumulation to execute pending donations.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_21_cloud_scan_identifies_dark_data",
+          "name": "test_T3_21_cloud_scan_identifies_dark_data",
+          "doc": "T3-21: Cloud mock file list identifies stale items for review.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_22_cloud_deletion_updates_used_quota_and_carbon",
+          "name": "test_T3_22_cloud_deletion_updates_used_quota_and_carbon",
+          "doc": "T3-22: Trashing cloud file reduces cloud used quota and avoids carbon.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_23_cloud_approval_accumulates_into_school_ledger",
+          "name": "test_T3_23_cloud_approval_accumulates_into_school_ledger",
+          "doc": "T3-23: Approved cloud storage deletion accumulates into Eco-Fund ledger.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_24_restoring_cloud_file_reverses_trash_quota",
+          "name": "test_T3_24_restoring_cloud_file_reverses_trash_quota",
+          "doc": "T3-24: Restoring cloud file reverses trash and restores quota.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_25_cloud_quota_syncs_with_local_dashboard",
+          "name": "test_T3_25_cloud_quota_syncs_with_local_dashboard",
+          "doc": "T3-25: Cloud quota values can be queried by dashboard.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_26_multi_student_competition_reorders_leaderboard",
+          "name": "test_T3_26_multi_student_competition_reorders_leaderboard",
+          "doc": "T3-26: Student 2 scoring more points overtakes Student 1 on leaderboard.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_27_gaming_flag_drops_student_down_leaderboard",
+          "name": "test_T3_27_gaming_flag_drops_student_down_leaderboard",
+          "doc": "T3-27: Flagging Alice Chen causes Marcus Vance to become #1.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_28_batch_3gb_approval_disburses_3_trees_cleanly",
+          "name": "test_T3_28_batch_3gb_approval_disburses_3_trees_cleanly",
+          "doc": "T3-28: Single 3.2 GB file approved -> plants 3 trees, leaves 0.2 GB surplus.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_29_roundtrip_scan_verify_queue_approve_ledger",
+          "name": "test_T3_29_roundtrip_scan_verify_queue_approve_ledger",
+          "doc": "T3-29: Full integration chain from file scan to ledger transaction.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_30_instant_revocation_during_pending_queue",
+          "name": "test_T3_30_instant_revocation_during_pending_queue",
+          "doc": "T3-30: Revoking scanner access preserves already submitted teacher queue items.",
+          "status": "PASSED",
+          "error": null
+        }
+      ]
+    },
+    {
+      "tier_name": "Tier 4: Real-World End-to-End Scenarios",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "elapsed_seconds": 2.415,
+      "records": [
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_01_student_semester_cleanup_workflow",
+          "name": "test_T4_01_student_semester_cleanup_workflow",
+          "doc": "Scenario 1: Student semester-end dark data cleanup workflow.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_02_teacher_review_workflow",
+          "name": "test_T4_02_teacher_review_workflow",
+          "doc": "Scenario 2: Teacher morning review and batch decisions.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_03_micro_donation_threshold_crossed_workflow",
+          "name": "test_T4_03_micro_donation_threshold_crossed_workflow",
+          "doc": "Scenario 3: 1 GB micro-donation threshold crossed and certificate logged.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_04_gaming_attack_escalation_workflow",
+          "name": "test_T4_04_gaming_attack_escalation_workflow",
+          "doc": "Scenario 4: Adversarial gaming attack and 3-strike disciplinary escalation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_05_eco_fund_budget_depletion_and_recovery_workflow",
+          "name": "test_T4_05_eco_fund_budget_depletion_and_recovery_workflow",
+          "doc": "Scenario 5: Eco-Fund budget exhaustion, graceful pledge mode, and admin top-up.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_06_cloud_storage_mock_staging_workflow",
+          "name": "test_T4_06_cloud_storage_mock_staging_workflow",
+          "doc": "Scenario 6: Cloud storage (Google Drive mock) scanning, staging, and soft trash.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_07_confidential_file_defense_workflow",
+          "name": "test_T4_07_confidential_file_defense_workflow",
+          "doc": "Scenario 7: Confidential file defense and absolute deletion block.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_08_pii_redaction_and_thumbnail_pixelation_workflow",
+          "name": "test_T4_08_pii_redaction_and_thumbnail_pixelation_workflow",
+          "doc": "Scenario 8: PII preview redaction and image thumbnail downsampling.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_09_daily_deletion_rate_limiting_workflow",
+          "name": "test_T4_09_daily_deletion_rate_limiting_workflow",
+          "doc": "Scenario 9: Daily deletion rate limiting and midnight reset cycle.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_10_leaderboard_tournament_workflow",
+          "name": "test_T4_10_leaderboard_tournament_workflow",
+          "doc": "Scenario 10: Classroom leaderboard competition and tournament tie-breaking.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_11_pixel_tree_lifecycle_workflow",
+          "name": "test_T4_11_pixel_tree_lifecycle_workflow",
+          "doc": "Scenario 11: Pixel tree 5-stage visual lifecycle progression.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_12_role_based_security_boundary_workflow",
+          "name": "test_T4_12_role_based_security_boundary_workflow",
+          "doc": "Scenario 12: Role-based security boundary and privilege separation.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_13_multi_gigabyte_waste_accumulation_workflow",
+          "name": "test_T4_13_multi_gigabyte_waste_accumulation_workflow",
+          "doc": "Scenario 13: Multi-gigabyte batch waste accumulation and multi-tree disbursement.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_14_tamper_evident_ledger_audit_workflow",
+          "name": "test_T4_14_tamper_evident_ledger_audit_workflow",
+          "doc": "Scenario 14: Tamper-evident Eco-Fund ledger cryptographic audit and breach detection.",
+          "status": "PASSED",
+          "error": null
+        },
+        {
+          "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_15_full_lifecycle_roundtrip_workflow",
+          "name": "test_T4_15_full_lifecycle_roundtrip_workflow",
+          "doc": "Scenario 15: Complete roundtrip (Scan -> AI -> Queue -> Approve -> Donate -> Audit).",
+          "status": "PASSED",
+          "error": null
+        }
+      ]
+    }
+  ]
+}

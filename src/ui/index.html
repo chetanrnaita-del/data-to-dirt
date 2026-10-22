@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data-to-Dirt — Retro Dark Data Gamification</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1a1c23" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Data2Dirt" />
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('Service Worker registered', reg);
+      }).catch(err => {
+        console.warn('Service Worker registration failed', err);
+      });
+    }
+  </script>
+
+  <!-- Retro Pixel-Art Stylesheets -->
+  <link rel="stylesheet" href="css/retro_base.css" />
+  <link rel="stylesheet" href="css/stardew.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+
+  <!-- Fullscreen Particle Effects Layer (60fps Canvas2D) -->
+  <canvas id="particle-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 4000;"></canvas>
+
+  <!-- CRT Scanlines Overlay -->
+  <div id="scanlines-overlay" class="scanlines-overlay"></div>
+
+  <!-- Master Application Container -->
+  <div id="app-container">
+
+    <!-- Top Retro Wooden Navigation & Status Header -->
+    <header class="retro-header-bar">
+      
+      <!-- Brand Title & Tagline -->
+      <div class="app-title">
+        <img src="/logo.png" alt="Data-to-Dirt Logo" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover; border: 1.5px solid var(--c-gold-shine); box-shadow: 0 2px 4px rgba(0,0,0,0.4);" />
+        <span>DATA-TO-DIRT</span>
+        <span class="app-title-badge">16-BIT RETRO EDITION</span>
+        <span id="header-role-badge" style="display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 12px; border-radius: 20px; background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: #fff; letter-spacing: 0.5px; margin-left: 8px; box-shadow: 0 2px 6px rgba(108,92,231,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">STUDENT VIEW</span>
+      </div>
+
+      <!-- Center Status: Clock -->
+      <div class="stat-pill" id="retro-clock">
+        ⏰ 12:00:00 PM
+      </div>
+
+      <!-- Right Header Actions -->
+      <div class="header-actions">
+        <!-- Navigation Switches -->
+        <button class="retro-btn retro-btn-gold retro-btn-sm" id="nav-student-view" style="display: none;">
+          🎒 Student
+        </button>
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-teacher-view" style="display: none;">
+          👨‍🏫 Teacher
+        </button>
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-admin-view" style="display: none;">
+          ⚙️ Admin
+        </button>
+        
+        <button class="retro-btn retro-btn-danger retro-btn-sm" id="nav-logout-btn" style="display: none;">
+          🚪 Logout
+        </button>
+
+        <!-- Install PWA App Button -->
+        <button class="retro-btn retro-btn-gold retro-btn-sm" id="nav-install-btn" title="Download & Install App" style="display: none;">
+          📲 Install App
+        </button>
+
+        <!-- Setting Toggles -->
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-toggle-sound" title="Toggle Chiptune Audio Synth">
+          🔊 Sound On
+        </button>
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-toggle-scanlines" title="Toggle CRT Scanlines">
+          📺 CRT: On
+        </button>
+      </div>
+
+    </header>
+
+    <!-- Dynamic Viewport Area -->
+    <main id="view-content" style="flex: 1; overflow: hidden; position: relative;">
+      <!-- Views dynamically mounted here by app.js -->
+    </main>
+
+  </div>
+
+  <!-- Google Picker API & Google Identity Services -->
+  <script async defer src="https://apis.google.com/js/api.js"></script>
+  <script async defer src="https://accounts.google.com/gsi/client"></script>
+
+  <!-- Core JavaScript Modules (Zero external CDN/npm dependencies) -->
+  <script src="js/audio.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/tree.js"></script>
+  <script src="js/views/login.js"></script>
+  <script src="js/views/student.js"></script>
+  <script src="js/views/teacher.js"></script>
+  <script src="js/views/admin.js"></script>
+  <script src="js/app.js"></script>
+
+
+</body>
+</html>

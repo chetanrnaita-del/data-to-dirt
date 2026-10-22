@@ -1,0 +1,135 @@
+/* ==============================================================================
+   DATA-TO-DIRT — Retro Animations & Feedback FX
+   Screen shake, floating eco-numbers, pixel pulses, tree sway
+   ============================================================================== */
+
+/* Visceral Screen Shake (Triggered on large dark data deletions) */
+.screen-shake {
+  animation: retroScreenShake 0.35s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+@keyframes retroScreenShake {
+  10%, 90% {
+    transform: translate3d(-3px, 0, 0);
+  }
+  20%, 80% {
+    transform: translate3d(4px, 2px, 0);
+  }
+  30%, 50%, 70% {
+    transform: translate3d(-5px, -3px, 0);
+  }
+  40%, 60% {
+    transform: translate3d(5px, 3px, 0);
+  }
+}
+
+/* Floating Eco-Number FX */
+.floating-number {
+  position: absolute;
+  pointer-events: none;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--c-gold-shine);
+  text-shadow: 2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;
+  animation: floatUpAndFade 1.4s ease-out forwards;
+  z-index: 5000;
+}
+
+@keyframes floatUpAndFade {
+  0% {
+    opacity: 0;
+    transform: translateY(0px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.2);
+  }
+  80% {
+    opacity: 0.9;
+    transform: translateY(-38px) scale(1.0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-55px) scale(0.9);
+  }
+}
+
+/* Modal Window Entrance Pop */
+@keyframes modalPop {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Tree Level-Up Celebration Bounce */
+.tree-level-up {
+  animation: treeBounce 0.8s ease-in-out;
+}
+
+@keyframes treeBounce {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.18) translateY(-10px);
+  }
+  60% {
+    transform: scale(0.92) translateY(2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Gentle Foliage Wind Sway */
+.gentle-sway {
+  transform-origin: bottom center;
+  animation: foliageSway 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes foliageSway {
+  0% {
+    transform: rotate(-1.5deg);
+  }
+  100% {
+    transform: rotate(1.5deg);
+  }
+}
+
+/* Pixel Pulse for Alerts & Streaks */
+.pixel-pulse {
+  animation: pixelPulseEffect 1.2s infinite;
+}
+
+@keyframes pixelPulseEffect {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.25);
+  }
+}
+
+/* Red Flash on Gaming Strike */
+.strike-flash {
+  animation: strikeGlitch 0.4s ease-out;
+}
+
+@keyframes strikeGlitch {
+  0%, 100% {
+    background-color: transparent;
+  }
+  20%, 60% {
+    background-color: rgba(168, 36, 36, 0.45);
+  }
+  40%, 80% {
+    background-color: rgba(224, 72, 72, 0.25);
+  }
+}
