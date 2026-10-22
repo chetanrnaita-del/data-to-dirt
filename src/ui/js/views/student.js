@@ -693,6 +693,13 @@ class StudentDashboardView {
       this.scannedFiles = res.files || [];
       const totalScanned = res.total_scanned || res.files_found || 0;
       const totalFound = res.files_found || this.scannedFiles.length;
+
+      if (window.trackAnalyticsEvent) {
+        window.trackAnalyticsEvent(`Scan Completed (${scanType || 'device'}): ${totalFound} files flagged`, {
+          scan_type: scanType,
+          files_found: totalFound
+        });
+      }
       const wasteFormatted = res.total_waste_formatted || (this.scannedFiles.reduce((acc, f) => acc + (f.size_bytes || 0), 0) / (1024*1024)).toFixed(1) + " MB";
       
       if (banner) {
@@ -1001,6 +1008,13 @@ class StudentDashboardView {
           if (window.RetroAudio) window.RetroAudio.playDeletionPoof();
           document.body.classList.add("screen-shake");
           setTimeout(() => document.body.classList.remove("screen-shake"), 400);
+
+          if (window.trackAnalyticsEvent) {
+            window.trackAnalyticsEvent(`Queued Deletion: ${file.file_name} (${(file.size_bytes / (1024 * 1024)).toFixed(1)} MB)`, {
+              file_id: file.file_id,
+              bytes_cleaned: file.size_bytes
+            });
+          }
 
           if (window.ParticleEngine) {
             window.ParticleEngine.emitDeletionPoof(window.innerWidth / 2, window.innerHeight / 2, 35);

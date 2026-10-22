@@ -1137,5 +1137,200 @@
       "name": "Mr. Samuel Woods (Earth Systems)",
       "class_code": "earth204"
     }
-  ]
+  ],
+  "analytics": {
+    "global_kpis": {
+      "total_visitors": 483,
+      "total_scans": 220,
+      "total_bytes_cleaned": 6233349632,
+      "total_carbon_offset_kg": 4.32,
+      "total_trees_funded": 5,
+      "active_sessions": 24
+    },
+    "cities": {
+      "Singapore": {
+        "city": "Singapore",
+        "country": "Singapore",
+        "country_code": "SG",
+        "flag": "\ud83c\uddf8\ud83c\uddec",
+        "region": "Central Singapore",
+        "lat": 1.3521,
+        "lon": 103.8198,
+        "visitors": 164,
+        "active_users": 8,
+        "scans": 74,
+        "bytes_cleaned": 2415919104,
+        "co2_avoided_kg": 1.7,
+        "last_active": "Just now"
+      },
+      "Mumbai": {
+        "city": "Mumbai",
+        "country": "India",
+        "country_code": "IN",
+        "flag": "\ud83c\uddee\ud83c\uddf3",
+        "region": "Maharashtra",
+        "lat": 19.076,
+        "lon": 72.8777,
+        "visitors": 119,
+        "active_users": 7,
+        "scans": 53,
+        "bytes_cleaned": 1677721600,
+        "co2_avoided_kg": 1.121,
+        "last_active": "2026-10-23 00:04:45"
+      },
+      "Bengaluru": {
+        "city": "Bengaluru",
+        "country": "India",
+        "country_code": "IN",
+        "flag": "\ud83c\uddee\ud83c\uddf3",
+        "region": "Karnataka",
+        "lat": 12.9716,
+        "lon": 77.5946,
+        "visitors": 76,
+        "active_users": 4,
+        "scans": 38,
+        "bytes_cleaned": 891289600,
+        "co2_avoided_kg": 0.63,
+        "last_active": "4 mins ago"
+      },
+      "New York": {
+        "city": "New York",
+        "country": "United States",
+        "country_code": "US",
+        "flag": "\ud83c\uddfa\ud83c\uddf8",
+        "region": "New York",
+        "lat": 40.7128,
+        "lon": -74.006,
+        "visitors": 52,
+        "active_users": 3,
+        "scans": 27,
+        "bytes_cleaned": 629145600,
+        "co2_avoided_kg": 0.44,
+        "last_active": "12 mins ago"
+      },
+      "London": {
+        "city": "London",
+        "country": "United Kingdom",
+        "country_code": "GB",
+        "flag": "\ud83c\uddec\ud83c\udde7",
+        "region": "Greater London",
+        "lat": 51.5074,
+        "lon": -0.1278,
+        "visitors": 36,
+        "active_users": 2,
+        "scans": 16,
+        "bytes_cleaned": 367001600,
+        "co2_avoided_kg": 0.26,
+        "last_active": "22 mins ago"
+      },
+      "Tokyo": {
+        "city": "Tokyo",
+        "country": "Japan",
+        "country_code": "JP",
+        "flag": "\ud83c\uddef\ud83c\uddf5",
+        "region": "Kanto",
+        "lat": 35.6762,
+        "lon": 139.6503,
+        "visitors": 21,
+        "active_users": 1,
+        "scans": 8,
+        "bytes_cleaned": 157286400,
+        "co2_avoided_kg": 0.11,
+        "last_active": "45 mins ago"
+      },
+      "Sydney": {
+        "city": "Sydney",
+        "country": "Australia",
+        "country_code": "AU",
+        "flag": "\ud83c\udde6\ud83c\uddfa",
+        "region": "New South Wales",
+        "lat": -33.8688,
+        "lon": 151.2093,
+        "visitors": 15,
+        "active_users": 0,
+        "scans": 4,
+        "bytes_cleaned": 95005728,
+        "co2_avoided_kg": 0.06,
+        "last_active": "2 hours ago"
+      }
+    },
+    "recent_events": [
+      {
+        "id": "EVT-85392",
+        "timestamp": "2026-10-23 00:04:45",
+        "city": "Mumbai",
+        "country": "India",
+        "country_code": "IN",
+        "flag": "\ud83c\uddee\ud83c\uddf3",
+        "user_id": "STU-001",
+        "role": "student",
+        "action": "Live Test Scan Completed (142 files)",
+        "device_type": "macOS Desktop",
+        "bytes_cleaned": 104857600
+      },
+      {
+        "id": "EVT-8921",
+        "timestamp": "2026-10-23 00:04:45",
+        "city": "Mumbai",
+        "country": "India",
+        "country_code": "IN",
+        "flag": "\ud83c\uddee\ud83c\uddf3",
+        "user_id": "STU-001",
+        "role": "student",
+        "action": "Cleaned 350 MB stale video (Screen_Recording_Draft_v1.mov)",
+        "device_type": "macOS Desktop",
+        "bytes_cleaned": 367001600
+      },
+      {
+        "id": "EVT-8920",
+        "timestamp": "2026-10-23 00:04:45",
+        "city": "Singapore",
+        "country": "Singapore",
+        "country_code": "SG",
+        "flag": "\ud83c\uddf8\ud83c\uddec",
+        "user_id": "STU-002",
+        "role": "student",
+        "action": "Device Scan indexed 84 dark data files (4.2 GB)",
+        "device_type": "Windows Desktop",
+        "bytes_cleaned": 0
+      },
+      {
+        "id": "EVT-8919",
+        "timestamp": "2026-10-23 00:04:45",
+        "city": "Bengaluru",
+        "country": "India",
+        "country_code": "IN",
+        "flag": "\ud83c\uddee\ud83c\uddf3",
+        "user_id": "TEACHER-001",
+        "role": "teacher",
+        "action": "Approved deletion request REQ-1001 (+1 Mangrove Tree)",
+        "device_type": "iPad Tablet",
+        "bytes_cleaned": 367001600
+      },
+      {
+        "id": "EVT-8918",
+        "timestamp": "2026-10-23 00:04:45",
+        "city": "New York",
+        "country": "United States",
+        "country_code": "US",
+        "flag": "\ud83c\uddfa\ud83c\uddf8",
+        "user_id": "STU-003",
+        "role": "student",
+        "action": "Google Drive scan completed (12 duplicates isolated)",
+        "device_type": "Mobile iPhone",
+        "bytes_cleaned": 0
+      }
+    ],
+    "devices": {
+      "desktop": 63,
+      "mobile": 30,
+      "tablet": 8
+    },
+    "waste_categories": {
+      "High-Waste Video & Screen Captures": 44,
+      "Stale Disk Images & Installers (.dmg / .iso)": 28,
+      "Forgotten Build Artifacts & Caches": 16,
+      "Identical Redundant Duplicate Backups": 12
+    }
+  }
 }

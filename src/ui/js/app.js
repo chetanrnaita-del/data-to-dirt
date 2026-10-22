@@ -44,6 +44,13 @@ class DataToDirtApp {
 
     const mainView = document.getElementById("view-content");
     
+    // Ensure analytics button is visible in header navigation
+    const btnNavAnalytics = document.getElementById("nav-analytics-view");
+    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+
+    // Auto-detect participant city and report initial telemetry beacon
+    this.detectAndTrackLocation("Participant Session Start");
+
     // Check if user is already logged in
     const existingToken = localStorage.getItem("d2d_session_token");
     const savedRole = localStorage.getItem("d2d_role");
@@ -98,7 +105,10 @@ class DataToDirtApp {
     this.classCode = classCode || localStorage.getItem("d2d_class_code") || "";
     document.getElementById("nav-logout-btn").style.display = "inline-block";
     document.getElementById("header-role-badge").style.display = "inline-block";
+    const btnNavAnalytics = document.getElementById("nav-analytics-view");
+    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
     this.switchRole(role);
+    this.detectAndTrackLocation(`User Login (${role.toUpperCase()})`, { user_id: userId, role: role });
   }
 
   logout() {
@@ -113,6 +123,8 @@ class DataToDirtApp {
     localStorage.removeItem("d2d_class_code");
     document.getElementById("nav-logout-btn").style.display = "none";
     document.getElementById("header-role-badge").style.display = "none";
+    const btnNavAnalytics = document.getElementById("nav-analytics-view");
+    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
     
     // Clear the main view and show login
     const mainView = document.getElementById("view-content");
@@ -184,6 +196,7 @@ class DataToDirtApp {
     const btnStudentRole = document.getElementById("nav-student-view");
     const btnTeacherRole = document.getElementById("nav-teacher-view");
     const btnAdminRole = document.getElementById("nav-admin-view");
+    const btnAnalyticsRole = document.getElementById("nav-analytics-view");
 
     if (btnStudentRole) {
       btnStudentRole.addEventListener("click", () => {
@@ -213,6 +226,13 @@ class DataToDirtApp {
         }
       });
     }
+
+    if (btnAnalyticsRole) {
+      btnAnalyticsRole.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        this.switchRole("analytics");
+      });
+    }
   }
 
   startClock() {
@@ -233,10 +253,11 @@ class DataToDirtApp {
     const btnStudent = document.getElementById("nav-student-view");
     const btnTeacher = document.getElementById("nav-teacher-view");
     const btnAdmin = document.getElementById("nav-admin-view");
+    const btnAnalytics = document.getElementById("nav-analytics-view");
     const userRoleBadge = document.getElementById("header-role-badge");
 
     // Reset button styles
-    [btnStudent, btnTeacher, btnAdmin].forEach((btn) => {
+    [btnStudent, btnTeacher, btnAdmin, btnAnalytics].forEach((btn) => {
       if (btn) {
         btn.classList.remove("retro-btn-gold");
         btn.classList.add("retro-btn-wood");
@@ -282,6 +303,18 @@ class DataToDirtApp {
         window.AdminView.mount("view-content");
       } else {
         this.renderTeacherView();
+      }
+    } else if (role === "analytics") {
+      if (btnAnalytics) {
+        btnAnalytics.classList.add("retro-btn-gold");
+        btnAnalytics.classList.remove("retro-btn-wood");
+      }
+      if (userRoleBadge) {
+        userRoleBadge.textContent = "📊 ANALYTICS";
+        userRoleBadge.style.background = "linear-gradient(135deg, #0984e3, #74b9ff)";
+      }
+      if (window.AnalyticsView) {
+        window.AnalyticsView.mount("view-content");
       }
     }
   }
@@ -714,10 +747,156 @@ class DataToDirtApp {
       if (e.target === modalBackdrop) dismiss();
     });
   }
+
+  // ==============================================================================
+  // GEOGRAPHIC TELEMETRY & CITY TRACKING ENGINE
+  // ==============================================================================
+
+  async detectUserLocation() {
+    const cached = sessionStorage.getItem("d2d_user_location");
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {}
+    }
+
+    let locationData = {
+      city: "Unknown",
+      region: "",
+      country: "Global",
+      country_code: "",
+      lat: 0.0,
+      lon: 0.0,
+    };
+
+    // 1. Primary: ipwho.is (CORS enabled, HTTPS, free, fast)
+    try {
+      const res = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(3000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success !== false && data.city) {
+          locationData = {
+            city: data.city,
+            region: data.region || "",
+            country: data.country || "",
+            country_code: data.country_code || "",
+            lat: data.latitude || 0.0,
+            lon: data.longitude || 0.0,
+          };
+          sessionStorage.setItem("d2d_user_location", JSON.stringify(locationData));
+          return locationData;
+        }
+      }
+    } catch (err) {
+      console.warn("[Analytics] Primary ipwho.is failed, trying fallback...", err);
+    }
+
+    // 2. Secondary fallback: freeipapi.com
+    try {
+      const res2 = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(2500) });
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2 && data2.cityName) {
+          locationData = {
+            city: data2.cityName,
+            region: data2.regionName || "",
+            country: data2.countryName || "",
+            country_code: data2.countryCode || "",
+            lat: data2.latitude || 0.0,
+            lon: data2.longitude || 0.0,
+          };
+          sessionStorage.setItem("d2d_user_location", JSON.stringify(locationData));
+          return locationData;
+        }
+      }
+    } catch (err2) {}
+
+    // 3. Heuristic Timezone fallback
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const tzMap = {
+        "Asia/Kolkata": { city: "Mumbai", country: "India", code: "IN", region: "Maharashtra", lat: 19.0760, lon: 72.8777 },
+        "Asia/Calcutta": { city: "Kolkata", country: "India", code: "IN", region: "West Bengal", lat: 22.5726, lon: 88.3639 },
+        "Asia/Singapore": { city: "Singapore", country: "Singapore", code: "SG", region: "Central Singapore", lat: 1.3521, lon: 103.8198 },
+        "America/New_York": { city: "New York", country: "United States", code: "US", region: "New York", lat: 40.7128, lon: -74.0060 },
+        "America/Los_Angeles": { city: "Los Angeles", country: "United States", code: "US", region: "California", lat: 34.0522, lon: -118.2437 },
+        "America/Chicago": { city: "Chicago", country: "United States", code: "US", region: "Illinois", lat: 41.8781, lon: -87.6298 },
+        "Europe/London": { city: "London", country: "United Kingdom", code: "GB", region: "Greater London", lat: 51.5074, lon: -0.1278 },
+        "Europe/Paris": { city: "Paris", country: "France", code: "FR", region: "Île-de-France", lat: 48.8566, lon: 2.3522 },
+        "Europe/Berlin": { city: "Berlin", country: "Germany", code: "DE", region: "Berlin", lat: 52.5200, lon: 13.4050 },
+        "Asia/Tokyo": { city: "Tokyo", country: "Japan", code: "JP", region: "Kanto", lat: 35.6762, lon: 139.6503 },
+        "Australia/Sydney": { city: "Sydney", country: "Australia", code: "AU", region: "New South Wales", lat: -33.8688, lon: 151.2093 }
+      };
+      if (tz && tzMap[tz]) {
+        const match = tzMap[tz];
+        locationData = {
+          city: match.city,
+          region: match.region,
+          country: match.country,
+          country_code: match.code,
+          lat: match.lat,
+          lon: match.lon,
+        };
+        sessionStorage.setItem("d2d_user_location", JSON.stringify(locationData));
+        return locationData;
+      }
+    } catch (err3) {}
+
+    return locationData;
+  }
+
+  detectDeviceType() {
+    const ua = navigator.userAgent || "";
+    if (/iPad|Tablet/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+      return "Tablet (" + (navigator.platform || "iPadOS") + ")";
+    }
+    if (/Mobi|Android|iPhone|iPod/i.test(ua)) {
+      return /iPhone/i.test(ua) ? "Mobile (iPhone)" : "Mobile (Android)";
+    }
+    if (/Macintosh|Mac OS X/i.test(ua)) return "macOS Desktop";
+    if (/Windows/i.test(ua)) return "Windows Desktop";
+    if (/Linux/i.test(ua)) return "Linux Desktop";
+    return "Desktop Browser";
+  }
+
+  async detectAndTrackLocation(action = "Page Visit", meta = {}) {
+    try {
+      const loc = await this.detectUserLocation();
+      const deviceType = this.detectDeviceType();
+      const userId = this.userId || localStorage.getItem("d2d_user_id") || "anonymous";
+      const role = this.currentRole || localStorage.getItem("d2d_role") || "student";
+
+      const payload = {
+        city: loc.city || "Global Visitor",
+        region: loc.region || "",
+        country: loc.country || "Global",
+        country_code: loc.country_code || "",
+        lat: loc.lat || 0.0,
+        lon: loc.lon || 0.0,
+        action: action,
+        user_id: userId,
+        role: role,
+        device_type: deviceType,
+        bytes_cleaned: meta.bytes_cleaned || 0,
+        meta: meta
+      };
+
+      fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).catch(e => console.warn("Track failed:", e));
+    } catch (err) {
+      console.warn("Analytics error:", err);
+    }
+  }
 }
 
 // Global App Singleton & Startup
 window.DataToDirt = new DataToDirtApp();
+window.appInstance = window.DataToDirt;
+window.trackAnalyticsEvent = (action, meta) => window.DataToDirt.detectAndTrackLocation(action, meta);
+
 window.addEventListener("DOMContentLoaded", () => {
   window.DataToDirt.init();
 });

@@ -172,7 +172,189 @@ def get_default_state() -> Dict[str, Any]:
                 "bytes_cleared": 1420584960,
                 "trees": 3
             }
-        ]
+        ],
+        "analytics": {
+            "global_kpis": {
+                "total_visitors": 482,
+                "total_scans": 219,
+                "total_bytes_cleaned": 6128492032,
+                "total_carbon_offset_kg": 4.31,
+                "total_trees_funded": 12,
+                "active_sessions": 24,
+            },
+            "cities": {
+                "Singapore": {
+                    "city": "Singapore",
+                    "country": "Singapore",
+                    "country_code": "SG",
+                    "flag": "🇸🇬",
+                    "region": "Central Singapore",
+                    "lat": 1.3521,
+                    "lon": 103.8198,
+                    "visitors": 164,
+                    "active_users": 8,
+                    "scans": 74,
+                    "bytes_cleaned": 2415919104,
+                    "co2_avoided_kg": 1.70,
+                    "last_active": "Just now",
+                },
+                "Mumbai": {
+                    "city": "Mumbai",
+                    "country": "India",
+                    "country_code": "IN",
+                    "flag": "🇮🇳",
+                    "region": "Maharashtra",
+                    "lat": 19.0760,
+                    "lon": 72.8777,
+                    "visitors": 118,
+                    "active_users": 6,
+                    "scans": 52,
+                    "bytes_cleaned": 1572864000,
+                    "co2_avoided_kg": 1.11,
+                    "last_active": "1 min ago",
+                },
+                "Bengaluru": {
+                    "city": "Bengaluru",
+                    "country": "India",
+                    "country_code": "IN",
+                    "flag": "🇮🇳",
+                    "region": "Karnataka",
+                    "lat": 12.9716,
+                    "lon": 77.5946,
+                    "visitors": 76,
+                    "active_users": 4,
+                    "scans": 38,
+                    "bytes_cleaned": 891289600,
+                    "co2_avoided_kg": 0.63,
+                    "last_active": "4 mins ago",
+                },
+                "New York": {
+                    "city": "New York",
+                    "country": "United States",
+                    "country_code": "US",
+                    "flag": "🇺🇸",
+                    "region": "New York",
+                    "lat": 40.7128,
+                    "lon": -74.0060,
+                    "visitors": 52,
+                    "active_users": 3,
+                    "scans": 27,
+                    "bytes_cleaned": 629145600,
+                    "co2_avoided_kg": 0.44,
+                    "last_active": "12 mins ago",
+                },
+                "London": {
+                    "city": "London",
+                    "country": "United Kingdom",
+                    "country_code": "GB",
+                    "flag": "🇬🇧",
+                    "region": "Greater London",
+                    "lat": 51.5074,
+                    "lon": -0.1278,
+                    "visitors": 36,
+                    "active_users": 2,
+                    "scans": 16,
+                    "bytes_cleaned": 367001600,
+                    "co2_avoided_kg": 0.26,
+                    "last_active": "22 mins ago",
+                },
+                "Tokyo": {
+                    "city": "Tokyo",
+                    "country": "Japan",
+                    "country_code": "JP",
+                    "flag": "🇯🇵",
+                    "region": "Kanto",
+                    "lat": 35.6762,
+                    "lon": 139.6503,
+                    "visitors": 21,
+                    "active_users": 1,
+                    "scans": 8,
+                    "bytes_cleaned": 157286400,
+                    "co2_avoided_kg": 0.11,
+                    "last_active": "45 mins ago",
+                },
+                "Sydney": {
+                    "city": "Sydney",
+                    "country": "Australia",
+                    "country_code": "AU",
+                    "flag": "🇦🇺",
+                    "region": "New South Wales",
+                    "lat": -33.8688,
+                    "lon": 151.2093,
+                    "visitors": 15,
+                    "active_users": 0,
+                    "scans": 4,
+                    "bytes_cleaned": 95005728,
+                    "co2_avoided_kg": 0.06,
+                    "last_active": "2 hours ago",
+                }
+            },
+            "recent_events": [
+                {
+                    "id": "EVT-8921",
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "city": "Mumbai",
+                    "country": "India",
+                    "country_code": "IN",
+                    "flag": "🇮🇳",
+                    "user_id": "STU-001",
+                    "role": "student",
+                    "action": "Cleaned 350 MB stale video (Screen_Recording_Draft_v1.mov)",
+                    "device_type": "macOS Desktop",
+                    "bytes_cleaned": 367001600,
+                },
+                {
+                    "id": "EVT-8920",
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "city": "Singapore",
+                    "country": "Singapore",
+                    "country_code": "SG",
+                    "flag": "🇸🇬",
+                    "user_id": "STU-002",
+                    "role": "student",
+                    "action": "Device Scan indexed 84 dark data files (4.2 GB)",
+                    "device_type": "Windows Desktop",
+                    "bytes_cleaned": 0,
+                },
+                {
+                    "id": "EVT-8919",
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "city": "Bengaluru",
+                    "country": "India",
+                    "country_code": "IN",
+                    "flag": "🇮🇳",
+                    "user_id": "TEACHER-001",
+                    "role": "teacher",
+                    "action": "Approved deletion request REQ-1001 (+1 Mangrove Tree)",
+                    "device_type": "iPad Tablet",
+                    "bytes_cleaned": 367001600,
+                },
+                {
+                    "id": "EVT-8918",
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "city": "New York",
+                    "country": "United States",
+                    "country_code": "US",
+                    "flag": "🇺🇸",
+                    "user_id": "STU-003",
+                    "role": "student",
+                    "action": "Google Drive scan completed (12 duplicates isolated)",
+                    "device_type": "Mobile iPhone",
+                    "bytes_cleaned": 0,
+                }
+            ],
+            "devices": {
+                "desktop": 62,
+                "mobile": 30,
+                "tablet": 8
+            },
+            "waste_categories": {
+                "High-Waste Video & Screen Captures": 44,
+                "Stale Disk Images & Installers (.dmg / .iso)": 28,
+                "Forgotten Build Artifacts & Caches": 16,
+                "Identical Redundant Duplicate Backups": 12
+            }
+        }
     }
 
 
@@ -183,6 +365,8 @@ def load_state() -> Dict[str, Any]:
                 state = json.load(f)
                 if "students" not in state:
                     state["students"] = get_default_state().get("students", [])
+                if "analytics" not in state or not isinstance(state.get("analytics"), dict):
+                    state["analytics"] = get_default_state().get("analytics", {})
                 return state
         except Exception:
             pass
@@ -1853,6 +2037,184 @@ def create_flask_app():
             "donations_history": donations,
             "total_incidents": len(stats.incident_log),
         })
+
+    @app.route("/api/analytics/track", methods=["POST"])
+    def api_analytics_track():
+        payload = request.get_json(silent=True) or {}
+        city = (payload.get("city") or "").strip()
+        if not city or city.lower() == "unknown":
+            city = "Global Visitor"
+        country = (payload.get("country") or "Global").strip()
+        country_code = (payload.get("country_code") or "").upper().strip()
+        region = (payload.get("region") or "").strip()
+        action = (payload.get("action") or "Page Visit").strip()
+        user_id = (payload.get("user_id") or "anonymous").strip()
+        role = (payload.get("role") or "visitor").strip()
+        device_type = (payload.get("device_type") or "Desktop").strip()
+        bytes_cleaned = int(payload.get("bytes_cleaned") or 0)
+        lat = payload.get("lat")
+        lon = payload.get("lon")
+
+        flag = AnalyticsService.country_code_to_flag(country_code) if country_code else "🌐"
+
+        state = load_state()
+        if "analytics" not in state or not isinstance(state["analytics"], dict):
+            state["analytics"] = get_default_state().get("analytics", {})
+
+        analytics = state["analytics"]
+        cities = analytics.setdefault("cities", {})
+        kpis = analytics.setdefault("global_kpis", {
+            "total_visitors": 0,
+            "total_scans": 0,
+            "total_bytes_cleaned": 0,
+            "total_carbon_offset_kg": 0.0,
+            "total_trees_funded": 0,
+            "active_sessions": 0,
+        })
+        recent_events = analytics.setdefault("recent_events", [])
+        devices = analytics.setdefault("devices", {"desktop": 62, "mobile": 30, "tablet": 8})
+
+        # Update or create city
+        if city not in cities:
+            cities[city] = {
+                "city": city,
+                "country": country,
+                "country_code": country_code,
+                "flag": flag,
+                "region": region,
+                "lat": float(lat) if lat is not None else 0.0,
+                "lon": float(lon) if lon is not None else 0.0,
+                "visitors": 0,
+                "active_users": 0,
+                "scans": 0,
+                "bytes_cleaned": 0,
+                "co2_avoided_kg": 0.0,
+                "last_active": "Just now",
+            }
+
+        target_city = cities[city]
+        target_city["visitors"] = target_city.get("visitors", 0) + 1
+        target_city["active_users"] = max(1, target_city.get("active_users", 0) + 1)
+        target_city["last_active"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        if country and (target_city.get("country") == "Global" or not target_city.get("country")):
+            target_city["country"] = country
+        if country_code and not target_city.get("country_code"):
+            target_city["country_code"] = country_code
+            target_city["flag"] = flag
+        if region and not target_city.get("region"):
+            target_city["region"] = region
+        if lat is not None and target_city.get("lat") == 0.0:
+            target_city["lat"] = float(lat)
+        if lon is not None and target_city.get("lon") == 0.0:
+            target_city["lon"] = float(lon)
+
+        if "scan" in action.lower():
+            target_city["scans"] = target_city.get("scans", 0) + 1
+            kpis["total_scans"] = kpis.get("total_scans", 0) + 1
+
+        if bytes_cleaned > 0:
+            target_city["bytes_cleaned"] = target_city.get("bytes_cleaned", 0) + bytes_cleaned
+            co2_kg = (bytes_cleaned / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
+            target_city["co2_avoided_kg"] = round(target_city.get("co2_avoided_kg", 0.0) + co2_kg, 3)
+            kpis["total_bytes_cleaned"] = kpis.get("total_bytes_cleaned", 0) + bytes_cleaned
+            kpis["total_carbon_offset_kg"] = round(kpis.get("total_carbon_offset_kg", 0.0) + co2_kg, 2)
+            kpis["total_trees_funded"] = int(kpis["total_bytes_cleaned"] // TREE_DONATION_THRESHOLD_BYTES)
+
+        kpis["total_visitors"] = kpis.get("total_visitors", 0) + 1
+
+        # Device categorization
+        dt_lower = device_type.lower()
+        if "mobile" in dt_lower or "phone" in dt_lower or "android" in dt_lower:
+            devices["mobile"] = devices.get("mobile", 0) + 1
+        elif "tablet" in dt_lower or "ipad" in dt_lower:
+            devices["tablet"] = devices.get("tablet", 0) + 1
+        else:
+            devices["desktop"] = devices.get("desktop", 0) + 1
+
+        # Event stream
+        event_obj = {
+            "id": f"EVT-{int(time.time() * 1000) % 1000000}",
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "city": city,
+            "country": country,
+            "country_code": country_code,
+            "flag": flag,
+            "user_id": user_id,
+            "role": role,
+            "action": action,
+            "device_type": device_type,
+            "bytes_cleaned": bytes_cleaned,
+        }
+        recent_events.insert(0, event_obj)
+        if len(recent_events) > 50:
+            del recent_events[50:]
+
+        save_state(state)
+        return jsonify({
+            "status": "success",
+            "tracked": {
+                "city": city,
+                "country": country,
+                "flag": flag,
+                "action": action,
+            }
+        })
+
+    @app.route("/api/analytics/dashboard", methods=["GET"])
+    def api_analytics_dashboard():
+        state = load_state()
+        if "analytics" not in state or not isinstance(state["analytics"], dict):
+            state["analytics"] = get_default_state().get("analytics", {})
+            save_state(state)
+
+        analytics = state["analytics"]
+        cities_dict = analytics.get("cities", {})
+        cities_list = list(cities_dict.values())
+        # Sort cities by visitors + scans descending
+        cities_list.sort(key=lambda c: (c.get("visitors", 0) + c.get("scans", 0) * 2), reverse=True)
+
+        kpis = dict(analytics.get("global_kpis", {}))
+        kpis["tracked_cities_count"] = len(cities_list)
+        kpis["active_sessions"] = sum(c.get("active_users", 0) for c in cities_list)
+
+        # Pull latest state for tree donations and ecofund
+        ecofund = state.get("ecofund", {})
+        if ecofund.get("trees_planted"):
+            kpis["total_trees_funded"] = max(kpis.get("total_trees_funded", 0), ecofund["trees_planted"])
+
+        devices = analytics.get("devices", {"desktop": 62, "mobile": 30, "tablet": 8})
+        total_devices = sum(devices.values()) or 1
+        device_pct = {
+            k: round((v / total_devices) * 100, 1)
+            for k, v in devices.items()
+        }
+
+        return jsonify({
+            "status": "success",
+            "kpis": kpis,
+            "cities": cities_list,
+            "recent_events": analytics.get("recent_events", [])[:25],
+            "devices": {
+                "counts": devices,
+                "percentages": device_pct,
+            },
+            "waste_categories": analytics.get("waste_categories", {}),
+            "server_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+    @app.route("/api/analytics/export", methods=["GET"])
+    def api_analytics_export():
+        state = load_state()
+        analytics = state.get("analytics", {})
+        cities_dict = analytics.get("cities", {})
+        cities_list = list(cities_dict.values())
+        cities_list.sort(key=lambda c: (c.get("visitors", 0) + c.get("scans", 0) * 2), reverse=True)
+
+        csv_content = AnalyticsService.export_cities_csv(cities_list)
+        response = make_response(csv_content)
+        response.headers["Content-Disposition"] = "attachment; filename=data_to_dirt_city_telemetry.csv"
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        return response
 
     return app
 

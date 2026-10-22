@@ -41,7 +41,10 @@ class AdminEcoFundView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-refresh">
               🔄 Refresh
             </button>
-            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-adm-teacher-queue">
+            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-adm-analytics">
+              📊 City Analytics
+            </button>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-teacher-queue">
               👨‍🏫 Teacher Queue
             </button>
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-return-student">
@@ -213,6 +216,11 @@ class AdminEcoFundView {
     document.getElementById("btn-adm-teacher-queue")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       if (window.TeacherView) window.TeacherView.mount("view-content");
+    });
+
+    document.getElementById("btn-adm-analytics")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      if (window.DataToDirt) window.DataToDirt.switchRole("analytics");
     });
 
     document.getElementById("btn-adm-refresh")?.addEventListener("click", () => {

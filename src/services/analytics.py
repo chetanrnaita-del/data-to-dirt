@@ -146,6 +146,16 @@ class AnalyticsService:
         return stats
 
     @staticmethod
+    def country_code_to_flag(code: str) -> str:
+        """Converts an ISO 3166-1 alpha-2 country code into its emoji flag."""
+        if not code or len(code) != 2:
+            return "🌐"
+        try:
+            return "".join(chr(127397 + ord(c.upper())) for c in code)
+        except Exception:
+            return "🌐"
+
+    @staticmethod
     def export_csv_report(stats: ClassroomStats) -> str:
         """Generates a CSV formatted environmental audit report."""
         lines = [
@@ -161,4 +171,20 @@ class AnalyticsService:
             f"Passenger Car Distance Avoided,{stats.car_km_avoided:.2f},km",
             f"Smartphone Charges Avoided,{stats.smartphone_charges_avoided:.1f},charges",
         ]
+        return "\n".join(lines)
+
+    @staticmethod
+    def export_cities_csv(cities: List[Dict[str, Any]]) -> str:
+        """Generates a CSV formatted geographic telemetry report."""
+        lines = [
+            "Rank,City,Country,Code,Visitors,Active_Sessions,Total_Scans,Data_Cleaned_GB,CO2_Avoided_kg,Last_Active"
+        ]
+        for idx, c in enumerate(cities, 1):
+            cleaned_gb = round(c.get("bytes_cleaned", 0) / (1024.0 ** 3), 3)
+            lines.append(
+                f"{idx},{c.get('city', 'Unknown')},{c.get('country', 'Unknown')},"
+                f"{c.get('country_code', 'XX')},{c.get('visitors', 0)},"
+                f"{c.get('active_users', 0)},{c.get('scans', 0)},{cleaned_gb},"
+                f"{c.get('co2_avoided_kg', 0.0)},\"{c.get('last_active', '')}\""
+            )
         return "\n".join(lines)
