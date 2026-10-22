@@ -47,9 +47,6 @@ class AdminEcoFundView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-return-student">
               🎒 Student View
             </button>
-            <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-adm-logout" title="Sign Out">
-              🚪 Logout
-            </button>
           </div>
         </div>
 

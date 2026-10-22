@@ -45,18 +45,6 @@ class TeacherConfirmationView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-t-refresh" title="Refresh Queue">
               🔄 Refresh
             </button>
-            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-t-manage-students" title="Student Directory & ID Manager">
-              👥 Students
-            </button>
-            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-t-admin" title="Open Eco-Fund Admin Panel">
-              ⚙️ Admin Panel
-            </button>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-t-return-student" title="Back to Student Dashboard">
-              🎒 Student View
-            </button>
-            <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-t-logout" title="Sign Out">
-              🚪 Logout
-            </button>
           </div>
         </div>
 
