@@ -1,4 +1,4 @@
-const CACHE_NAME = 'data-to-dirt-v27';
+const CACHE_NAME = 'data-to-dirt-v28';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,17 +6,17 @@ const ASSETS = [
   '/logo.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  '/css/retro_base.css?v=1.0.7',
-  '/css/stardew.css?v=1.0.7',
-  '/css/animations.css?v=1.0.7',
-  '/js/app.js?v=1.0.7',
-  '/js/audio.js?v=1.0.7',
-  '/js/particles.js?v=1.0.7',
-  '/js/tree.js?v=1.0.7',
-  '/js/views/login.js?v=1.0.7',
-  '/js/views/student.js?v=1.0.7',
-  '/js/views/teacher.js?v=1.0.7',
-  '/js/views/admin.js?v=1.0.7'
+  '/css/retro_base.css?v=1.0.8',
+  '/css/stardew.css?v=1.0.8',
+  '/css/animations.css?v=1.0.8',
+  '/js/app.js?v=1.0.8',
+  '/js/audio.js?v=1.0.8',
+  '/js/particles.js?v=1.0.8',
+  '/js/tree.js?v=1.0.8',
+  '/js/views/login.js?v=1.0.8',
+  '/js/views/student.js?v=1.0.8',
+  '/js/views/teacher.js?v=1.0.8',
+  '/js/views/admin.js?v=1.0.8'
 ];
 
 self.addEventListener('install', event => {
