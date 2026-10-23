@@ -47,9 +47,6 @@ class AdminEcoFundView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-teacher-queue">
               👨‍🏫 Teacher Queue
             </button>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-return-student">
-              🎒 Student View
-            </button>
             <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-adm-logout">
               🚪 Logout
             </button>
@@ -211,11 +208,6 @@ class AdminEcoFundView {
 
   bindEvents() {
     // Navigation
-    document.getElementById("btn-adm-return-student")?.addEventListener("click", () => {
-      if (this.audioSynth) this.audioSynth.playBlip();
-      if (window.DataToDirt) window.DataToDirt.switchRole("student");
-    });
-
     document.getElementById("btn-adm-teacher-queue")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       if (window.DataToDirt) {

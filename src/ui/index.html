@@ -60,7 +60,7 @@
         <img src="/logo.png" alt="Data-to-Dirt Logo" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover; border: 1.5px solid var(--c-gold-shine); box-shadow: 0 2px 4px rgba(0,0,0,0.4);" />
         <span>DATA-TO-DIRT</span>
         <span class="app-title-badge">16-BIT RETRO EDITION</span>
-        <span id="header-role-badge" style="display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 12px; border-radius: 20px; background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: #fff; letter-spacing: 0.5px; margin-left: 8px; box-shadow: 0 2px 6px rgba(108,92,231,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">STUDENT VIEW</span>
+        <span id="header-role-badge" style="display: none; font-size: 11px; font-weight: 600; padding: 3px 12px; border-radius: 20px; background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: #fff; letter-spacing: 0.5px; margin-left: 8px; box-shadow: 0 2px 6px rgba(108,92,231,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">STUDENT VIEW</span>
       </div>
 
       <!-- Center Status: Clock -->
@@ -70,14 +70,17 @@
 
       <!-- Right Header Actions -->
       <div class="header-actions">
-        <!-- Navigation Switches -->
-        <button class="retro-btn retro-btn-gold retro-btn-sm" id="nav-student-view">
+        <!-- Navigation Switches (Controlled strictly by DataToDirtApp.updateNavigation per authenticated role) -->
+        <button class="retro-btn retro-btn-gold retro-btn-sm" id="nav-student-view" style="display: none;">
           🎒 Student
         </button>
-        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-admin-view">
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-teacher-view" style="display: none;">
+          📋 Teacher
+        </button>
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-admin-view" style="display: none;">
           ⚙️ Admin
         </button>
-        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-analytics-view">
+        <button class="retro-btn retro-btn-wood retro-btn-sm" id="nav-analytics-view" style="display: inline-block;">
           📊 Analytics
         </button>
         
@@ -113,15 +116,15 @@
   <script async defer src="https://accounts.google.com/gsi/client"></script>
 
   <!-- Core JavaScript Modules (Zero external CDN/npm dependencies) -->
-  <script src="js/audio.js?v=1.1.4"></script>
-  <script src="js/particles.js?v=1.1.4"></script>
-  <script src="js/tree.js?v=1.1.4"></script>
-  <script src="js/views/login.js?v=1.1.4"></script>
-  <script src="js/views/student.js?v=1.1.4"></script>
-  <script src="js/views/teacher.js?v=1.1.4"></script>
-  <script src="js/views/admin.js?v=1.1.4"></script>
-  <script src="js/views/analytics.js?v=1.1.4"></script>
-  <script src="js/app.js?v=1.1.4"></script>
+  <script src="js/audio.js?v=1.1.5"></script>
+  <script src="js/particles.js?v=1.1.5"></script>
+  <script src="js/tree.js?v=1.1.5"></script>
+  <script src="js/views/login.js?v=1.1.5"></script>
+  <script src="js/views/student.js?v=1.1.5"></script>
+  <script src="js/views/teacher.js?v=1.1.5"></script>
+  <script src="js/views/admin.js?v=1.1.5"></script>
+  <script src="js/views/analytics.js?v=1.1.5"></script>
+  <script src="js/app.js?v=1.1.5"></script>
 
   <!-- Cloudflare Web Analytics -->
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e6109200065b45a5a014b35a0fa142c4", "spa": true}'></script>

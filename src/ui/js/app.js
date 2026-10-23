@@ -7,8 +7,8 @@
 
 class DataToDirtApp {
   constructor() {
-    this.currentRole = "student"; // student, teacher, admin
-    this.authenticatedRole = localStorage.getItem("d2d_role") || "student";
+    this.currentRole = null;
+    this.authenticatedRole = null;
     this.audioSynth = window.RetroAudio;
     this.particleEngine = window.ParticleEngine;
     this.activeView = null;
@@ -44,28 +44,13 @@ class DataToDirtApp {
     };
 
     const mainView = document.getElementById("view-content");
-    
-    // Ensure navigation tabs are visible
-    const btnNavStudent = document.getElementById("nav-student-view");
-    const btnNavAnalytics = document.getElementById("nav-analytics-view");
-    const btnNavAdmin = document.getElementById("nav-admin-view");
-    if (btnNavStudent) btnNavStudent.style.display = "inline-block";
-    if (btnNavAdmin) btnNavAdmin.style.display = "inline-block";
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
 
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
 
-    // Direct URL navigation support for /analytics and /admin
+    // Direct URL navigation support for /analytics
     if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
       this.switchRole("analytics");
-      return;
-    }
-
-    if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
-      localStorage.setItem("d2d_role", "admin");
-      this.currentRole = "admin";
-      this.switchRole("admin");
       return;
     }
 
@@ -75,14 +60,18 @@ class DataToDirtApp {
     const savedUserId = localStorage.getItem("d2d_user_id");
     const savedPin = localStorage.getItem("d2d_pin");
 
-
     if (existingToken && savedRole) {
       try {
         const res = await fetch("/api/auth/session");
         const data = await res.json();
         if (res.ok && data.status === "authenticated" && data.session) {
           console.log("[+] Restoring active session:", data.session.role);
-          this.completeLogin(data.session.role, data.session.user_id, "");
+          this.completeLogin(data.session.role, data.session.user_id, "", localStorage.getItem("d2d_class_code") || "");
+          if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
+            if (data.session.role === "admin") {
+              this.switchRole("admin");
+            }
+          }
           return;
         }
       } catch (e) {
@@ -101,7 +90,12 @@ class DataToDirtApp {
           const loginData = await loginRes.json();
           if (loginRes.ok && loginData.status === "authenticated") {
             localStorage.setItem("d2d_session_token", loginData.token);
-            this.completeLogin(savedRole, savedUserId, savedPin);
+            this.completeLogin(savedRole, savedUserId, savedPin, loginData.class_code || "");
+            if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
+              if (savedRole === "admin") {
+                this.switchRole("admin");
+              }
+            }
             return;
           }
         } catch (e) {
@@ -111,7 +105,9 @@ class DataToDirtApp {
     }
 
     // Initialize Login View if no valid session
-    document.getElementById("header-role-badge").style.display = "none";
+    this.authenticatedRole = null;
+    this.currentRole = null;
+    this.updateNavigation(null);
     this.loginView = new window.LoginView(this);
     this.loginView.render(mainView);
   }
@@ -123,17 +119,9 @@ class DataToDirtApp {
     this.classCode = classCode || localStorage.getItem("d2d_class_code") || "";
     this.authenticatedRole = role;
     localStorage.setItem("d2d_role", role);
-    document.getElementById("nav-logout-btn").style.display = "inline-block";
-    document.getElementById("header-role-badge").style.display = "inline-block";
-    
-    // Show role navigation buttons (Student, Admin, Analytics)
-    const btnStudent = document.getElementById("nav-student-view");
-    const btnAdmin = document.getElementById("nav-admin-view");
-    const btnNavAnalytics = document.getElementById("nav-analytics-view");
-
-    if (btnStudent) btnStudent.style.display = "inline-block";
-    if (btnAdmin) btnAdmin.style.display = "inline-block";
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+    localStorage.setItem("d2d_user_id", userId);
+    if (pin) localStorage.setItem("d2d_pin", pin);
+    if (classCode) localStorage.setItem("d2d_class_code", classCode);
 
     this.switchRole(role);
     this.detectAndTrackLocation(`User Login (${role.toUpperCase()})`, { user_id: userId, role: role });
@@ -150,22 +138,16 @@ class DataToDirtApp {
     localStorage.removeItem("d2d_user_id");
     localStorage.removeItem("d2d_pin");
     localStorage.removeItem("d2d_class_code");
-    document.getElementById("nav-logout-btn").style.display = "none";
-    document.getElementById("header-role-badge").style.display = "none";
 
-    // Hide all role navigation buttons on logout
-    const btnStudent = document.getElementById("nav-student-view");
-    const btnAdmin = document.getElementById("nav-admin-view");
-    const btnNavAnalytics = document.getElementById("nav-analytics-view");
-    if (btnStudent) btnStudent.style.display = "none";
-    if (btnAdmin) btnAdmin.style.display = "none";
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "none";
-    
+    this.updateNavigation(null);
+
     // Clear the main view and show login
     const mainView = document.getElementById("view-content");
-    mainView.innerHTML = "";
-    this.loginView = new window.LoginView(this);
-    this.loginView.render(mainView);
+    if (mainView) {
+      mainView.innerHTML = "";
+      this.loginView = new window.LoginView(this);
+      this.loginView.render(mainView);
+    }
   }
 
   bindGlobalControls() {
@@ -227,8 +209,9 @@ class DataToDirtApp {
       this.showInstallButtons(true);
     }
 
-    // Role Selector Buttons
+    // Role Selector Buttons (Strictly checked against authenticated role)
     const btnStudentRole = document.getElementById("nav-student-view");
+    const btnTeacherRole = document.getElementById("nav-teacher-view");
     const btnAdminRole = document.getElementById("nav-admin-view");
     const btnAnalyticsRole = document.getElementById("nav-analytics-view");
 
@@ -239,11 +222,16 @@ class DataToDirtApp {
       });
     }
 
+    if (btnTeacherRole) {
+      btnTeacherRole.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        this.switchRole("teacher");
+      });
+    }
+
     if (btnAdminRole) {
       btnAdminRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
-        localStorage.setItem("d2d_role", "admin");
-        this.currentRole = "admin";
         this.switchRole("admin");
       });
     }
@@ -251,26 +239,7 @@ class DataToDirtApp {
     if (btnAnalyticsRole) {
       btnAnalyticsRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
-        localStorage.setItem("d2d_role", "admin");
-        this.currentRole = "admin";
         this.switchRole("analytics");
-      });
-    }
-
-    // Header Role Badge: click to toggle Admin / Student mode
-    const headerBadge = document.getElementById("header-role-badge");
-    if (headerBadge) {
-      headerBadge.style.cursor = "pointer";
-      headerBadge.title = "Click to switch role";
-      headerBadge.addEventListener("click", () => {
-        if (this.audioSynth) this.audioSynth.playBlip();
-        if (this.currentRole === "admin") {
-          localStorage.setItem("d2d_role", "student");
-          this.switchRole("student");
-        } else {
-          localStorage.setItem("d2d_role", "admin");
-          this.switchRole("admin");
-        }
       });
     }
   }
@@ -288,84 +257,137 @@ class DataToDirtApp {
     setInterval(update, 1000);
   }
 
-  switchRole(role) {
-    if (role === "admin") {
-      this.authenticatedRole = "admin";
-      localStorage.setItem("d2d_role", "admin");
-    }
-
-    this.currentRole = role;
+  updateNavigation(currentRole) {
     const btnStudent = document.getElementById("nav-student-view");
-    const btnAnalytics = document.getElementById("nav-analytics-view");
     const btnTeacher = document.getElementById("nav-teacher-view");
     const btnAdmin = document.getElementById("nav-admin-view");
-    const userRoleBadge = document.getElementById("header-role-badge");
+    const btnAnalytics = document.getElementById("nav-analytics-view");
     const btnLogout = document.getElementById("nav-logout-btn");
+    const userRoleBadge = document.getElementById("header-role-badge");
 
-    if (btnLogout) btnLogout.style.display = "inline-block";
-    if (userRoleBadge) userRoleBadge.style.display = "inline-block";
-    if (btnStudent) btnStudent.style.display = "inline-block";
-    if (btnAdmin) btnAdmin.style.display = "inline-block";
-    if (btnAnalytics) btnAnalytics.style.display = "inline-block";
-
-    // Reset button styles
-    [btnStudent, btnAnalytics, btnTeacher, btnAdmin].forEach((btn) => {
+    // Hide all navigation buttons by default
+    [btnStudent, btnTeacher, btnAdmin, btnAnalytics, btnLogout].forEach((btn) => {
       if (btn) {
+        btn.style.display = "none";
         btn.classList.remove("retro-btn-gold");
         btn.classList.add("retro-btn-wood");
       }
     });
 
-    if (role === "student") {
-      if (btnStudent) {
-        btnStudent.classList.add("retro-btn-gold");
-        btnStudent.classList.remove("retro-btn-wood");
+    if (!this.authenticatedRole) {
+      // Unauthenticated state (Login screen or public analytics)
+      if (userRoleBadge) userRoleBadge.style.display = "none";
+      if (btnAnalytics) {
+        btnAnalytics.style.display = "inline-block";
+        if (currentRole === "analytics") {
+          btnAnalytics.classList.add("retro-btn-gold");
+          btnAnalytics.classList.remove("retro-btn-wood");
+        }
       }
+      return;
+    }
+
+    // Authenticated state
+    if (btnLogout) btnLogout.style.display = "inline-block";
+    if (btnAnalytics) btnAnalytics.style.display = "inline-block";
+    if (userRoleBadge) {
+      userRoleBadge.style.display = "inline-block";
+      userRoleBadge.style.cursor = "default";
+      userRoleBadge.title = "";
+    }
+
+    if (this.authenticatedRole === "student") {
+      // Student: Only Student View and Analytics View. NEVER Teacher or Admin.
+      if (btnStudent) btnStudent.style.display = "inline-block";
       if (userRoleBadge) {
         userRoleBadge.textContent = "🎒 STUDENT";
         userRoleBadge.style.background = "linear-gradient(135deg, #6c5ce7, #a29bfe)";
       }
-      if (window.StudentView) {
-        window.StudentView.mount("view-content");
-      }
-    } else if (role === "teacher") {
-      if (btnTeacher) {
-        btnTeacher.classList.add("retro-btn-gold");
-        btnTeacher.classList.remove("retro-btn-wood");
-      }
+    } else if (this.authenticatedRole === "teacher") {
+      // Teacher: Only Teacher View and Analytics View. NEVER Student view or Admin.
+      if (btnTeacher) btnTeacher.style.display = "inline-block";
       if (userRoleBadge) {
         userRoleBadge.textContent = "📋 TEACHER";
         userRoleBadge.style.background = "linear-gradient(135deg, #00b894, #55efc4)";
       }
+    } else if (this.authenticatedRole === "admin") {
+      // Admin: Admin Console, Teacher Queue, and Analytics View. NEVER Student.
+      if (btnAdmin) btnAdmin.style.display = "inline-block";
+      if (btnTeacher) btnTeacher.style.display = "inline-block";
+      if (userRoleBadge) {
+        userRoleBadge.textContent = "⚙️ ADMIN";
+        userRoleBadge.style.background = "linear-gradient(135deg, #e17055, #fab1a0)";
+      }
+    }
+
+    // Active tab highlight
+    if (currentRole === "student" && btnStudent) {
+      btnStudent.classList.add("retro-btn-gold");
+      btnStudent.classList.remove("retro-btn-wood");
+    } else if (currentRole === "teacher" && btnTeacher) {
+      btnTeacher.classList.add("retro-btn-gold");
+      btnTeacher.classList.remove("retro-btn-wood");
+    } else if (currentRole === "admin" && btnAdmin) {
+      btnAdmin.classList.add("retro-btn-gold");
+      btnAdmin.classList.remove("retro-btn-wood");
+    } else if (currentRole === "analytics" && btnAnalytics) {
+      btnAnalytics.classList.add("retro-btn-gold");
+      btnAnalytics.classList.remove("retro-btn-wood");
+    }
+  }
+
+  switchRole(role) {
+    // If not authenticated, only allowed to view analytics or login
+    if (!this.authenticatedRole) {
+      if (role !== "analytics") {
+        this.updateNavigation(null);
+        const mainView = document.getElementById("view-content");
+        if (mainView) {
+          this.loginView = new window.LoginView(this);
+          this.loginView.render(mainView);
+        }
+        return;
+      }
+    } else {
+      // Security role gate: verify authorization against authenticatedRole
+      if (this.authenticatedRole === "student") {
+        if (role !== "student" && role !== "analytics") {
+          console.warn("[Security] Student attempted unauthorized role switch to:", role);
+          return;
+        }
+      } else if (this.authenticatedRole === "teacher") {
+        if (role !== "teacher" && role !== "analytics") {
+          console.warn("[Security] Teacher attempted unauthorized role switch to:", role);
+          return;
+        }
+      } else if (this.authenticatedRole === "admin") {
+        if (role === "student") {
+          console.warn("[Security] Admin attempted switch to student view");
+          return;
+        }
+      }
+    }
+
+    this.currentRole = role;
+    this.updateNavigation(role);
+
+    if (role === "student") {
+      if (window.StudentView) {
+        window.StudentView.mount("view-content");
+      }
+    } else if (role === "teacher") {
       if (window.TeacherView) {
         window.TeacherView.mount("view-content");
       } else {
         this.renderTeacherView();
       }
     } else if (role === "admin") {
-      if (btnAdmin) {
-        btnAdmin.classList.add("retro-btn-gold");
-        btnAdmin.classList.remove("retro-btn-wood");
-      }
-      if (userRoleBadge) {
-        userRoleBadge.textContent = "⚙️ ADMIN";
-        userRoleBadge.style.background = "linear-gradient(135deg, #e17055, #fab1a0)";
-      }
       if (window.AdminView) {
         window.AdminView.mount("view-content");
       } else {
         this.renderTeacherView();
       }
     } else if (role === "analytics") {
-      if (btnAnalytics) {
-        btnAnalytics.classList.add("retro-btn-gold");
-        btnAnalytics.classList.remove("retro-btn-wood");
-      }
-      if (userRoleBadge) {
-        userRoleBadge.textContent = "📊 ANALYTICS";
-        userRoleBadge.style.background = "linear-gradient(135deg, #0984e3, #74b9ff)";
-        userRoleBadge.style.display = "inline-block";
-      }
       if (window.AnalyticsView) {
         window.AnalyticsView.mount("view-content");
       }

@@ -99,11 +99,8 @@ class AnalyticsDashboardView {
             <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-an-export" title="Export CSV Report">
               📥 Export CSV
             </button>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-an-return-admin" title="Back to Admin Console">
-              ⚙️ Admin Console
-            </button>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-an-return-student" title="Back to Student View">
-              🎒 Student
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-an-return-home" title="Return to Application">
+              ← Return
             </button>
           </div>
         </div>
@@ -265,26 +262,16 @@ class AnalyticsDashboardView {
       });
     }
 
-    const btnReturnAdmin = document.getElementById("btn-an-return-admin");
-    if (btnReturnAdmin) {
-      btnReturnAdmin.addEventListener("click", () => {
+    const btnReturnHome = document.getElementById("btn-an-return-home");
+    if (btnReturnHome) {
+      btnReturnHome.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
-        if (window.DataToDirt) {
-          window.DataToDirt.switchRole("admin");
-        } else if (window.appInstance) {
-          window.appInstance.switchRole("admin");
-        }
-      });
-    }
-
-    const btnReturnStudent = document.getElementById("btn-an-return-student");
-    if (btnReturnStudent) {
-      btnReturnStudent.addEventListener("click", () => {
-        if (this.audioSynth) this.audioSynth.playBlip();
-        if (window.DataToDirt) {
-          window.DataToDirt.switchRole("student");
-        } else if (window.appInstance) {
-          window.appInstance.switchRole("student");
+        const app = window.DataToDirt || window.appInstance;
+        if (!app) return;
+        if (app.authenticatedRole) {
+          app.switchRole(app.authenticatedRole);
+        } else {
+          app.logout();
         }
       });
     }
