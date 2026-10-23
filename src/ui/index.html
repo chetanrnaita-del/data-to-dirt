@@ -126,40 +126,8 @@
   <script src="js/views/analytics.js?v=1.0.9"></script>
   <script src="js/app.js?v=1.0.9"></script>
 
-  <!-- External Analytics Software Integration (Cloudflare Web Analytics, Google Analytics GA4) -->
-  <script>
-    (function() {
-      fetch('/api/config/analytics')
-        .then(function(r) { return r.json(); })
-        .then(function(cfg) {
-          // 1. Cloudflare Web Analytics (dash.cloudflare.com)
-          if (cfg && cfg.cloudflare_token) {
-            var cfScript = document.createElement('script');
-            cfScript.defer = true;
-            cfScript.src = 'https://static.cloudflareinsights.com/beacon.min.js';
-            cfScript.setAttribute('data-cf-beacon', JSON.stringify({ token: cfg.cloudflare_token }));
-            document.head.appendChild(cfScript);
-            console.log('[+] Cloudflare Web Analytics beacon activated');
-          }
-          // 2. Google Analytics 4 (analytics.google.com)
-          if (cfg && cfg.ga_measurement_id) {
-            var gaScript = document.createElement('script');
-            gaScript.async = true;
-            gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + cfg.ga_measurement_id;
-            document.head.appendChild(gaScript);
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', cfg.ga_measurement_id);
-            console.log('[+] Google Analytics (GA4) activated');
-          }
-        })
-        .catch(function() {});
-    })();
-  </script>
-
   <!-- Cloudflare Web Analytics -->
-  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e6109200065b45a5a014b35a0fa142c4"}'></script>
+  <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e6109200065b45a5a014b35a0fa142c4"}'></script>
   <!-- End Cloudflare Web Analytics -->
 
 </body>

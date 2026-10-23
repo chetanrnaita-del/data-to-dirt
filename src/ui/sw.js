@@ -1,4 +1,4 @@
-const CACHE_NAME = 'data-to-dirt-v30';
+const CACHE_NAME = 'data-to-dirt-v31';
 const ASSETS = [
   '/',
   '/index.html',
