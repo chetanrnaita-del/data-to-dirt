@@ -35,7 +35,7 @@ class AnalyticsDashboardView {
     this.unmount();
     if (this.autoRefresh) {
       this.refreshTimer = setInterval(() => {
-        if (this.container && document.body.contains(this.container)) {
+        if (document.getElementById("an-cities-tbody")) {
           this.fetchData(true);
         } else {
           this.unmount();
@@ -47,7 +47,7 @@ class AnalyticsDashboardView {
   async fetchData(silent = false) {
     try {
       const res = await fetch("/api/analytics/dashboard");
-      if (!res.ok) throw new Error("Failed to load analytics dashboard");
+      if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load analytics dashboard`);
       this.data = await res.json();
       this.updateView();
       if (!silent && this.audioSynth) {
@@ -55,19 +55,30 @@ class AnalyticsDashboardView {
       }
     } catch (err) {
       console.warn("[Analytics] Fetch failed:", err);
+      const tbody = document.getElementById("an-cities-tbody");
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 24px; color: var(--c-danger-bright);">
+              ⚠️ Failed to load telemetry data: ${err.message}. 
+              <button class="retro-btn retro-btn-wood retro-btn-sm" onclick="window.AnalyticsView.fetchData()" style="margin-left: 8px;">Retry 🔄</button>
+            </td>
+          </tr>
+        `;
+      }
     }
   }
 
   renderLayout() {
     this.container.innerHTML = `
-      <div class="analytics-dashboard" style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden; padding: 4px;">
+      <div class="analytics-dashboard" style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; box-sizing: border-box;">
 
         <!-- Top Header & Controls Banner -->
-        <div class="retro-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px;">
+        <div class="retro-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; flex-wrap: wrap; gap: 10px;">
           <div>
-            <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px;">
+            <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span>📊 Global City Telemetry & Environmental Analytics</span>
-              <span class="retro-tag retro-tag-leaf" style="font-size: 10px;">⚙️ ADMIN ONLY ACCESS</span>
+              <span class="retro-tag retro-tag-leaf" style="font-size: 10px;">GLOBAL METRICS</span>
               <span class="retro-tag retro-tag-clean" id="an-live-badge" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
                 <span class="pulse-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2ecc71;"></span>
                 LIVE TRACKING ACTIVE
@@ -78,7 +89,7 @@ class AnalyticsDashboardView {
               Track real-time participant cities, device form factors, active scans, and cumulative carbon savings.
             </div>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-an-autorefresh" title="Toggle Auto-Refresh">
               ⏱️ Auto-Refresh: ON
             </button>
@@ -98,7 +109,7 @@ class AnalyticsDashboardView {
         </div>
 
         <!-- Master KPI Strip (5 Global Impact Metrics) -->
-        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
           <div class="retro-card" style="padding: 8px 12px;">
             <div style="font-size: 10px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold;">🌍 Tracked Cities</div>
             <div id="an-kpi-cities" style="font-size: 19px; font-weight: bold; color: var(--c-wood-border); margin-top: 2px;">--</div>
@@ -127,12 +138,12 @@ class AnalyticsDashboardView {
         </div>
 
         <!-- Master Two-Column Operational Layout -->
-        <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; flex: 1; overflow: hidden;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; flex: 1;">
 
           <!-- Left Column: City Geographic Leaderboard & Telemetry Grid -->
-          <div class="retro-card" style="display: flex; flex-direction: column; gap: 10px; overflow: hidden; padding: 12px;">
+          <div class="retro-card" style="display: flex; flex-direction: column; gap: 10px; padding: 12px;">
             
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
               <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border); display: flex; align-items: center; gap: 6px;">
                 <span>🏙️ Participant Cities Telemetry Matrix</span>
               </div>
@@ -143,7 +154,7 @@ class AnalyticsDashboardView {
             </div>
 
             <!-- Table Container -->
-            <div style="flex: 1; overflow-y: auto; border: 1px solid var(--c-parchment-border); border-radius: 4px; background: #fff;">
+            <div style="overflow-x: auto; max-height: 420px; border: 1px solid var(--c-parchment-border); border-radius: 4px; background: #fff;">
               <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
                 <thead style="position: sticky; top: 0; background: var(--c-parchment-dark); color: var(--c-wood-border); font-weight: bold; z-index: 2; border-bottom: 2px solid var(--c-parchment-border);">
                   <tr>
@@ -168,18 +179,18 @@ class AnalyticsDashboardView {
             </div>
 
             <!-- Telemetry Footer Note -->
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: var(--c-ink-light); padding-top: 4px;">
-              <span>🔒 Zero personal file content or PII stored. Only aggregated city coordinates and carbon stats.</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: var(--c-ink-light); padding-top: 4px; flex-wrap: wrap; gap: 4px;">
+              <span>🔒 Zero personal file content or PII stored. Aggregated city and carbon stats.</span>
               <span id="an-server-time">Server Sync: --</span>
             </div>
 
           </div>
 
           <!-- Right Column: Live Event Stream & Distribution Meters -->
-          <div style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 4px;">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
 
             <!-- Real-Time Rolling Event Stream -->
-            <div class="retro-card" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px;">
+            <div class="retro-card" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 4px;">
                 <div style="font-weight: bold; font-size: 13px; color: var(--c-wood-border); display: flex; align-items: center; gap: 6px;">
                   <span>⚡ Live Activity Telemetry Feed</span>
@@ -187,7 +198,7 @@ class AnalyticsDashboardView {
                 <span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 2px 6px;">ROLLING</span>
               </div>
 
-              <div id="an-event-stream" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px;">
+              <div id="an-event-stream" style="overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px; max-height: 220px;">
                 <div style="text-align: center; padding: 16px; font-size: 11px; color: var(--c-ink-muted);">
                   Listening for real-time participant events...
                 </div>
@@ -257,7 +268,10 @@ class AnalyticsDashboardView {
     const btnReturnAdmin = document.getElementById("btn-an-return-admin");
     if (btnReturnAdmin) {
       btnReturnAdmin.addEventListener("click", () => {
-        if (window.appInstance) {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        if (window.DataToDirt) {
+          window.DataToDirt.switchRole("admin");
+        } else if (window.appInstance) {
           window.appInstance.switchRole("admin");
         }
       });
@@ -266,7 +280,10 @@ class AnalyticsDashboardView {
     const btnReturnStudent = document.getElementById("btn-an-return-student");
     if (btnReturnStudent) {
       btnReturnStudent.addEventListener("click", () => {
-        if (window.appInstance) {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        if (window.DataToDirt) {
+          window.DataToDirt.switchRole("student");
+        } else if (window.appInstance) {
           window.appInstance.switchRole("student");
         }
       });
@@ -365,35 +382,41 @@ class AnalyticsDashboardView {
     }
 
     tbody.innerHTML = cities.map((c, idx) => {
-      const cleanedGb = (c.bytes_cleaned / (1024 ** 3)).toFixed(2);
-      const isLive = c.active_users > 0;
+      const bytes = Number(c.bytes_cleaned || 0);
+      const cleanedGb = (bytes / (1024 ** 3)).toFixed(2);
+      const isLive = Number(c.active_users || 0) > 0;
       const rankBadge = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
-      const latLon = (c.lat && c.lon) ? `${c.lat.toFixed(2)}°, ${c.lon.toFixed(2)}°` : "GPS Auto";
+      const latLon = (c.lat != null && c.lon != null && (c.lat !== 0 || c.lon !== 0))
+        ? `${Number(c.lat).toFixed(2)}°, ${Number(c.lon).toFixed(2)}°`
+        : "GPS Auto";
+      const scans = Number(c.scans || 0);
+      const visitors = Number(c.visitors || 0);
+      const co2 = Number(c.co2_avoided_kg || 0).toFixed(2);
 
       return `
-        <tr style="border-bottom: 1px solid var(--c-parchment-border); transition: background 0.15s ease;" onmouseover="this.style.background='#faf8f0'" onmouseout="this.style.background='transparent'">
+        <tr style="border-bottom: 1px solid var(--c-parchment-border); transition: background 0.15s ease;">
           <td style="padding: 8px 10px; font-weight: bold; color: var(--c-wood-border);">${rankBadge}</td>
           <td style="padding: 8px 10px;">
             <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
               <span>${c.flag || "🌐"}</span>
-              <span>${c.city}</span>
+              <span>${c.city || "Global"}</span>
               <span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 1px 5px;">${c.country_code || "XX"}</span>
             </div>
             <div style="font-size: 10px; color: var(--c-ink-light); margin-top: 2px;">
-              ${c.region ? c.region + ", " : ""}${c.country}
+              ${c.region ? c.region + ", " : ""}${c.country || "Global"}
             </div>
           </td>
           <td style="padding: 8px 10px; font-family: monospace; font-size: 11px; color: var(--c-ink-muted);">${latLon}</td>
           <td style="padding: 8px 10px;">
             <div style="display: flex; align-items: center; gap: 4px; font-weight: bold; color: ${isLive ? '#27ae60' : 'var(--c-ink-muted)'};">
               <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${isLive ? '#2ecc71' : '#bdc3c7'};"></span>
-              <span>${c.active_users} online</span>
+              <span>${c.active_users || 0} online</span>
             </div>
-            <div style="font-size: 9px; color: var(--c-ink-light);">${c.visitors} total visits</div>
+            <div style="font-size: 9px; color: var(--c-ink-light);">${visitors} total visits</div>
           </td>
-          <td style="padding: 8px 10px; font-weight: bold; color: #8e44ad;">${c.scans}</td>
+          <td style="padding: 8px 10px; font-weight: bold; color: #8e44ad;">${scans}</td>
           <td style="padding: 8px 10px; font-weight: bold; color: var(--c-eco-leaf);">${cleanedGb} GB</td>
-          <td style="padding: 8px 10px; font-weight: bold; color: var(--c-forest-deep);">${(c.co2_avoided_kg || 0).toFixed(2)} kg</td>
+          <td style="padding: 8px 10px; font-weight: bold; color: var(--c-forest-deep);">${co2} kg</td>
           <td style="padding: 8px 10px;">
             <span class="retro-tag ${isLive ? 'retro-tag-clean' : 'retro-tag-wood'}" style="font-size: 9px; padding: 2px 6px;">
               ${isLive ? 'LIVE' : 'IDLE'}
@@ -415,7 +438,8 @@ class AnalyticsDashboardView {
     }
 
     stream.innerHTML = events.slice(0, 15).map(evt => {
-      const timeStr = evt.timestamp ? evt.timestamp.split(" ")[1] || evt.timestamp : "Just now";
+      const ts = evt.timestamp ? String(evt.timestamp) : "";
+      const timeStr = ts.includes(" ") ? ts.split(" ")[1] : (ts || "Just now");
       return `
         <div class="retro-inset" style="padding: 6px 8px; font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -427,10 +451,10 @@ class AnalyticsDashboardView {
             <span style="font-size: 9px; color: var(--c-ink-light);">${timeStr}</span>
           </div>
           <div style="color: var(--c-ink); font-size: 10.5px; line-height: 1.3;">
-            ${evt.action}
+            ${evt.action || "Activity"}
           </div>
           <div style="font-size: 9px; color: var(--c-ink-light); display: flex; justify-content: space-between;">
-            <span>ID: ${evt.user_id}</span>
+            <span>ID: ${evt.user_id || "visitor"}</span>
             <span>${evt.device_type || "Desktop"}</span>
           </div>
         </div>

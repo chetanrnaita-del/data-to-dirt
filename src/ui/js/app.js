@@ -56,16 +56,10 @@ class DataToDirtApp {
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
 
-    // Direct URL navigation support for /analytics and /admin (Admin Restricted)
+    // Direct URL navigation support for /analytics and /admin
     if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
-      const savedRole = localStorage.getItem("d2d_role");
-      if (savedRole === "admin") {
-        this.switchRole("analytics");
-        return;
-      } else {
-        this.openRolePinModal("admin", "analytics");
-        return;
-      }
+      this.switchRole("analytics");
+      return;
     }
 
     if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
@@ -298,14 +292,6 @@ class DataToDirtApp {
     if (role === "admin") {
       this.authenticatedRole = "admin";
       localStorage.setItem("d2d_role", "admin");
-    }
-
-    if (role === "analytics") {
-      const isPrivilegedAdmin = (this.authenticatedRole === "admin") || (localStorage.getItem("d2d_role") === "admin");
-      if (!isPrivilegedAdmin) {
-        this.openRolePinModal("admin", "analytics");
-        return;
-      }
     }
 
     this.currentRole = role;
