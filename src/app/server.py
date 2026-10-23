@@ -1893,13 +1893,17 @@ def create_flask_app():
                 user_id = "admin"
             if not raw_username:
                 raw_username = "Administrator"
-            pin_str = str(pin or "").strip().lower()
-            if not pin_str or pin_str in ["admin", "admin2026", "admin123", "2026", "1234", "code", "password", "root"]:
+            pin_str = str(pin or "").strip()
+            if not pin_str:
+                return jsonify({"status": "error", "message": "Administrator passcode is required."}), 401
+            if pin_str.lower() in ["admin", "admin2026", "admin123", "2026", "1234", "code", "password", "root"]:
                 pin = "admin2026"
 
         if role == "teacher":
-            pin_str = str(pin or "").strip().lower()
-            if not pin_str or pin_str in ["teacher", "teacher123", "1234", "123", "code"]:
+            pin_str = str(pin or "").strip()
+            if not pin_str:
+                return jsonify({"status": "error", "message": "Teacher password is required."}), 401
+            if pin_str.lower() in ["teacher", "teacher123", "1234", "123", "code"]:
                 pin = "teacher123"
             raw_t = (user_id or "teacher_bio101").strip().lower()
             for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
@@ -1912,6 +1916,9 @@ def create_flask_app():
                 user_id = f"teacher_{user_id}"
 
         if role == "student":
+            pin_str = str(pin or "").strip()
+            if not pin_str:
+                return jsonify({"status": "error", "message": "Class code is required."}), 401
             matched = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == raw_username.lower()), None)
             if not matched and firestore_db.is_connected:
                 try:
@@ -1924,8 +1931,6 @@ def create_flask_app():
             if matched:
                 user_id = matched.get("student_id", raw_username)
                 raw_username = matched.get("name", user_id)
-                if not pin:
-                    pin = matched.get("class_code", "")
             elif pin and not raw_username.startswith("STU-"):
                 user_id = f"{pin.lower()}_{user_id}"
 

@@ -131,22 +131,23 @@ class LoginView {
           inputUser.placeholder = "Enter Student ID (e.g. STU-BIO-001) or Name";
           labelPass.textContent = "Class Code";
           inputPass.placeholder = "Enter class code (e.g., bio101)";
+          inputPass.value = "";
           if (teacherPills) teacherPills.style.display = 'none';
           if (adminPills) adminPills.style.display = 'none';
         } else if (this.selectedRole === 'teacher') {
           labelUser.textContent = "Teacher Account / Class Code";
           inputUser.placeholder = "e.g. teacher_bio101 or bio101";
           labelPass.textContent = "Password";
-          inputPass.placeholder = "teacher123";
+          inputPass.placeholder = "Enter teacher password (e.g. teacher123)";
+          inputPass.value = "";
           if (teacherPills) teacherPills.style.display = 'block';
           if (adminPills) adminPills.style.display = 'none';
         } else {
           labelUser.textContent = "Admin ID";
           inputUser.placeholder = "admin";
-          inputUser.value = inputUser.value.trim() || "admin";
           labelPass.textContent = "Administrator Passcode";
-          inputPass.placeholder = "admin2026";
-          inputPass.value = inputPass.value.trim() || "admin2026";
+          inputPass.placeholder = "Enter passcode (e.g. admin2026)";
+          inputPass.value = "";
           if (teacherPills) teacherPills.style.display = 'none';
           if (adminPills) adminPills.style.display = 'block';
         }
@@ -170,16 +171,48 @@ class LoginView {
     const btnProceed = container.querySelector('#btn-proceed');
     const errorEl = container.querySelector('#login-error');
     
+    const handleEnter = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnProceed.click();
+      }
+    };
+    inputUser.addEventListener("keydown", handleEnter);
+    inputPass.addEventListener("keydown", handleEnter);
+    
     btnProceed.addEventListener('click', async () => {
-      const user = inputUser.value.trim() || (this.selectedRole === 'admin' ? 'admin' : (this.selectedRole === 'teacher' ? 'teacher_bio101' : 'Student'));
-      const pass = inputPass.value.trim() || (this.selectedRole === 'admin' ? 'admin2026' : (this.selectedRole === 'teacher' ? 'teacher123' : 'bio101'));
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+
+      const user = inputUser.value.trim();
+      const pass = inputPass.value.trim();
       
       if (!user) {
-        errorEl.textContent = "Please enter your ID/Name.";
+        errorEl.textContent = this.selectedRole === 'student' 
+          ? "Please enter your Student ID or Name." 
+          : (this.selectedRole === 'teacher' 
+            ? "Please enter your Teacher Account or Class Code." 
+            : "Please enter your Admin ID.");
         errorEl.style.display = "block";
+        inputUser.focus();
+        return;
+      }
+
+      if (!pass) {
+        errorEl.textContent = this.selectedRole === 'student' 
+          ? "Please enter your Class Code to proceed." 
+          : (this.selectedRole === 'teacher' 
+            ? "Please enter your teacher password to proceed." 
+            : "Please enter the administrator passcode to proceed.");
+        errorEl.style.display = "block";
+        inputPass.focus();
         return;
       }
       
+      btnProceed.disabled = true;
+      const originalText = btnProceed.innerHTML;
+      btnProceed.textContent = "Verifying...";
+
       try {
         const res = await fetch("/api/auth/login", {
           method: "POST",
@@ -209,11 +242,15 @@ class LoginView {
         } else {
           errorEl.textContent = data.message || "Invalid credentials.";
           errorEl.style.display = "block";
+          inputPass.focus();
         }
       } catch (e) {
         console.error("Login exception:", e);
         errorEl.textContent = `Error: ${e.message}`;
         errorEl.style.display = "block";
+      } finally {
+        btnProceed.disabled = false;
+        btnProceed.innerHTML = originalText;
       }
     });
 
