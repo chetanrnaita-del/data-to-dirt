@@ -468,7 +468,7 @@ class StudentDashboardView {
                 const pickedFiles = docs.map((d) => ({
                   id: d[google.picker.Document.ID],
                   name: d[google.picker.Document.NAME],
-                  sizeBytes: d[google.picker.Document.SIZE_BYTES] || (25 * 1024 * 1024),
+                  sizeBytes: Number(d[google.picker.Document.SIZE_BYTES] || d.sizeBytes || d.fileSize || 0),
                   mimeType: d[google.picker.Document.MIME_TYPE],
                   lastEditedUtc: d[google.picker.Document.LAST_EDITED_UTC] || Date.now()
                 }));
