@@ -204,14 +204,18 @@ class StudentDashboardView {
 
     // Auto-scan on return from successful Google OAuth consent
     const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+    if (tokenFromUrl) {
+      localStorage.setItem("d2d_google_access_token", tokenFromUrl);
+    }
     if (urlParams.get("oauth") === "success") {
       window.history.replaceState({}, document.title, window.location.pathname);
       const banner = document.getElementById("scanner-status-banner");
       if (banner) {
-        banner.innerHTML = `<span>⏳ Google Drive connected! Auto-scanning entire system...</span>`;
+        banner.innerHTML = `<span>⏳ Google Drive connected! Scanning system...</span>`;
       }
       setTimeout(() => {
-        this.executeScan(null, true, "auto_device");
+        this.executeScan(null, true, "auto_device", [], tokenFromUrl || localStorage.getItem("d2d_google_access_token"));
       }, 350);
     }
 
@@ -664,8 +668,9 @@ class StudentDashboardView {
       if (scanType === "browser_files" || scanType === "picker_files") {
         payload.files = fileList;
       }
-      if (oauthToken) {
-        payload.oauth_token = oauthToken;
+      const effectiveOAuth = oauthToken || localStorage.getItem("d2d_google_access_token");
+      if (effectiveOAuth) {
+        payload.oauth_token = effectiveOAuth;
       }
       
       const response = await fetch("/api/scan/request", {
@@ -682,6 +687,21 @@ class StudentDashboardView {
       }
 
       if (response.status === 401 && res.status === "needs_auth") {
+        const lastRedirect = sessionStorage.getItem("d2d_last_oauth_redirect");
+        const now = Date.now();
+        if (lastRedirect && (now - Number(lastRedirect)) < 15000) {
+          console.warn("[!] Prevented OAuth redirect loop");
+          sessionStorage.removeItem("d2d_last_oauth_redirect");
+          const errorMsg = "Google Drive authorization was not granted or expired. Click '📱 Device' to select files, or try '☁️ Drive' again.";
+          if (banner) {
+            banner.style.borderColor = "var(--c-danger-red)";
+            banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
+            banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">⚠️ ${errorMsg}</span>`;
+          }
+          this.renderScannedFiles(errorMsg);
+          return;
+        }
+        sessionStorage.setItem("d2d_last_oauth_redirect", String(now));
         window.location.href = "/auth/google/login";
         return;
       }

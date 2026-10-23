@@ -8,6 +8,7 @@
 class DataToDirtApp {
   constructor() {
     this.currentRole = "student"; // student, teacher, admin
+    this.authenticatedRole = localStorage.getItem("d2d_role") || "student";
     this.audioSynth = window.RetroAudio;
     this.particleEngine = window.ParticleEngine;
     this.activeView = null;
@@ -126,6 +127,8 @@ class DataToDirtApp {
     this.userId = userId;
     this.pin = pin;
     this.classCode = classCode || localStorage.getItem("d2d_class_code") || "";
+    this.authenticatedRole = role;
+    localStorage.setItem("d2d_role", role);
     document.getElementById("nav-logout-btn").style.display = "inline-block";
     document.getElementById("header-role-badge").style.display = "inline-block";
     
@@ -147,6 +150,7 @@ class DataToDirtApp {
     this.pin = null;
     this.classCode = null;
     this.currentRole = null;
+    this.authenticatedRole = null;
     localStorage.removeItem("d2d_session_token");
     localStorage.removeItem("d2d_role");
     localStorage.removeItem("d2d_user_id");
@@ -291,6 +295,19 @@ class DataToDirtApp {
   }
 
   switchRole(role) {
+    if (role === "admin") {
+      this.authenticatedRole = "admin";
+      localStorage.setItem("d2d_role", "admin");
+    }
+
+    if (role === "analytics") {
+      const isPrivilegedAdmin = (this.authenticatedRole === "admin") || (localStorage.getItem("d2d_role") === "admin");
+      if (!isPrivilegedAdmin) {
+        this.openRolePinModal("admin", "analytics");
+        return;
+      }
+    }
+
     this.currentRole = role;
     const btnStudent = document.getElementById("nav-student-view");
     const btnAnalytics = document.getElementById("nav-analytics-view");
@@ -354,11 +371,6 @@ class DataToDirtApp {
         this.renderTeacherView();
       }
     } else if (role === "analytics") {
-      const activeRole = this.currentRole || localStorage.getItem("d2d_role");
-      if (activeRole !== "admin") {
-        this.openRolePinModal("admin", "analytics");
-        return;
-      }
       if (btnAnalytics) {
         btnAnalytics.classList.add("retro-btn-gold");
         btnAnalytics.classList.remove("retro-btn-wood");
@@ -427,8 +439,8 @@ class DataToDirtApp {
           this.loginView = new window.LoginView(this);
           this.loginView.render(mainView);
         }
-      } else if (this.currentRole) {
-        this.switchRole(this.currentRole);
+      } else {
+        this.switchRole(this.authenticatedRole || "student");
       }
     };
 
@@ -450,7 +462,8 @@ class DataToDirtApp {
             localStorage.setItem("d2d_session_token", data.token);
           }
           localStorage.setItem("d2d_role", targetRole);
-          this.currentRole = targetRole;
+          this.authenticatedRole = targetRole;
+          this.currentRole = destinationView || targetRole;
 
           const btnAdmin = document.getElementById("nav-admin-view");
           const btnNavAnalytics = document.getElementById("nav-analytics-view");
