@@ -81,13 +81,10 @@ class LoginView {
             Proceed →
           </button>
 
-          <!-- PWA Install & Global Analytics on Login -->
+          <!-- PWA Install Option on Login -->
           <div style="margin-top: 18px; text-align: center; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
             <button id="btn-login-install" type="button" style="background: #f8f9fa; border: 1.5px solid #dcdde1; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #2f3640; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
               <span>📲</span> Install App
-            </button>
-            <button id="btn-login-analytics" type="button" style="background: linear-gradient(135deg, #0984e3, #74b9ff); border: none; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(9, 132, 227, 0.3);">
-              <span>📊</span> Global Analytics
             </button>
           </div>
 
@@ -259,15 +256,6 @@ class LoginView {
       btnInstall.addEventListener('click', () => {
         if (window.DataToDirt) {
           window.DataToDirt.promptInstall();
-        }
-      });
-    }
-
-    const btnAnalytics = container.querySelector('#btn-login-analytics');
-    if (btnAnalytics) {
-      btnAnalytics.addEventListener('click', () => {
-        if (window.DataToDirt) {
-          window.DataToDirt.switchRole('analytics');
         }
       });
     }

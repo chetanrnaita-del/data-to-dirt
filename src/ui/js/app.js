@@ -55,10 +55,12 @@ class DataToDirtApp {
       localStorage.setItem("d2d_google_access_token", tokenFromUrl);
     }
 
-    // Direct URL navigation support for /analytics
+    // Direct URL navigation support for /analytics (Admin only)
     if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
-      this.switchRole("analytics");
-      return;
+      if (savedRole === "admin" && existingToken) {
+        this.switchRole("analytics");
+        return;
+      }
     }
 
     // Check if user is already logged in
@@ -288,21 +290,14 @@ class DataToDirtApp {
     });
 
     if (!this.authenticatedRole) {
-      // Unauthenticated state (Login screen or public analytics)
+      // Unauthenticated state: Hide Analytics button completely
       if (userRoleBadge) userRoleBadge.style.display = "none";
-      if (btnAnalytics) {
-        btnAnalytics.style.display = "inline-block";
-        if (currentRole === "analytics") {
-          btnAnalytics.classList.add("retro-btn-gold");
-          btnAnalytics.classList.remove("retro-btn-wood");
-        }
-      }
+      if (btnAnalytics) btnAnalytics.style.display = "none";
       return;
     }
 
     // Authenticated state
     if (btnLogout) btnLogout.style.display = "inline-block";
-    if (btnAnalytics) btnAnalytics.style.display = "inline-block";
     if (userRoleBadge) {
       userRoleBadge.style.display = "inline-block";
       userRoleBadge.style.cursor = "default";
@@ -310,23 +305,26 @@ class DataToDirtApp {
     }
 
     if (this.authenticatedRole === "student") {
-      // Student: Only Student View and Analytics View. NEVER Teacher or Admin.
+      // Student: Only Student View. Analytics is strictly restricted to Admin.
       if (btnStudent) btnStudent.style.display = "inline-block";
+      if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
         userRoleBadge.textContent = "🎒 STUDENT";
         userRoleBadge.style.background = "linear-gradient(135deg, #6c5ce7, #a29bfe)";
       }
     } else if (this.authenticatedRole === "teacher") {
-      // Teacher: Only Teacher View and Analytics View. NEVER Student view or Admin.
+      // Teacher: Only Teacher View. Analytics is strictly restricted to Admin.
       if (btnTeacher) btnTeacher.style.display = "inline-block";
+      if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
         userRoleBadge.textContent = "📋 TEACHER";
         userRoleBadge.style.background = "linear-gradient(135deg, #00b894, #55efc4)";
       }
     } else if (this.authenticatedRole === "admin") {
-      // Admin: Admin Console, Teacher Queue, and Analytics View. NEVER Student.
+      // Admin: Admin Console, Teacher Queue, and Analytics View ONLY for Admin!
       if (btnAdmin) btnAdmin.style.display = "inline-block";
       if (btnTeacher) btnTeacher.style.display = "inline-block";
+      if (btnAnalytics) btnAnalytics.style.display = "inline-block";
       if (userRoleBadge) {
         userRoleBadge.textContent = "⚙️ ADMIN";
         userRoleBadge.style.background = "linear-gradient(135deg, #e17055, #fab1a0)";
@@ -350,26 +348,32 @@ class DataToDirtApp {
   }
 
   switchRole(role) {
-    // If not authenticated, only allowed to view analytics or login
-    if (!this.authenticatedRole) {
-      if (role !== "analytics") {
-        this.updateNavigation(null);
-        const mainView = document.getElementById("view-content");
-        if (mainView) {
-          this.loginView = new window.LoginView(this);
-          this.loginView.render(mainView);
-        }
+    // Analytics is strictly restricted to administrator role
+    if (role === "analytics") {
+      if (this.authenticatedRole !== "admin") {
+        console.warn("[Security] Unauthorized attempt to access Analytics view by:", this.authenticatedRole || "unauthenticated");
         return;
       }
+    }
+
+    // If not authenticated, only allowed to view login
+    if (!this.authenticatedRole) {
+      this.updateNavigation(null);
+      const mainView = document.getElementById("view-content");
+      if (mainView) {
+        this.loginView = new window.LoginView(this);
+        this.loginView.render(mainView);
+      }
+      return;
     } else {
       // Security role gate: verify authorization against authenticatedRole
       if (this.authenticatedRole === "student") {
-        if (role !== "student" && role !== "analytics") {
+        if (role !== "student") {
           console.warn("[Security] Student attempted unauthorized role switch to:", role);
           return;
         }
       } else if (this.authenticatedRole === "teacher") {
-        if (role !== "teacher" && role !== "analytics") {
+        if (role !== "teacher") {
           console.warn("[Security] Teacher attempted unauthorized role switch to:", role);
           return;
         }
