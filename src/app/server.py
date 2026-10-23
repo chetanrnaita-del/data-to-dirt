@@ -1091,14 +1091,20 @@ def create_flask_app():
                     if wp.exists() and wp.is_dir() and wp not in [c[1] for c in candidate_dirs]:
                         candidate_dirs.append((f"Windows ({win_f})", wp))
 
-            # If no local candidate dirs exist and no Google Drive token (e.g. running on cloud container),
-            # prompt user seamlessly to connect their Google Drive once.
-            if len(candidate_dirs) == 0 and not access_token and not os.environ.get("TEST_MODE"):
+            if len(candidate_dirs) == 0:
+                state["scanner"]["files"] = []
+                state["scanner"]["current_folder"] = "Local Device"
+                state["scanner"]["state"] = "COMPLETED"
+                state["scanner"]["error"] = None
+                save_state(state)
                 return jsonify({
-                    "status": "needs_auth",
-                    "auth_url": "/auth/google/login",
-                    "error": "Google Drive authentication required to auto-scan your cloud drive."
-                }), 401
+                    "status": "completed",
+                    "folder": "Local Device",
+                    "files_found": 0,
+                    "total_scanned": 0,
+                    "files": [],
+                    "message": "Zero local device folders found on server path. Please use the browser Folder or File selector to scan device files."
+                })
 
             now_epoch = time.time()
             all_files = []
@@ -1107,112 +1113,6 @@ def create_flask_app():
             total_scanned_count = 0
             file_idx = 0
             MAX_FILES_TO_SCAN = 50000
-
-            # 1. Auto-Scan Live Google Drive if token available
-            if access_token:
-                try:
-                    query = urllib.parse.quote("'me' in owners and trashed=false")
-                    page_token = None
-                    drive_items = []
-                    drive_by_md5 = {}
-                    while True:
-                        u = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime)&pageSize=100"
-                        if page_token:
-                            u += f"&pageToken={page_token}"
-                        req = urllib.request.Request(u)
-                        req.add_header("Authorization", f"Bearer {access_token}")
-                        req.add_header("User-Agent", "DataToDirt/1.1")
-                        with urllib.request.urlopen(req, timeout=8, context=get_ssl_context()) as resp:
-                            f_data = json.loads(resp.read().decode())
-                            for f in f_data.get("files", []):
-                                mime = f.get("mimeType", "")
-                                if mime == "application/vnd.google-apps.folder":
-                                    continue
-                                total_scanned_count += 1
-                                sz_raw = f.get("size") or f.get("quotaBytesUsed") or 0
-                                try:
-                                    sz = int(sz_raw)
-                                except (ValueError, TypeError):
-                                    sz = 0
-                                if sz <= 0:
-                                    sz = estimate_file_size_by_name(f.get("name", "Document"), mime)
-                                md5 = f.get("md5Checksum", "")
-                                mtime_str = f.get("modifiedTime")
-                                mtime = now_epoch
-                                if mtime_str:
-                                    try:
-                                        dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                                        mtime = dt.replace(tzinfo=timezone.utc).timestamp()
-                                    except Exception:
-                                        try:
-                                            dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%SZ")
-                                            mtime = dt.replace(tzinfo=timezone.utc).timestamp()
-                                        except Exception:
-                                            mtime = now_epoch
-                                item = {
-                                    "id": f["id"],
-                                    "name": f["name"],
-                                    "size": sz,
-                                    "mtime": mtime,
-                                    "md5": md5,
-                                    "mime": mime
-                                }
-                                drive_items.append(item)
-                                if md5:
-                                    drive_by_md5.setdefault(md5, []).append(item)
-                            page_token = f_data.get("nextPageToken")
-                            if not page_token or len(drive_items) >= 2000:
-                                break
-
-                    for d_item in drive_items:
-                        age_days = max(0, int((now_epoch - d_item["mtime"]) / 86400))
-                        sz = d_item["size"]
-                        fn = d_item["name"]
-                        reasons = []
-                        if age_days > 60:
-                            reasons.append(f"Stale relic ({age_days}d)")
-                        elif age_days > 30:
-                            reasons.append(f"Inactive cloud file ({age_days}d)")
-                        if sz >= 15 * 1024 * 1024:
-                            reasons.append(f"Heavy file bloat ({format_bytes(sz)})")
-                        if fn.lower().endswith(('.dmg', '.iso', '.pkg', '.zip', '.tar.gz', '.tar', '.rar', '.7z', '.gz', '.tgz', '.exe', '.msi', '.apk')):
-                            reasons.append("Archive / installer bloat")
-                        if (fn.lower().endswith(('.mov', '.mp4', '.avi', '.mkv', '.m4v', '.webm', '.wav', '.aiff', '.zoom')) or "video" in d_item.get("mime", "").lower()) and (sz >= 10 * 1024 * 1024 or age_days > 30):
-                            reasons.append("Large media capture")
-                        if "copy" in fn.lower() or "(1)" in fn or "(2)" in fn or "_copy" in fn.lower():
-                            reasons.append("Potential duplicate copy")
-                        elif d_item["md5"] and len(drive_by_md5[d_item["md5"]]) > 1:
-                            if d_item["id"] != drive_by_md5[d_item["md5"]][0]["id"]:
-                                reasons.append("Duplicate content match across cloud")
-                        if not reasons:
-                            reasons.append("Candidate for cloud waste reduction & green audit")
-
-                        if reasons:
-                            file_idx += 1
-                            reason_str = " | ".join(reasons)
-                            cat = "heavy_media" if sz >= 50 * 1024 * 1024 else ("duplicate" if "Duplicate" in reason_str else "transient_trash")
-                            all_files.append({
-                                "file_id": d_item["id"],
-                                "file_name": f"[Google Drive] {fn}",
-                                "raw_file_name": fn,
-                                "file_path": f"Google Drive/{fn}",
-                                "absolute_path": f"Google Drive/{fn}",
-                                "size_bytes": sz,
-                                "size_formatted": format_bytes(sz),
-                                "last_modified_epoch_s": d_item["mtime"],
-                                "last_accessed_epoch_s": d_item["mtime"],
-                                "created_epoch_s": d_item["mtime"],
-                                "age_days": age_days,
-                                "is_confidential": False,
-                                "is_dark_data_candidate": True,
-                                "dark_data_reason": reason_str,
-                                "category": cat,
-                                "dark_data_tag": reason_str,
-                                "storage_source": "Google Drive",
-                                "is_drive": True
-                            })
-                except Exception as d_err:
-                    print(f"[!] Auto-scan Google Drive notice: {d_err}")
 
             skip_dirs = {
                 "node_modules", ".git", ".venv", "venv", "__pycache__", 

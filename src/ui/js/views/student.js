@@ -247,7 +247,19 @@ class StudentDashboardView {
         if (window.RetroAudio) window.RetroAudio.playBlip();
         btnScanAutoDevice.disabled = true;
         try {
-          await this.executeScan(null, true, "auto_device");
+          const isLocalhost = window.location.hostname === "localhost" || 
+                              window.location.hostname === "127.0.0.1" || 
+                              window.location.hostname === "0.0.0.0";
+          if (isLocalhost) {
+            await this.executeScan(null, true, "auto_device");
+          } else {
+            // On remote web deployment (Render), trigger device folder/file selector directly
+            if (isMobileOrTablet) {
+              document.getElementById("device-file-input")?.click();
+            } else {
+              document.getElementById("device-folder-input")?.click();
+            }
+          }
         } finally {
           btnScanAutoDevice.disabled = false;
         }
@@ -542,6 +554,9 @@ class StudentDashboardView {
 
   showDeviceScanModal() {
     document.getElementById("modal-device-scan")?.remove();
+    const isLocalhost = window.location.hostname === "localhost" || 
+                        window.location.hostname === "127.0.0.1" || 
+                        window.location.hostname === "0.0.0.0";
     const modal = document.createElement("div");
     modal.className = "retro-modal-backdrop";
     modal.id = "modal-device-scan";
@@ -549,20 +564,20 @@ class StudentDashboardView {
     modal.innerHTML = `
       <div class="retro-modal" style="max-width: 440px;">
         <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
-          📱 Scan Device & Cloud Sync Storage
+          📱 Scan Local Device Storage
         </div>
         <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
-          Choose how you want to scan your device:
+          Choose how you want to scan files on your device:
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <button class="retro-btn retro-btn-gold" id="btn-device-auto-all" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>🚀 1-Click System Scan (Disk, Downloads, OneDrive, iCloud)</strong>
+            <strong>${isLocalhost ? "🚀 1-Click System Scan (Downloads, OneDrive, iCloud)" : "📂 Scan Entire Folder (All Files & Subfolders)"}</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Automatically scans all connected disk and cloud sync folders without picking folders.
+              ${isLocalhost ? "Automatically scans connected disk and cloud sync folders on this machine." : "Select Downloads, Desktop, or any folder on your device to scan all files within it."}
             </div>
           </button>
           <button class="retro-btn retro-btn-green" id="btn-device-pick-folder" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>📂 Select Specific Folder</strong>
+            <strong>📂 Choose Specific Folder</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
               Choose any folder on your computer to scan.
             </div>
@@ -586,7 +601,16 @@ class StudentDashboardView {
     modal.querySelector("#btn-device-auto-all")?.addEventListener("click", async () => {
       if (window.RetroAudio) window.RetroAudio.playBlip();
       dismiss();
-      await this.executeScan(null, true, "auto_device");
+      if (isLocalhost) {
+        await this.executeScan(null, true, "auto_device");
+      } else {
+        const folderInput = document.getElementById("device-folder-input");
+        if (folderInput) {
+          folderInput.click();
+        } else {
+          document.getElementById("device-file-input")?.click();
+        }
+      }
     });
 
     modal.querySelector("#btn-device-pick-folder")?.addEventListener("click", () => {
@@ -698,9 +722,13 @@ class StudentDashboardView {
       if (scanType === "browser_files" || scanType === "picker_files") {
         payload.files = fileList;
       }
-      const effectiveOAuth = oauthToken || localStorage.getItem("d2d_google_access_token");
-      if (effectiveOAuth) {
-        payload.oauth_token = effectiveOAuth;
+      // CRITICAL: Only include Google OAuth token for Google Drive scans!
+      // NEVER leak Google Drive token into local device or browser scans!
+      if (scanType === "drive" || scanType === "picker_files") {
+        const effectiveOAuth = oauthToken || localStorage.getItem("d2d_google_access_token");
+        if (effectiveOAuth) {
+          payload.oauth_token = effectiveOAuth;
+        }
       }
       
       const response = await fetch("/api/scan/request", {
@@ -717,24 +745,36 @@ class StudentDashboardView {
       }
 
       if (response.status === 401 && res.status === "needs_auth") {
-        localStorage.removeItem("d2d_google_access_token");
-        const lastRedirect = sessionStorage.getItem("d2d_last_oauth_redirect");
-        const now = Date.now();
-        if (lastRedirect && (now - Number(lastRedirect)) < 15000) {
-          console.warn("[!] Prevented OAuth redirect loop");
-          sessionStorage.removeItem("d2d_last_oauth_redirect");
-          const errorMsg = "Google Drive authorization was not granted or expired. Click '📱 Device' to select files, or try '☁️ Drive' again.";
+        if (scanType === "drive" || scanType === "picker_files") {
+          localStorage.removeItem("d2d_google_access_token");
+          const lastRedirect = sessionStorage.getItem("d2d_last_oauth_redirect");
+          const now = Date.now();
+          if (lastRedirect && (now - Number(lastRedirect)) < 15000) {
+            console.warn("[!] Prevented OAuth redirect loop");
+            sessionStorage.removeItem("d2d_last_oauth_redirect");
+            const errorMsg = "Google Drive authorization was not granted or expired. Click '📱 Device' to select files, or try '☁️ Drive' again.";
+            if (banner) {
+              banner.style.borderColor = "var(--c-danger-red)";
+              banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
+              banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">⚠️ ${errorMsg}</span>`;
+            }
+            this.renderScannedFiles(errorMsg);
+            return;
+          }
+          sessionStorage.setItem("d2d_last_oauth_redirect", String(now));
+          window.location.href = "/auth/google/login";
+          return;
+        } else {
+          // Device scan should never redirect to Google Drive login
+          const errorMsg = "Device scan could not access files. Please use the Device folder or file selector.";
           if (banner) {
             banner.style.borderColor = "var(--c-danger-red)";
             banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
-            banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">⚠️ ${errorMsg}</span>`;
+            banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">❌ ${errorMsg}</span>`;
           }
           this.renderScannedFiles(errorMsg);
           return;
         }
-        sessionStorage.setItem("d2d_last_oauth_redirect", String(now));
-        window.location.href = "/auth/google/login";
-        return;
       }
 
       if (!response.ok || res.status === "error" || res.error) {
