@@ -51,6 +51,12 @@ class DataToDirtApp {
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
 
+    // Direct URL navigation support for /analytics and #analytics
+    if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
+      this.switchRole("analytics");
+      return;
+    }
+
     // Check if user is already logged in
     const existingToken = localStorage.getItem("d2d_session_token");
     const savedRole = localStorage.getItem("d2d_role");
@@ -239,10 +245,12 @@ class DataToDirtApp {
     this.currentRole = role;
     const btnStudent = document.getElementById("nav-student-view");
     const btnAnalytics = document.getElementById("nav-analytics-view");
+    const btnTeacher = document.getElementById("nav-teacher-view");
+    const btnAdmin = document.getElementById("nav-admin-view");
     const userRoleBadge = document.getElementById("header-role-badge");
 
     // Reset button styles
-    [btnStudent, btnAnalytics].forEach((btn) => {
+    [btnStudent, btnAnalytics, btnTeacher, btnAdmin].forEach((btn) => {
       if (btn) {
         btn.classList.remove("retro-btn-gold");
         btn.classList.add("retro-btn-wood");
@@ -741,7 +749,10 @@ class DataToDirtApp {
     const cached = sessionStorage.getItem("d2d_user_location");
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.city && parsed.city !== "Unknown") {
+          return parsed;
+        }
       } catch (e) {}
     }
 
@@ -754,49 +765,29 @@ class DataToDirtApp {
       lon: 0.0,
     };
 
-    // 1. Primary: ipwho.is (CORS enabled, HTTPS, free, fast)
+    // 1. Primary: Server-side edge geolocation (/api/analytics/geo) - zero ad-blocker blocking
     try {
-      const res = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.success !== false && data.city) {
+      const resGeo = await fetch("/api/analytics/geo", { signal: AbortSignal.timeout(2500) });
+      if (resGeo.ok) {
+        const geo = await resGeo.json();
+        if (geo && geo.city && geo.city !== "Unknown") {
           locationData = {
-            city: data.city,
-            region: data.region || "",
-            country: data.country || "",
-            country_code: data.country_code || "",
-            lat: data.latitude || 0.0,
-            lon: data.longitude || 0.0,
+            city: geo.city,
+            region: geo.region || "",
+            country: geo.country || "Global",
+            country_code: geo.country_code || "",
+            lat: geo.lat || 0.0,
+            lon: geo.lon || 0.0,
           };
           sessionStorage.setItem("d2d_user_location", JSON.stringify(locationData));
           return locationData;
         }
       }
-    } catch (err) {
-      console.warn("[Analytics] Primary ipwho.is failed, trying fallback...", err);
+    } catch (errGeo) {
+      console.warn("[Analytics] Server geo lookup skipped:", errGeo);
     }
 
-    // 2. Secondary fallback: freeipapi.com
-    try {
-      const res2 = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(2500) });
-      if (res2.ok) {
-        const data2 = await res2.json();
-        if (data2 && data2.cityName) {
-          locationData = {
-            city: data2.cityName,
-            region: data2.regionName || "",
-            country: data2.countryName || "",
-            country_code: data2.countryCode || "",
-            lat: data2.latitude || 0.0,
-            lon: data2.longitude || 0.0,
-          };
-          sessionStorage.setItem("d2d_user_location", JSON.stringify(locationData));
-          return locationData;
-        }
-      }
-    } catch (err2) {}
-
-    // 3. Heuristic Timezone fallback
+    // 2. Heuristic Timezone fallback (fast, offline, instant)
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
       const tzMap = {
@@ -826,6 +817,28 @@ class DataToDirtApp {
         return locationData;
       }
     } catch (err3) {}
+
+    // 3. Fallback: ipwho.is (if network permits)
+    try {
+      const res = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(2000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success !== false && data.city) {
+          locationData = {
+            city: data.city,
+            region: data.region || "",
+            country: data.country || "",
+            country_code: data.country_code || "",
+            lat: data.latitude || 0.0,
+            lon: data.longitude || 0.0,
+          };
+          sessionStorage.setItem("d2d_user_location", JSON.stringify(locationData));
+          return locationData;
+        }
+      }
+    } catch (err) {
+      console.warn("[Analytics] Fallback ipwho.is skipped:", err);
+    }
 
     return locationData;
   }
@@ -882,6 +895,10 @@ window.DataToDirt = new DataToDirtApp();
 window.appInstance = window.DataToDirt;
 window.trackAnalyticsEvent = (action, meta) => window.DataToDirt.detectAndTrackLocation(action, meta);
 
-window.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    window.DataToDirt.init();
+  });
+} else {
   window.DataToDirt.init();
-});
+}

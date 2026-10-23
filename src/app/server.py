@@ -397,6 +397,214 @@ def enrich_file_iq1000(file_dict: Dict[str, Any], now_epoch: float, sha_tracker:
     return file_dict
 
 
+def record_telemetry_event(
+    city: Optional[str] = None,
+    country: Optional[str] = None,
+    country_code: Optional[str] = None,
+    region: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    action: str = "Page Visit",
+    user_id: str = "anonymous",
+    role: str = "visitor",
+    device_type: str = "Desktop",
+    bytes_cleaned: int = 0
+) -> Dict[str, Any]:
+    """Records a verified telemetry event into app_state with 0 fake data and automatic geo-enrichment."""
+    city = (city or "").strip()
+    if not city or city.lower() in ("unknown", "null"):
+        city = "Global Visitor"
+
+    country = (country or "Global").strip()
+    country_code = (country_code or "").upper().strip()
+    flag = AnalyticsService.country_code_to_flag(country_code) if country_code else "🌐"
+
+    state = load_state()
+    if "analytics" not in state or not isinstance(state["analytics"], dict):
+        state["analytics"] = get_default_state().get("analytics", {})
+
+    analytics = state["analytics"]
+    cities = analytics.setdefault("cities", {})
+    kpis = analytics.setdefault("global_kpis", {
+        "total_visitors": 0,
+        "total_scans": 0,
+        "total_bytes_cleaned": 0,
+        "total_carbon_offset_kg": 0.0,
+        "total_trees_funded": 0,
+        "active_sessions": 0,
+    })
+    recent_events = analytics.setdefault("recent_events", [])
+    devices = analytics.setdefault("devices", {"desktop": 0, "mobile": 0, "tablet": 0})
+
+    now_ts = time.time()
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Debounce identical page-visit / session hits within 3 seconds for same city & device
+    is_page_hit = any(k in action.lower() for k in ["visit", "start", "view"])
+    if is_page_hit and recent_events:
+        for ev in recent_events[:5]:
+            if (
+                ev.get("city") == city
+                and ev.get("device_type") == device_type
+                and any(k in str(ev.get("action", "")).lower() for k in ["visit", "start", "view"])
+            ):
+                try:
+                    ev_time = time.mktime(time.strptime(ev["timestamp"], "%Y-%m-%d %H:%M:%S"))
+                    if now_ts - ev_time < 3.0:
+                        if city in cities:
+                            cities[city]["last_active"] = now_str
+                        save_state(state)
+                        return {
+                            "status": "success",
+                            "tracked": {
+                                "city": city,
+                                "country": country,
+                                "flag": flag,
+                                "action": action,
+                                "debounced": True
+                            }
+                        }
+                except Exception:
+                    pass
+
+    # Update or create city
+    if city not in cities:
+        cities[city] = {
+            "city": city,
+            "country": country,
+            "country_code": country_code,
+            "flag": flag,
+            "region": region or "",
+            "lat": float(lat) if lat is not None else 0.0,
+            "lon": float(lon) if lon is not None else 0.0,
+            "visitors": 0,
+            "active_users": 0,
+            "scans": 0,
+            "bytes_cleaned": 0,
+            "co2_avoided_kg": 0.0,
+            "last_active": "Just now",
+        }
+
+    target_city = cities[city]
+    target_city["visitors"] = target_city.get("visitors", 0) + 1
+    target_city["active_users"] = max(1, target_city.get("active_users", 0) + 1)
+    target_city["last_active"] = now_str
+    if country and (target_city.get("country") == "Global" or not target_city.get("country")):
+        target_city["country"] = country
+    if country_code and not target_city.get("country_code"):
+        target_city["country_code"] = country_code
+        target_city["flag"] = flag
+    if region and not target_city.get("region"):
+        target_city["region"] = region
+    if lat is not None and target_city.get("lat") == 0.0:
+        target_city["lat"] = float(lat)
+    if lon is not None and target_city.get("lon") == 0.0:
+        target_city["lon"] = float(lon)
+
+    if "scan" in action.lower():
+        target_city["scans"] = target_city.get("scans", 0) + 1
+        kpis["total_scans"] = kpis.get("total_scans", 0) + 1
+
+    if bytes_cleaned > 0:
+        target_city["bytes_cleaned"] = target_city.get("bytes_cleaned", 0) + bytes_cleaned
+        co2_kg = (bytes_cleaned / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
+        target_city["co2_avoided_kg"] = round(target_city.get("co2_avoided_kg", 0.0) + co2_kg, 3)
+        kpis["total_bytes_cleaned"] = kpis.get("total_bytes_cleaned", 0) + bytes_cleaned
+        kpis["total_carbon_offset_kg"] = round(kpis.get("total_carbon_offset_kg", 0.0) + co2_kg, 2)
+        kpis["total_trees_funded"] = int(kpis["total_bytes_cleaned"] // TREE_DONATION_THRESHOLD_BYTES)
+
+    kpis["total_visitors"] = kpis.get("total_visitors", 0) + 1
+
+    # Device categorization
+    dt_lower = device_type.lower()
+    if "mobile" in dt_lower or "phone" in dt_lower or "android" in dt_lower:
+        devices["mobile"] = devices.get("mobile", 0) + 1
+    elif "tablet" in dt_lower or "ipad" in dt_lower:
+        devices["tablet"] = devices.get("tablet", 0) + 1
+    else:
+        devices["desktop"] = devices.get("desktop", 0) + 1
+
+    # Event stream
+    event_obj = {
+        "id": f"EVT-{int(now_ts * 1000) % 1000000}",
+        "timestamp": now_str,
+        "city": city,
+        "country": country,
+        "country_code": country_code,
+        "flag": flag,
+        "user_id": user_id,
+        "role": role,
+        "action": action,
+        "device_type": device_type,
+        "bytes_cleaned": bytes_cleaned,
+    }
+    recent_events.insert(0, event_obj)
+    if len(recent_events) > 50:
+        del recent_events[50:]
+
+    save_state(state)
+    return {
+        "status": "success",
+        "tracked": {
+            "city": city,
+            "country": country,
+            "flag": flag,
+            "action": action,
+        }
+    }
+
+
+def _track_request(req, action: str = "Page Visit"):
+    """Server-side automatic visitor tracking using Cloudflare edge headers and User-Agent."""
+    try:
+        ua = req.headers.get("User-Agent", "")
+        ua_lower = ua.lower()
+        if any(bot in ua_lower for bot in ["bot", "crawl", "spider", "render", "uptime", "curl", "python-requests"]):
+            return
+
+        if any(m in ua_lower for m in ["mobi", "android", "iphone", "ipod"]):
+            device = "Mobile (" + ("iPhone" if "iphone" in ua_lower else "Android") + ")"
+        elif any(t in ua_lower for t in ["ipad", "tablet"]):
+            device = "Tablet (iPadOS)" if "ipad" in ua_lower else "Tablet"
+        elif "mac" in ua_lower:
+            device = "macOS Desktop"
+        elif "win" in ua_lower:
+            device = "Windows Desktop"
+        elif "linux" in ua_lower:
+            device = "Linux Desktop"
+        else:
+            device = "Desktop Browser"
+
+        cf_city = req.headers.get("CF-IPCity")
+        cf_country = req.headers.get("CF-IPCountry")
+        cf_lat = req.headers.get("CF-IPLatitude")
+        cf_lon = req.headers.get("CF-IPLongitude")
+        cf_region = req.headers.get("CF-Region") or req.headers.get("CF-RegionCode") or ""
+
+        city = (cf_city or "").strip()
+        code = (cf_country or "").strip().upper()
+        country = code or "Global"
+
+        if not city:
+            city = "Global Visitor"
+
+        record_telemetry_event(
+            city=city,
+            country=country,
+            country_code=code,
+            region=cf_region,
+            lat=float(cf_lat) if cf_lat else None,
+            lon=float(cf_lon) if cf_lon else None,
+            action=action,
+            user_id="visitor",
+            role="visitor",
+            device_type=device,
+            bytes_cleaned=0
+        )
+    except Exception as e:
+        logger.warning(f"Failed to track request: {e}")
+
+
 def create_flask_app():
     app = Flask(__name__, static_folder=str(UI_DIR), static_url_path="")
     CORS(app)
@@ -405,12 +613,44 @@ def create_flask_app():
 
     @app.route("/")
     def serve_index():
+        _track_request(request, action="Page Visit")
         return send_from_directory(str(UI_DIR), "index.html")
+
+    @app.route("/analytics")
+    def serve_analytics():
+        _track_request(request, action="Analytics View")
+        return send_from_directory(str(UI_DIR), "index.html")
+
+    @app.route("/student")
+    def serve_student():
+        _track_request(request, action="Student View")
+        return send_from_directory(str(UI_DIR), "index.html")
+
+    @app.route("/api/analytics/geo", methods=["GET"])
+    def api_analytics_geo():
+        cf_city = request.headers.get("CF-IPCity")
+        cf_country = request.headers.get("CF-IPCountry")
+        cf_lat = request.headers.get("CF-IPLatitude")
+        cf_lon = request.headers.get("CF-IPLongitude")
+        cf_region = request.headers.get("CF-Region") or request.headers.get("CF-RegionCode") or ""
+        code = (cf_country or "").strip().upper()
+        flag = AnalyticsService.country_code_to_flag(code) if code else "🌐"
+
+        return jsonify({
+            "status": "success",
+            "city": cf_city or "Unknown",
+            "country": cf_country or "Global",
+            "country_code": code,
+            "region": cf_region,
+            "flag": flag,
+            "lat": float(cf_lat) if cf_lat else 0.0,
+            "lon": float(cf_lon) if cf_lon else 0.0,
+        })
 
     @app.route("/<path:path>")
     def serve_static(path):
         target_file = UI_DIR / path
-        if target_file.exists():
+        if target_file.exists() and not target_file.is_dir():
             return send_from_directory(str(UI_DIR), path)
         return send_from_directory(str(UI_DIR), "index.html")
 
@@ -1711,7 +1951,7 @@ def create_flask_app():
     def api_analytics_track():
         payload = request.get_json(silent=True) or {}
         city = (payload.get("city") or "").strip()
-        country = (payload.get("country") or "Global").strip()
+        country = (payload.get("country") or "").strip()
         country_code = (payload.get("country_code") or "").upper().strip()
 
         # Augment with Cloudflare edge geolocation headers if available
@@ -1721,13 +1961,10 @@ def create_flask_app():
             city = cf_city.strip()
         if (not country_code or country_code == "GLOBAL") and cf_country:
             country_code = cf_country.strip().upper()
-            if country == "Global":
+            if not country or country == "Global":
                 country = country_code
 
-        if not city or city.lower() == "unknown":
-            city = "Global Visitor"
-
-        region = (payload.get("region") or "").strip()
+        region = (payload.get("region") or request.headers.get("CF-Region") or "").strip()
         action = (payload.get("action") or "Page Visit").strip()
         user_id = (payload.get("user_id") or "anonymous").strip()
         role = (payload.get("role") or "visitor").strip()
@@ -1736,110 +1973,20 @@ def create_flask_app():
         lat = payload.get("lat") or request.headers.get("CF-IPLatitude")
         lon = payload.get("lon") or request.headers.get("CF-IPLongitude")
 
-        flag = AnalyticsService.country_code_to_flag(country_code) if country_code else "🌐"
-
-        state = load_state()
-        if "analytics" not in state or not isinstance(state["analytics"], dict):
-            state["analytics"] = get_default_state().get("analytics", {})
-
-        analytics = state["analytics"]
-        cities = analytics.setdefault("cities", {})
-        kpis = analytics.setdefault("global_kpis", {
-            "total_visitors": 0,
-            "total_scans": 0,
-            "total_bytes_cleaned": 0,
-            "total_carbon_offset_kg": 0.0,
-            "total_trees_funded": 0,
-            "active_sessions": 0,
-        })
-        recent_events = analytics.setdefault("recent_events", [])
-        devices = analytics.setdefault("devices", {"desktop": 0, "mobile": 0, "tablet": 0})
-
-        # Update or create city
-        if city not in cities:
-            cities[city] = {
-                "city": city,
-                "country": country,
-                "country_code": country_code,
-                "flag": flag,
-                "region": region,
-                "lat": float(lat) if lat is not None else 0.0,
-                "lon": float(lon) if lon is not None else 0.0,
-                "visitors": 0,
-                "active_users": 0,
-                "scans": 0,
-                "bytes_cleaned": 0,
-                "co2_avoided_kg": 0.0,
-                "last_active": "Just now",
-            }
-
-        target_city = cities[city]
-        target_city["visitors"] = target_city.get("visitors", 0) + 1
-        target_city["active_users"] = max(1, target_city.get("active_users", 0) + 1)
-        target_city["last_active"] = time.strftime("%Y-%m-%d %H:%M:%S")
-        if country and (target_city.get("country") == "Global" or not target_city.get("country")):
-            target_city["country"] = country
-        if country_code and not target_city.get("country_code"):
-            target_city["country_code"] = country_code
-            target_city["flag"] = flag
-        if region and not target_city.get("region"):
-            target_city["region"] = region
-        if lat is not None and target_city.get("lat") == 0.0:
-            target_city["lat"] = float(lat)
-        if lon is not None and target_city.get("lon") == 0.0:
-            target_city["lon"] = float(lon)
-
-        if "scan" in action.lower():
-            target_city["scans"] = target_city.get("scans", 0) + 1
-            kpis["total_scans"] = kpis.get("total_scans", 0) + 1
-
-        if bytes_cleaned > 0:
-            target_city["bytes_cleaned"] = target_city.get("bytes_cleaned", 0) + bytes_cleaned
-            co2_kg = (bytes_cleaned / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
-            target_city["co2_avoided_kg"] = round(target_city.get("co2_avoided_kg", 0.0) + co2_kg, 3)
-            kpis["total_bytes_cleaned"] = kpis.get("total_bytes_cleaned", 0) + bytes_cleaned
-            kpis["total_carbon_offset_kg"] = round(kpis.get("total_carbon_offset_kg", 0.0) + co2_kg, 2)
-            kpis["total_trees_funded"] = int(kpis["total_bytes_cleaned"] // TREE_DONATION_THRESHOLD_BYTES)
-
-        kpis["total_visitors"] = kpis.get("total_visitors", 0) + 1
-
-        # Device categorization
-        dt_lower = device_type.lower()
-        if "mobile" in dt_lower or "phone" in dt_lower or "android" in dt_lower:
-            devices["mobile"] = devices.get("mobile", 0) + 1
-        elif "tablet" in dt_lower or "ipad" in dt_lower:
-            devices["tablet"] = devices.get("tablet", 0) + 1
-        else:
-            devices["desktop"] = devices.get("desktop", 0) + 1
-
-        # Event stream
-        event_obj = {
-            "id": f"EVT-{int(time.time() * 1000) % 1000000}",
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "city": city,
-            "country": country,
-            "country_code": country_code,
-            "flag": flag,
-            "user_id": user_id,
-            "role": role,
-            "action": action,
-            "device_type": device_type,
-            "bytes_cleaned": bytes_cleaned,
-        }
-        recent_events.insert(0, event_obj)
-        if len(recent_events) > 50:
-            del recent_events[50:]
-
-        save_state(state)
-        return jsonify({
-            "status": "success",
-            "tracked": {
-                "city": city,
-                "country": country,
-                "flag": flag,
-                "action": action,
-            }
-        })
+        res = record_telemetry_event(
+            city=city,
+            country=country or "Global",
+            country_code=country_code,
+            region=region,
+            lat=float(lat) if lat is not None else None,
+            lon=float(lon) if lon is not None else None,
+            action=action,
+            user_id=user_id,
+            role=role,
+            device_type=device_type,
+            bytes_cleaned=bytes_cleaned,
+        )
+        return jsonify(res)
 
     @app.route("/api/analytics/dashboard", methods=["GET"])
     def api_analytics_dashboard():

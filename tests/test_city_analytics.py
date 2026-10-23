@@ -124,6 +124,29 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertIn("cloudflare_token", data)
         self.assertIn("ga_measurement_id", data)
 
+    def test_analytics_spa_route(self):
+        """GET /analytics returns index.html (200 OK) without 404 for direct SPA navigation."""
+        res = self.client.get("/analytics")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"Data-to-Dirt", res.data)
+
+    def test_api_analytics_geo(self):
+        """GET /api/analytics/geo reads Cloudflare edge headers and returns caller location."""
+        res = self.client.get("/api/analytics/geo", headers={
+            "CF-IPCity": "Mumbai",
+            "CF-IPCountry": "IN",
+            "CF-IPLatitude": "19.0760",
+            "CF-IPLongitude": "72.8777",
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["city"], "Mumbai")
+        self.assertEqual(data["country_code"], "IN")
+        self.assertEqual(data["flag"], "🇮🇳")
+        self.assertAlmostEqual(data["lat"], 19.0760)
+        self.assertAlmostEqual(data["lon"], 72.8777)
+
 
 if __name__ == "__main__":
     unittest.main()
