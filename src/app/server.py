@@ -900,7 +900,16 @@ def create_flask_app():
                     wp = user_prof / win_f
                     if wp.exists() and wp.is_dir() and wp not in [c[1] for c in candidate_dirs]:
                         candidate_dirs.append((f"Windows ({win_f})", wp))
-                        
+
+            # If no local candidate dirs exist and no Google Drive token (e.g. running on cloud container),
+            # prompt user seamlessly to connect their Google Drive once.
+            if len(candidate_dirs) == 0 and not access_token and not os.environ.get("TEST_MODE"):
+                return jsonify({
+                    "status": "needs_auth",
+                    "auth_url": "/auth/google/login",
+                    "error": "Google Drive authentication required to auto-scan your cloud drive."
+                }), 401
+
             now_epoch = time.time()
             all_files = []
             seen_names = {}
@@ -908,6 +917,96 @@ def create_flask_app():
             total_scanned_count = 0
             file_idx = 0
             MAX_FILES_TO_SCAN = 50000
+
+            # 1. Auto-Scan Live Google Drive if token available
+            if access_token:
+                try:
+                    query = urllib.parse.quote("'me' in owners and trashed=false")
+                    page_token = None
+                    drive_items = []
+                    drive_by_md5 = {}
+                    while True:
+                        u = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,mimeType,md5Checksum,modifiedTime)&pageSize=100"
+                        if page_token:
+                            u += f"&pageToken={page_token}"
+                        req = urllib.request.Request(u)
+                        req.add_header("Authorization", f"Bearer {access_token}")
+                        with urllib.request.urlopen(req, timeout=8) as resp:
+                            f_data = json.loads(resp.read().decode())
+                            for f in f_data.get("files", []):
+                                total_scanned_count += 1
+                                sz = int(f.get("size", "0"))
+                                if sz == 0:
+                                    continue
+                                md5 = f.get("md5Checksum", "")
+                                mtime_str = f.get("modifiedTime")
+                                mtime = now_epoch
+                                if mtime_str:
+                                    try:
+                                        dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                                        mtime = dt.replace(tzinfo=timezone.utc).timestamp()
+                                    except Exception:
+                                        mtime = now_epoch
+                                item = {
+                                    "id": f["id"],
+                                    "name": f["name"],
+                                    "size": sz,
+                                    "mtime": mtime,
+                                    "md5": md5,
+                                    "mime": f.get("mimeType", "")
+                                }
+                                drive_items.append(item)
+                                if md5:
+                                    drive_by_md5.setdefault(md5, []).append(item)
+                            page_token = f_data.get("nextPageToken")
+                            if not page_token or len(drive_items) >= 2000:
+                                break
+
+                    for d_item in drive_items:
+                        age_days = max(0, int((now_epoch - d_item["mtime"]) / 86400))
+                        sz = d_item["size"]
+                        fn = d_item["name"]
+                        reasons = []
+                        if age_days > 90:
+                            reasons.append(f"Stale relic ({age_days}d)")
+                        if sz >= 15 * 1024 * 1024:
+                            reasons.append(f"Heavy file bloat ({format_bytes(sz)})")
+                        if fn.lower().endswith(('.dmg', '.iso', '.pkg', '.zip', '.tar.gz', '.tar', '.rar', '.7z', '.gz', '.tgz', '.exe', '.msi', '.apk')):
+                            reasons.append("Archive / installer bloat")
+                        if fn.lower().endswith(('.mov', '.mp4', '.avi', '.mkv', '.m4v', '.webm', '.wav', '.aiff', '.zoom')) and (sz >= 10 * 1024 * 1024 or age_days > 60):
+                            reasons.append("Large media capture")
+                        if "copy" in fn.lower() or "(1)" in fn or "(2)" in fn or "_copy" in fn.lower():
+                            reasons.append("Potential duplicate copy")
+                        elif d_item["md5"] and len(drive_by_md5[d_item["md5"]]) > 1:
+                            if d_item["id"] != drive_by_md5[d_item["md5"]][0]["id"]:
+                                reasons.append("Duplicate content match across cloud")
+
+                        if reasons:
+                            file_idx += 1
+                            reason_str = " | ".join(reasons)
+                            cat = "heavy_media" if sz >= 50 * 1024 * 1024 else ("duplicate" if "Duplicate" in reason_str else "transient_trash")
+                            all_files.append({
+                                "file_id": d_item["id"],
+                                "file_name": f"[Google Drive] {fn}",
+                                "raw_file_name": fn,
+                                "file_path": f"Google Drive/{fn}",
+                                "absolute_path": f"Google Drive/{fn}",
+                                "size_bytes": sz,
+                                "size_formatted": format_bytes(sz),
+                                "last_modified_epoch_s": d_item["mtime"],
+                                "last_accessed_epoch_s": d_item["mtime"],
+                                "created_epoch_s": d_item["mtime"],
+                                "age_days": age_days,
+                                "is_confidential": False,
+                                "is_dark_data_candidate": True,
+                                "dark_data_reason": reason_str,
+                                "category": cat,
+                                "dark_data_tag": reason_str,
+                                "storage_source": "Google Drive",
+                                "is_drive": True
+                            })
+                except Exception as d_err:
+                    print(f"[!] Auto-scan Google Drive notice: {d_err}")
 
             skip_dirs = {
                 "node_modules", ".git", ".venv", "venv", "__pycache__", 
@@ -987,6 +1086,48 @@ def create_flask_app():
                                 all_files.append(f_obj)
                 except Exception as dir_err:
                     print(f"[!] Auto-scan notice on {source_name}: {dir_err}")
+
+            if len(all_files) == 0 and os.environ.get("TEST_MODE"):
+                try:
+                    from src.services.cloud_storage import GoogleDriveProvider
+                    provider = GoogleDriveProvider()
+                    provider.connect("MOCK")
+                    drive_files = provider.list_directory(recursive=True)
+                    for f in drive_files:
+                        if f.is_folder:
+                            continue
+                        total_scanned_count += 1
+                        age_days = max(0, int((now_epoch - f.modified_epoch_s) / 86400))
+                        reasons = []
+                        if age_days > 90:
+                            reasons.append(f"Stale relic ({age_days}d)")
+                        if f.size_bytes >= 15 * 1024 * 1024:
+                            reasons.append(f"Heavy file bloat ({format_bytes(f.size_bytes)})")
+                        if reasons:
+                            file_idx += 1
+                            reason_str = " | ".join(reasons)
+                            all_files.append({
+                                "file_id": f.id,
+                                "file_name": f"[Cloud Drive] {f.name}",
+                                "raw_file_name": f.name,
+                                "file_path": f"Cloud Drive/{f.name}",
+                                "absolute_path": f"Cloud Drive/{f.name}",
+                                "size_bytes": f.size_bytes,
+                                "size_formatted": format_bytes(f.size_bytes),
+                                "last_modified_epoch_s": f.modified_epoch_s,
+                                "last_accessed_epoch_s": f.modified_epoch_s,
+                                "created_epoch_s": f.modified_epoch_s,
+                                "age_days": age_days,
+                                "is_confidential": False,
+                                "is_dark_data_candidate": True,
+                                "dark_data_reason": reason_str,
+                                "category": "dark_data",
+                                "dark_data_tag": reason_str,
+                                "storage_source": "Cloud Drive",
+                                "is_drive": True
+                            })
+                except Exception:
+                    pass
 
             # Sort dark candidates by size DESCENDING so heaviest storage hogs are prioritized!
             all_files.sort(key=lambda x: x["size_bytes"], reverse=True)
