@@ -621,6 +621,11 @@ def create_flask_app():
         _track_request(request, action="Analytics View")
         return send_from_directory(str(UI_DIR), "index.html")
 
+    @app.route("/admin")
+    def serve_admin():
+        _track_request(request, action="Admin Portal View")
+        return send_from_directory(str(UI_DIR), "index.html")
+
     @app.route("/student")
     def serve_student():
         _track_request(request, action="Student View")

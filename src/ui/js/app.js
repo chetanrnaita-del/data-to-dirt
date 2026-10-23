@@ -53,7 +53,7 @@ class DataToDirtApp {
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
 
-    // Direct URL navigation support for /analytics and #analytics (Admin Restricted)
+    // Direct URL navigation support for /analytics and /admin (Admin Restricted)
     if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
       const savedRole = localStorage.getItem("d2d_role");
       if (savedRole === "admin") {
@@ -61,6 +61,17 @@ class DataToDirtApp {
         return;
       } else {
         this.openRolePinModal("admin", "analytics");
+        return;
+      }
+    }
+
+    if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
+      const savedRole = localStorage.getItem("d2d_role");
+      if (savedRole === "admin") {
+        this.switchRole("admin");
+        return;
+      } else {
+        this.openRolePinModal("admin");
         return;
       }
     }
@@ -243,6 +254,21 @@ class DataToDirtApp {
       btnAnalyticsRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
         this.switchRole("analytics");
+      });
+    }
+
+    // Header Role Badge: click to unlock Admin from any role
+    const headerBadge = document.getElementById("header-role-badge");
+    if (headerBadge) {
+      headerBadge.style.cursor = "pointer";
+      headerBadge.title = "Click to switch to Admin mode";
+      headerBadge.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        if (this.currentRole === "admin") {
+          this.switchRole("student");
+        } else {
+          this.openRolePinModal("admin");
+        }
       });
     }
   }

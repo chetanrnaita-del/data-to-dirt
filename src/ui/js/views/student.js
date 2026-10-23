@@ -212,6 +212,26 @@ class StudentDashboardView {
     if (btnScanAutoDevice) {
       btnScanAutoDevice.addEventListener("click", async () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
+
+        // On hosted web deployments, browser security restricts automatic local disk access without user interaction.
+        // Forward directly to the native device file/folder picker!
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          const folderInput = document.getElementById("device-folder-input");
+          const fileInput = document.getElementById("device-file-input");
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          
+          const banner = document.getElementById("scanner-status-banner");
+          if (banner) {
+            banner.innerHTML = `<span>📱 Opening device selector to analyze files from your system...</span>`;
+          }
+          if (folderInput && !isMobile) {
+            folderInput.click();
+          } else if (fileInput) {
+            fileInput.click();
+          }
+          return;
+        }
+
         btnScanAutoDevice.disabled = true;
         try {
           await this.executeScan(null, true, "auto_device");
@@ -774,8 +794,9 @@ class StudentDashboardView {
 
     if (this.scannedFiles.length === 0) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px;">
-          No junk or duplicate files found! Click 'Auto-Scan System', 'Device', or 'Drive' to start cleaning.
+        <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
+          <div style="font-size: 13px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">📂 Ready to Clean Real Data</div>
+          <div>Click <strong>'📱 Device'</strong> to select files or folders from your computer/phone, or <strong>'☁️ Drive'</strong> to scan Google Drive.</div>
         </div>
       `;
       return;
