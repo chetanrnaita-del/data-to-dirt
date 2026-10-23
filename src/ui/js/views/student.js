@@ -202,6 +202,9 @@ class StudentDashboardView {
     const btnRevoke = document.getElementById("btn-revoke-scan");
     const btnCheer = document.getElementById("btn-tree-celebrate");
 
+    const isMobileOrTablet = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     // Auto-scan on return from successful Google OAuth consent
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get("token");
@@ -209,20 +212,27 @@ class StudentDashboardView {
       localStorage.setItem("d2d_google_access_token", tokenFromUrl);
     }
     if (urlParams.get("oauth") === "success") {
+      sessionStorage.removeItem("d2d_last_oauth_redirect");
       window.history.replaceState({}, document.title, window.location.pathname);
       const banner = document.getElementById("scanner-status-banner");
       if (banner) {
-        banner.innerHTML = `<span>⏳ Google Drive connected! Scanning system...</span>`;
+        banner.innerHTML = `<span>⏳ Google Drive connected! Scanning your Drive files with AI...</span>`;
       }
       setTimeout(() => {
-        this.executeScan(null, true, "auto_device", [], tokenFromUrl || localStorage.getItem("d2d_google_access_token"));
+        this.executeScan("__google_drive__", true, "drive", [], tokenFromUrl || localStorage.getItem("d2d_google_access_token"));
       }, 350);
     }
 
     if (btnScanDrive) {
       btnScanDrive.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        this.showGoogleDriveModal();
+        if (isMobileOrTablet) {
+          // On iPad / iPhone / Android, directly run Live Google Drive scan
+          // This avoids Safari popup blocker and Google Picker ITP iframe restrictions
+          this.executeScan("__google_drive__", true, "drive");
+        } else {
+          this.showGoogleDriveModal();
+        }
       });
     }
 
@@ -239,8 +249,6 @@ class StudentDashboardView {
     }
 
     if (btnScanLocal) {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
       // Handler shared by both file and folder inputs
       const handleDeviceFiles = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -260,7 +268,7 @@ class StudentDashboardView {
       
       btnScanLocal.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        if (isMobile) {
+        if (isMobileOrTablet) {
           // On mobile/iPad, go straight to native file picker (Photos, Files, iCloud, etc.)
           document.getElementById("device-file-input")?.click();
         } else {
@@ -391,19 +399,19 @@ class StudentDashboardView {
           Choose how to scan your Google Drive:
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
-          <button class="retro-btn retro-btn-green" id="btn-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-            <strong>📁 Google Drive Picker (Select All / Any Folder)</strong>
+          <button class="retro-btn retro-btn-gold" id="btn-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>⚡ Live Google Drive Scan (Recommended)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Official Google window. Select your "My Drive" folder or multi-select files. Works for any account.
+              Instantly scans all files in your Google Drive and identifies duplicate, stale, and heavy waste.
             </div>
           </button>
-          <button class="retro-btn retro-btn-gold" id="btn-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left;">
-            <strong>⚡ Live Google Drive Scan</strong>
+          <button class="retro-btn retro-btn-green" id="btn-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Directly queries Google Drive API for all files owned by your account.
+              Opens Google selection window. Best for desktop browsers.
             </div>
           </button>
-          <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-gdrive-cancel" style="width: 100%; margin-top: 4px;">
+          <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-gdrive-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
             ✖ Cancel
           </button>
         </div>
@@ -413,14 +421,14 @@ class StudentDashboardView {
 
     const dismiss = () => modal.remove();
 
-    modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {
-      dismiss();
-      this.openGooglePicker();
-    });
-
     modal.querySelector("#btn-gdrive-direct")?.addEventListener("click", async () => {
       dismiss();
       await this.executeScan("__google_drive__", true, "drive");
+    });
+
+    modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {
+      dismiss();
+      this.openGooglePicker();
     });
 
     modal.querySelector("#btn-gdrive-cancel")?.addEventListener("click", dismiss);
@@ -436,7 +444,7 @@ class StudentDashboardView {
 
       const buildPicker = (oauthToken) => {
         if (!window.google || !window.google.picker) {
-          alert("Google Picker is initializing. Please click Drive again in 2 seconds.");
+          this.executeScan("__google_drive__", true, "drive");
           return;
         }
 
@@ -496,17 +504,17 @@ class StudentDashboardView {
             if (resp && resp.access_token) {
               loadGapiAndPicker(resp.access_token);
             } else {
-              window.location.href = "/auth/google/login";
+              this.executeScan("__google_drive__", true, "drive");
             }
           }
         });
         tokenClient.requestAccessToken({ prompt: "" });
       } else {
-        window.location.href = "/auth/google/login";
+        this.executeScan("__google_drive__", true, "drive");
       }
     } catch (err) {
-      console.warn("Picker error:", err);
-      window.location.href = "/auth/google/login";
+      console.warn("Picker error, falling back to direct drive scan:", err);
+      this.executeScan("__google_drive__", true, "drive");
     }
   }
 
@@ -724,6 +732,8 @@ class StudentDashboardView {
       }
 
       this.scannedFiles = res.files || [];
+      this.lastScanCompleted = true;
+      this.lastScanType = scanType;
       const totalScanned = res.total_scanned || res.files_found || 0;
       const totalFound = res.files_found || this.scannedFiles.length;
 
@@ -806,6 +816,17 @@ class StudentDashboardView {
     }
 
     if (this.scannedFiles.length === 0) {
+      if (this.lastScanCompleted) {
+        const scanSourceLabel = this.lastScanType === "drive" || this.lastScanType === "picker_files" ? "Google Drive" : "Device Storage";
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
+            <div style="font-size: 22px; margin-bottom: 6px;">🌱</div>
+            <div style="font-size: 13px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">Zero Waste Identified</div>
+            <div>Your ${scanSourceLabel} currently has zero dark data bloat. You are operating 100% lean and green!</div>
+          </div>
+        `;
+        return;
+      }
       container.innerHTML = `
         <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
           <div style="font-size: 13px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">📂 Ready to Clean Real Data</div>

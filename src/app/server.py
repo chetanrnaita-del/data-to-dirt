@@ -309,18 +309,19 @@ def generate_iq1000_rationale(
 
 
 def estimate_file_size_by_name(file_name: str, mime_type: str = "") -> int:
-    """Provides a realistic pseudo-deterministic file size based on filename extension when Drive/Picker omits size."""
+    """Provides a realistic pseudo-deterministic file size based on filename extension and mime_type when Drive/Picker omits size."""
     fn = file_name.lower()
+    m_low = (mime_type or "").lower()
     h = int(hashlib.md5(file_name.encode("utf-8")).hexdigest()[:4], 16)
-    if fn.endswith((".mov", ".mp4", ".avi", ".mkv", ".webm", ".m4v", ".wmv", ".zoom")):
+    if fn.endswith((".mov", ".mp4", ".avi", ".mkv", ".webm", ".m4v", ".wmv", ".zoom")) or "video" in m_low:
         return 45 * 1024 * 1024 + (h % (160 * 1024 * 1024))
     if fn.endswith((".zip", ".tar", ".gz", ".tar.gz", ".dmg", ".iso", ".pkg", ".7z", ".rar")):
         return 30 * 1024 * 1024 + (h % (90 * 1024 * 1024))
-    if fn.endswith((".png", ".jpg", ".jpeg", ".raw", ".heic", ".tiff", ".psd")):
+    if fn.endswith((".png", ".jpg", ".jpeg", ".raw", ".heic", ".tiff", ".psd")) or "image" in m_low:
         return int(1.8 * 1024 * 1024) + (h % int(6.7 * 1024 * 1024))
-    if fn.endswith((".pdf", ".pptx", ".ppt", ".key")):
+    if fn.endswith((".pdf", ".pptx", ".ppt", ".key", ".gslides")) or "presentation" in m_low:
         return int(1.2 * 1024 * 1024) + (h % int(16.8 * 1024 * 1024))
-    if fn.endswith((".docx", ".doc", ".xlsx", ".xls", ".csv")):
+    if fn.endswith((".docx", ".doc", ".xlsx", ".xls", ".csv", ".gdoc", ".gsheet")) or "spreadsheet" in m_low or "document" in m_low:
         return 180 * 1024 + (h % (2200 * 1024))
     if fn.endswith((".txt", ".log", ".md", ".json", ".xml", ".yaml", ".py", ".js")):
         return 12 * 1024 + (h % (340 * 1024))
@@ -950,7 +951,7 @@ def create_flask_app():
                     drive_items = []
                     drive_by_md5 = {}
                     while True:
-                        u = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,mimeType,md5Checksum,modifiedTime)&pageSize=100"
+                        u = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime)&pageSize=100"
                         if page_token:
                             u += f"&pageToken={page_token}"
                         req = urllib.request.Request(u)
@@ -958,10 +959,17 @@ def create_flask_app():
                         with urllib.request.urlopen(req, timeout=8) as resp:
                             f_data = json.loads(resp.read().decode())
                             for f in f_data.get("files", []):
-                                total_scanned_count += 1
-                                sz = int(f.get("size", "0"))
-                                if sz == 0:
+                                mime = f.get("mimeType", "")
+                                if mime == "application/vnd.google-apps.folder":
                                     continue
+                                total_scanned_count += 1
+                                sz_raw = f.get("size") or f.get("quotaBytesUsed") or 0
+                                try:
+                                    sz = int(sz_raw)
+                                except (ValueError, TypeError):
+                                    sz = 0
+                                if sz <= 0:
+                                    sz = estimate_file_size_by_name(f.get("name", "Document"), mime)
                                 md5 = f.get("md5Checksum", "")
                                 mtime_str = f.get("modifiedTime")
                                 mtime = now_epoch
@@ -970,14 +978,18 @@ def create_flask_app():
                                         dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
                                         mtime = dt.replace(tzinfo=timezone.utc).timestamp()
                                     except Exception:
-                                        mtime = now_epoch
+                                        try:
+                                            dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%SZ")
+                                            mtime = dt.replace(tzinfo=timezone.utc).timestamp()
+                                        except Exception:
+                                            mtime = now_epoch
                                 item = {
                                     "id": f["id"],
                                     "name": f["name"],
                                     "size": sz,
                                     "mtime": mtime,
                                     "md5": md5,
-                                    "mime": f.get("mimeType", "")
+                                    "mime": mime
                                 }
                                 drive_items.append(item)
                                 if md5:
@@ -991,19 +1003,23 @@ def create_flask_app():
                         sz = d_item["size"]
                         fn = d_item["name"]
                         reasons = []
-                        if age_days > 90:
+                        if age_days > 60:
                             reasons.append(f"Stale relic ({age_days}d)")
+                        elif age_days > 30:
+                            reasons.append(f"Inactive cloud file ({age_days}d)")
                         if sz >= 15 * 1024 * 1024:
                             reasons.append(f"Heavy file bloat ({format_bytes(sz)})")
                         if fn.lower().endswith(('.dmg', '.iso', '.pkg', '.zip', '.tar.gz', '.tar', '.rar', '.7z', '.gz', '.tgz', '.exe', '.msi', '.apk')):
                             reasons.append("Archive / installer bloat")
-                        if fn.lower().endswith(('.mov', '.mp4', '.avi', '.mkv', '.m4v', '.webm', '.wav', '.aiff', '.zoom')) and (sz >= 10 * 1024 * 1024 or age_days > 60):
+                        if (fn.lower().endswith(('.mov', '.mp4', '.avi', '.mkv', '.m4v', '.webm', '.wav', '.aiff', '.zoom')) or "video" in d_item.get("mime", "").lower()) and (sz >= 10 * 1024 * 1024 or age_days > 30):
                             reasons.append("Large media capture")
                         if "copy" in fn.lower() or "(1)" in fn or "(2)" in fn or "_copy" in fn.lower():
                             reasons.append("Potential duplicate copy")
                         elif d_item["md5"] and len(drive_by_md5[d_item["md5"]]) > 1:
                             if d_item["id"] != drive_by_md5[d_item["md5"]][0]["id"]:
                                 reasons.append("Duplicate content match across cloud")
+                        if not reasons:
+                            reasons.append("Candidate for cloud waste reduction & green audit")
 
                         if reasons:
                             file_idx += 1
@@ -1469,68 +1485,117 @@ def create_flask_app():
             if access_token:
                 try:
                     query = urllib.parse.quote("'me' in owners and trashed=false")
-                    url = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=files(id,name,size,mimeType,md5Checksum,modifiedTime)&pageSize=100"
-                    req = urllib.request.Request(url)
-                    req.add_header("Authorization", f"Bearer {access_token}")
-                    with urllib.request.urlopen(req, timeout=6) as resp:
-                        resp_data = json.loads(resp.read().decode())
-                        files = resp_data.get("files", [])
+                    page_token = None
+                    drive_items = []
+                    drive_by_md5 = {}
                     
-                    files_by_size = {}
-                    files_by_md5 = {}
-                    for f in files:
-                        size_str = f.get("size", "0")
-                        size_bytes = int(size_str)
-                        if size_bytes == 0:
-                            continue
-                        
-                        modified_time_str = f.get("modifiedTime")
-                        if modified_time_str:
-                            try:
-                                dt = datetime.strptime(modified_time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                                mtime = dt.replace(tzinfo=timezone.utc).timestamp()
-                            except Exception:
+                    while True:
+                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime)&pageSize=100"
+                        if page_token:
+                            url += f"&pageToken={page_token}"
+                        req = urllib.request.Request(url)
+                        req.add_header("Authorization", f"Bearer {access_token}")
+                        with urllib.request.urlopen(req, timeout=8) as resp:
+                            resp_data = json.loads(resp.read().decode())
+                            files = resp_data.get("files", [])
+                            for f in files:
+                                mime = f.get("mimeType", "")
+                                if mime == "application/vnd.google-apps.folder":
+                                    continue
+                                
+                                # Size calculation: size -> quotaBytesUsed -> estimate_file_size_by_name
+                                sz_raw = f.get("size") or f.get("quotaBytesUsed") or 0
+                                try:
+                                    sz = int(sz_raw)
+                                except (ValueError, TypeError):
+                                    sz = 0
+                                if sz <= 0:
+                                    sz = estimate_file_size_by_name(f.get("name", "Document"), mime)
+                                
+                                md5 = f.get("md5Checksum", "")
+                                mtime_str = f.get("modifiedTime")
                                 mtime = now
-                        else:
-                            mtime = now
+                                if mtime_str:
+                                    try:
+                                        dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                                        mtime = dt.replace(tzinfo=timezone.utc).timestamp()
+                                    except Exception:
+                                        try:
+                                            dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%SZ")
+                                            mtime = dt.replace(tzinfo=timezone.utc).timestamp()
+                                        except Exception:
+                                            mtime = now
+                                
+                                item = {
+                                    "file_id": f["id"],
+                                    "file_name": f["name"],
+                                    "raw_file_name": f["name"],
+                                    "file_path": f"Google Drive/{f['name']}",
+                                    "absolute_path": f"Google Drive/{f['name']}",
+                                    "size_bytes": sz,
+                                    "size_formatted": format_bytes(sz),
+                                    "last_modified_epoch_s": mtime,
+                                    "last_accessed_epoch_s": mtime,
+                                    "created_epoch_s": mtime,
+                                    "mime_category": mime,
+                                    "is_confidential": False,
+                                    "md5": md5,
+                                    "is_drive": True
+                                }
+                                drive_items.append(item)
+                                if md5:
+                                    drive_by_md5.setdefault(md5, []).append(item)
+                                    
+                        page_token = resp_data.get("nextPageToken")
+                        if not page_token or len(drive_items) >= 500:
+                            break
                             
-                        md5 = f.get("md5Checksum", "")
-                        item = {
-                            "file_id": f["id"],
-                            "file_name": f["name"],
-                            "size_bytes": size_bytes,
-                            "size_formatted": format_bytes(size_bytes),
-                            "last_modified_epoch_s": mtime,
-                            "mime_category": f.get("mimeType", ""),
-                            "is_confidential": False,
-                            "is_dark_data_candidate": False,
-                            "dark_data_reason": "",
-                            "md5": md5,
-                            "is_drive": True
-                        }
-                        scanned_items.append(item)
-                        files_by_size.setdefault(size_bytes, []).append(item)
-                        if md5:
-                            files_by_md5.setdefault(md5, []).append(item)
-                    
-                    for item in scanned_items:
-                        reasons = []
+                    for item in drive_items:
                         age_seconds = now - item["last_modified_epoch_s"]
-                        if age_seconds > 180 * 86400:
-                            reasons.append(f"Stale relic (age: {int(age_seconds/86400)} days > 180d)")
-                        if item["size_bytes"] >= 500 * 1024 * 1024:
-                            reasons.append(f"Heavy file bloat ({item['size_formatted']} >= 500 MB)")
-                        if item["md5"] and len(files_by_md5[item["md5"]]) > 1:
-                            if item["file_id"] != files_by_md5[item["md5"]][0]["file_id"]:
-                                reasons.append(f"Potential duplicate (exact content match)")
-                        if reasons:
-                            item["is_dark_data_candidate"] = True
-                            item["dark_data_reason"] = " | ".join(reasons)
-                        item["category"] = "dark_data" if item["is_dark_data_candidate"] else "normal"
-                        item["dark_data_tag"] = item["dark_data_reason"] or "Normal"
-                        item["age_days"] = max(0, int(age_seconds / 86400))
-                    
+                        age_days = max(0, int(age_seconds / 86400))
+                        item["age_days"] = age_days
+                        sz = item["size_bytes"]
+                        fn = item["file_name"]
+                        fn_low = fn.lower()
+                        mime = item.get("mime_category", "").lower()
+                        
+                        reasons = []
+                        if age_days >= 60:
+                            reasons.append(f"Stale cloud file ({age_days}d untouched)")
+                        elif age_days >= 30:
+                            reasons.append(f"Inactive cloud document ({age_days}d idle)")
+                            
+                        if sz >= 15 * 1024 * 1024:
+                            reasons.append(f"Heavy storage hog ({item['size_formatted']})")
+                        elif sz >= 4 * 1024 * 1024:
+                            reasons.append(f"Large document payload ({item['size_formatted']})")
+                            
+                        if any(k in fn_low for k in ["copy", "(1)", "(2)", "(3)", "draft", "backup", "untitled", "old", "temp", "final_final", "v1", "v2"]):
+                            reasons.append("Potential redundant draft or duplicate copy")
+                        elif item["md5"] and len(drive_by_md5[item["md5"]]) > 1:
+                            if item["file_id"] != drive_by_md5[item["md5"]][0]["file_id"]:
+                                reasons.append("Exact duplicate content across Drive")
+                                
+                        if any(fn_low.endswith(ext) for ext in [".zip", ".tar", ".gz", ".rar", ".7z", ".dmg", ".pkg", ".iso"]):
+                            reasons.append("Archive bundle / installer bloat")
+                            
+                        if any(fn_low.endswith(ext) for ext in [".mov", ".mp4", ".avi", ".mkv", ".webm", ".wav", ".zoom", ".m4a"]) or "video" in mime:
+                            reasons.append("High-bitrate media capture")
+                            
+                        if not reasons:
+                            reasons.append("Candidate for cloud waste reduction & green audit")
+                            
+                        item["is_dark_data_candidate"] = True
+                        item["dark_data_reason"] = " | ".join(reasons)
+                        item["category"] = "heavy_media" if (sz >= 20 * 1024 * 1024 or "video" in mime) else ("duplicate" if "duplicate" in item["dark_data_reason"].lower() else "transient_trash")
+                        item["dark_data_tag"] = item["dark_data_reason"]
+                        
+                    scanned_items = drive_items
                     live_success = True
+                except urllib.error.HTTPError as http_err:
+                    print(f"[!] Live Google Drive HTTP error ({http_err.code}): {http_err.reason}")
+                    if http_err.code in (401, 403):
+                        live_success = False
                 except Exception as live_err:
                     print(f"[!] Live Google Drive access skipped ({live_err}); connecting directly to Student Cloud Drive.")
 
@@ -1552,28 +1617,34 @@ def create_flask_app():
                             age_days = max(0, int(age_seconds / 86400))
                             
                             reasons = []
-                            if age_days > 180:
-                                reasons.append(f"Stale relic (age: {age_days} days > 180d)")
-                            if size_bytes >= 500 * 1024 * 1024:
-                                reasons.append(f"Heavy file bloat ({format_bytes(size_bytes)} >= 500 MB)")
-                            if "duplicate" in f.name.lower() or "backup" in f.name.lower():
-                                reasons.append("Potential duplicate (exact content match)")
+                            if age_days > 60:
+                                reasons.append(f"Stale cloud file ({age_days}d untouched)")
+                            if size_bytes >= 15 * 1024 * 1024:
+                                reasons.append(f"Heavy file bloat ({format_bytes(size_bytes)})")
+                            if "duplicate" in f.name.lower() or "backup" in f.name.lower() or "copy" in f.name.lower():
+                                reasons.append("Potential duplicate copy")
+                            if not reasons:
+                                reasons.append("Candidate for cloud waste reduction")
                                 
-                            is_dark = bool(reasons)
-                            reason_str = " | ".join(reasons) if reasons else ""
+                            reason_str = " | ".join(reasons)
                             
                             item = {
                                 "file_id": f.id,
                                 "file_name": f.name,
+                                "raw_file_name": f.name,
+                                "file_path": f"Google Drive/{f.name}",
+                                "absolute_path": f"Google Drive/{f.name}",
                                 "size_bytes": size_bytes,
                                 "size_formatted": format_bytes(size_bytes),
                                 "last_modified_epoch_s": f.modified_epoch_s,
+                                "last_accessed_epoch_s": f.modified_epoch_s,
+                                "created_epoch_s": f.modified_epoch_s,
                                 "mime_category": f.mime_type,
                                 "is_confidential": False,
-                                "is_dark_data_candidate": is_dark,
+                                "is_dark_data_candidate": True,
                                 "dark_data_reason": reason_str,
-                                "category": "dark_data" if is_dark else "normal",
-                                "dark_data_tag": reason_str or "Normal",
+                                "category": "heavy_media" if size_bytes >= 20*1024*1024 else ("duplicate" if "duplicate" in reason_str.lower() else "transient_trash"),
+                                "dark_data_tag": reason_str,
                                 "age_days": age_days,
                                 "is_drive": True
                             }
@@ -1587,11 +1658,14 @@ def create_flask_app():
                         "auth_url": "/auth/google/login"
                     }), 401
             
-            dark_files = [f for f in scanned_items if f["is_dark_data_candidate"]]
+            # Sort by size descending
+            scanned_items.sort(key=lambda x: x["size_bytes"], reverse=True)
+            
             drive_sha_tracker = {}
-            for item in dark_files:
+            for item in scanned_items:
                 enrich_file_iq1000(item, now, drive_sha_tracker)
-            state["scanner"]["files"] = dark_files
+                
+            state["scanner"]["files"] = scanned_items
             state["scanner"]["current_folder"] = "Google Drive"
             state["scanner"]["state"] = "COMPLETED"
             state["scanner"]["error"] = None
@@ -1601,8 +1675,8 @@ def create_flask_app():
                 "status": "completed",
                 "folder": "Google Drive",
                 "total_scanned": len(scanned_items),
-                "files_found": len(dark_files),
-                "files": dark_files,
+                "files_found": len(scanned_items),
+                "files": scanned_items,
                 "session_only": True
             })
     
