@@ -108,13 +108,9 @@ class DataToDirtApp {
     
     // Show role navigation buttons
     const btnStudent = document.getElementById("nav-student-view");
-    const btnTeacher = document.getElementById("nav-teacher-view");
-    const btnAdmin = document.getElementById("nav-admin-view");
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
 
     if (btnStudent) btnStudent.style.display = "inline-block";
-    if (btnTeacher) btnTeacher.style.display = "inline-block";
-    if (btnAdmin) btnAdmin.style.display = "inline-block";
     if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
 
     this.switchRole(role);
@@ -136,11 +132,7 @@ class DataToDirtApp {
 
     // Hide role navigation buttons on logout
     const btnStudent = document.getElementById("nav-student-view");
-    const btnTeacher = document.getElementById("nav-teacher-view");
-    const btnAdmin = document.getElementById("nav-admin-view");
     if (btnStudent) btnStudent.style.display = "none";
-    if (btnTeacher) btnTeacher.style.display = "none";
-    if (btnAdmin) btnAdmin.style.display = "none";
 
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
     if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
@@ -213,36 +205,12 @@ class DataToDirtApp {
 
     // Role Selector Buttons
     const btnStudentRole = document.getElementById("nav-student-view");
-    const btnTeacherRole = document.getElementById("nav-teacher-view");
-    const btnAdminRole = document.getElementById("nav-admin-view");
     const btnAnalyticsRole = document.getElementById("nav-analytics-view");
 
     if (btnStudentRole) {
       btnStudentRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
         this.switchRole("student");
-      });
-    }
-
-    if (btnTeacherRole) {
-      btnTeacherRole.addEventListener("click", () => {
-        if (this.audioSynth) this.audioSynth.playBlip();
-        if (this.currentRole === "student") {
-          this.openRolePinModal("teacher");
-        } else {
-          this.switchRole("teacher");
-        }
-      });
-    }
-
-    if (btnAdminRole) {
-      btnAdminRole.addEventListener("click", () => {
-        if (this.audioSynth) this.audioSynth.playBlip();
-        if (this.currentRole !== "admin") {
-          this.openRolePinModal("admin");
-        } else {
-          this.switchRole("admin");
-        }
       });
     }
 
@@ -270,13 +238,11 @@ class DataToDirtApp {
   switchRole(role) {
     this.currentRole = role;
     const btnStudent = document.getElementById("nav-student-view");
-    const btnTeacher = document.getElementById("nav-teacher-view");
-    const btnAdmin = document.getElementById("nav-admin-view");
     const btnAnalytics = document.getElementById("nav-analytics-view");
     const userRoleBadge = document.getElementById("header-role-badge");
 
     // Reset button styles
-    [btnStudent, btnTeacher, btnAdmin, btnAnalytics].forEach((btn) => {
+    [btnStudent, btnAnalytics].forEach((btn) => {
       if (btn) {
         btn.classList.remove("retro-btn-gold");
         btn.classList.add("retro-btn-wood");
