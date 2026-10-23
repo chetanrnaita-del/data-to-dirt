@@ -731,7 +731,7 @@ def create_flask_app():
     def api_config_analytics():
         """Returns configured external analytics tokens (Cloudflare, Google Analytics, PostHog)."""
         return jsonify({
-            "cloudflare_token": os.environ.get("CLOUDFLARE_ANALYTICS_TOKEN", ""),
+            "cloudflare_token": os.environ.get("CLOUDFLARE_ANALYTICS_TOKEN", "e6109200065b45a5a014b35a0fa142c4"),
             "ga_measurement_id": os.environ.get("GA_MEASUREMENT_ID", ""),
             "posthog_api_key": os.environ.get("POSTHOG_API_KEY", ""),
             "posthog_host": os.environ.get("POSTHOG_HOST", "https://app.posthog.com"),
