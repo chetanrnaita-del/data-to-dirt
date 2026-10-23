@@ -106,6 +106,18 @@ class TestBuildAndFilesystem(unittest.TestCase):
         self.assertIn("res.status === \"error\"", student_js, "student.js must check for status === 'error'")
         self.assertIn("playGamingBuzzer", student_js, "student.js should trigger buzzer on scan error")
 
+    def test_all_ui_javascript_syntax_valid(self):
+        """Verifies syntax validity of all client-side JavaScript assets."""
+        import subprocess, shutil
+        node_bin = shutil.which("node")
+        if not node_bin:
+            return
+        js_files = list((UI_DIR / "js").glob("**/*.js"))
+        self.assertGreater(len(js_files), 5, "Expected UI js files to exist")
+        for js_file in js_files:
+            res = subprocess.run([node_bin, "-c", str(js_file)], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, f"JavaScript syntax error in {js_file.name}: {res.stderr}")
+
 
 class TestCarbonCalculatorFormulas(unittest.TestCase):
     """Verifies mathematical correctness of energy and carbon calculations."""

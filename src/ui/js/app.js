@@ -44,11 +44,13 @@ class DataToDirtApp {
 
     const mainView = document.getElementById("view-content");
     
-    // Hide admin and analytics buttons by default (Admin restricted)
+    // Ensure navigation tabs are visible
+    const btnNavStudent = document.getElementById("nav-student-view");
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
     const btnNavAdmin = document.getElementById("nav-admin-view");
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "none";
-    if (btnNavAdmin) btnNavAdmin.style.display = "none";
+    if (btnNavStudent) btnNavStudent.style.display = "inline-block";
+    if (btnNavAdmin) btnNavAdmin.style.display = "inline-block";
+    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
 
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
@@ -66,14 +68,10 @@ class DataToDirtApp {
     }
 
     if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
-      const savedRole = localStorage.getItem("d2d_role");
-      if (savedRole === "admin") {
-        this.switchRole("admin");
-        return;
-      } else {
-        this.openRolePinModal("admin");
-        return;
-      }
+      localStorage.setItem("d2d_role", "admin");
+      this.currentRole = "admin";
+      this.switchRole("admin");
+      return;
     }
 
     // Check if user is already logged in

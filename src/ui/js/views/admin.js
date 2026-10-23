@@ -281,14 +281,16 @@ class AdminEcoFundView {
   async fetchData() {
     try {
       const [ecoRes, analyticsRes, auditRes] = await Promise.all([
-        fetch("/api/admin/ecofund").then((r) => r.json()),
-        fetch("/api/teacher/analytics").then((r) => r.json()),
-        fetch("/api/admin/audit").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/admin/ecofund").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch("/api/teacher/analytics").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch("/api/admin/audit").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
       ]);
 
-      this.ecofund = ecoRes;
-      this.analytics = analyticsRes;
-      this.auditData = auditRes;
+      this.ecofund = ecoRes && Object.keys(ecoRes).length > 0
+        ? ecoRes
+        : { budget_usd: 100, balance_usd: 100, trees_planted: 0, cumulative_waste_bytes: 0, donations_history: [] };
+      this.analytics = analyticsRes || {};
+      this.auditData = auditRes || {};
 
       this.updateView();
     } catch (e) {
@@ -399,7 +401,6 @@ class AdminEcoFundView {
         `).join("");
       }
     }
-  }
   }
 
   async updateEcoFundSettings(payload) {
