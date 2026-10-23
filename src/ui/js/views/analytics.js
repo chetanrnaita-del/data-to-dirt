@@ -316,14 +316,32 @@ class AnalyticsDashboardView {
     // KPI 4: Storage Cleaned
     const elStorage = document.getElementById("an-kpi-storage");
     if (elStorage) {
-      const gbCleaned = ((kpis.total_bytes_cleaned || 0) / (1024 ** 3)).toFixed(2);
-      elStorage.textContent = `${gbCleaned} GB`;
+      const bytes = Number(kpis.total_bytes_cleaned || 0);
+      if (bytes >= 1024 ** 3) {
+        elStorage.textContent = `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
+      } else if (bytes >= 1024 ** 2) {
+        elStorage.textContent = `${(bytes / (1024 ** 2)).toFixed(2)} MB`;
+      } else if (bytes >= 1024) {
+        elStorage.textContent = `${(bytes / 1024).toFixed(1)} KB`;
+      } else {
+        elStorage.textContent = `${bytes} B`;
+      }
     }
 
     // KPI 5: Carbon Avoided & Trees Funded
     const elCarbon = document.getElementById("an-kpi-carbon");
     const elTreesSub = document.getElementById("an-kpi-trees-sub");
-    if (elCarbon) elCarbon.textContent = `${(kpis.total_carbon_offset_kg || 0).toFixed(2)} kg CO₂`;
+    if (elCarbon) {
+      const co2Kg = Number(kpis.total_carbon_offset_kg || 0);
+      if (co2Kg >= 1.0) {
+        elCarbon.textContent = `${co2Kg.toFixed(2)} kg CO₂`;
+      } else if (co2Kg > 0) {
+        const grams = co2Kg * 1000.0;
+        elCarbon.textContent = `${grams >= 1 ? grams.toFixed(1) : grams.toFixed(2)} g CO₂`;
+      } else {
+        elCarbon.textContent = `0.00 kg CO₂`;
+      }
+    }
     if (elTreesSub) elTreesSub.textContent = `🌲 ${kpis.total_trees_funded || 0} Trees Funded`;
 
     // Server Sync time
@@ -370,7 +388,12 @@ class AnalyticsDashboardView {
 
     tbody.innerHTML = cities.map((c, idx) => {
       const bytes = Number(c.bytes_cleaned || 0);
-      const cleanedGb = (bytes / (1024 ** 3)).toFixed(2);
+      let cleanedStr = "0 B";
+      if (bytes >= 1024 ** 3) cleanedStr = `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
+      else if (bytes >= 1024 ** 2) cleanedStr = `${(bytes / (1024 ** 2)).toFixed(2)} MB`;
+      else if (bytes >= 1024) cleanedStr = `${(bytes / 1024).toFixed(1)} KB`;
+      else if (bytes > 0) cleanedStr = `${bytes} B`;
+
       const isLive = Number(c.active_users || 0) > 0;
       const rankBadge = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
       const latLon = (c.lat != null && c.lon != null && (c.lat !== 0 || c.lon !== 0))
@@ -378,7 +401,13 @@ class AnalyticsDashboardView {
         : "GPS Auto";
       const scans = Number(c.scans || 0);
       const visitors = Number(c.visitors || 0);
-      const co2 = Number(c.co2_avoided_kg || 0).toFixed(2);
+      const co2Kg = Number(c.co2_avoided_kg || 0);
+      let co2Str = "0.00 kg";
+      if (co2Kg >= 1.0) co2Str = `${co2Kg.toFixed(2)} kg`;
+      else if (co2Kg > 0) {
+        const grams = co2Kg * 1000.0;
+        co2Str = `${grams >= 1 ? grams.toFixed(1) : grams.toFixed(2)} g`;
+      }
 
       return `
         <tr style="border-bottom: 1px solid var(--c-parchment-border); transition: background 0.15s ease;">
@@ -402,8 +431,8 @@ class AnalyticsDashboardView {
             <div style="font-size: 9px; color: var(--c-ink-light);">${visitors} total visits</div>
           </td>
           <td style="padding: 8px 10px; font-weight: bold; color: #8e44ad;">${scans}</td>
-          <td style="padding: 8px 10px; font-weight: bold; color: var(--c-eco-leaf);">${cleanedGb} GB</td>
-          <td style="padding: 8px 10px; font-weight: bold; color: var(--c-forest-deep);">${co2} kg</td>
+          <td style="padding: 8px 10px; font-weight: bold; color: var(--c-eco-leaf);">${cleanedStr}</td>
+          <td style="padding: 8px 10px; font-weight: bold; color: var(--c-forest-deep);">${co2Str}</td>
           <td style="padding: 8px 10px;">
             <span class="retro-tag ${isLive ? 'retro-tag-clean' : 'retro-tag-wood'}" style="font-size: 9px; padding: 2px 6px;">
               ${isLive ? 'LIVE' : 'IDLE'}

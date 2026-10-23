@@ -1293,48 +1293,6 @@ def create_flask_app():
                 except Exception as dir_err:
                     print(f"[!] Auto-scan notice on {source_name}: {dir_err}")
 
-            if len(all_files) == 0 and os.environ.get("TEST_MODE"):
-                try:
-                    from src.services.cloud_storage import GoogleDriveProvider
-                    provider = GoogleDriveProvider()
-                    provider.connect("MOCK")
-                    drive_files = provider.list_directory(recursive=True)
-                    for f in drive_files:
-                        if f.is_folder:
-                            continue
-                        total_scanned_count += 1
-                        age_days = max(0, int((now_epoch - f.modified_epoch_s) / 86400))
-                        reasons = []
-                        if age_days > 90:
-                            reasons.append(f"Stale relic ({age_days}d)")
-                        if f.size_bytes >= 15 * 1024 * 1024:
-                            reasons.append(f"Heavy file bloat ({format_bytes(f.size_bytes)})")
-                        if reasons:
-                            file_idx += 1
-                            reason_str = " | ".join(reasons)
-                            all_files.append({
-                                "file_id": f.id,
-                                "file_name": f"[Cloud Drive] {f.name}",
-                                "raw_file_name": f.name,
-                                "file_path": f"Cloud Drive/{f.name}",
-                                "absolute_path": f"Cloud Drive/{f.name}",
-                                "size_bytes": f.size_bytes,
-                                "size_formatted": format_bytes(f.size_bytes),
-                                "last_modified_epoch_s": f.modified_epoch_s,
-                                "last_accessed_epoch_s": f.modified_epoch_s,
-                                "created_epoch_s": f.modified_epoch_s,
-                                "age_days": age_days,
-                                "is_confidential": False,
-                                "is_dark_data_candidate": True,
-                                "dark_data_reason": reason_str,
-                                "category": "dark_data",
-                                "dark_data_tag": reason_str,
-                                "storage_source": "Cloud Drive",
-                                "is_drive": True
-                            })
-                except Exception:
-                    pass
-
             # Sort dark candidates by size DESCENDING so heaviest storage hogs are prioritized!
             all_files.sort(key=lambda x: x["size_bytes"], reverse=True)
             
@@ -1824,64 +1782,13 @@ def create_flask_app():
                 except Exception as live_err:
                     print(f"[!] Live Google Drive access skipped ({live_err}); connecting directly to Student Cloud Drive.")
 
-            # 2. In TEST_MODE only, use sandbox mock provider. Otherwise require authentic connection.
+            # 2. Require authentic Google Drive connection - zero synthetic mock injections
             if not live_success:
-                if os.environ.get("TEST_MODE"):
-                    try:
-                        from src.services.cloud_storage import GoogleDriveProvider
-                        provider = GoogleDriveProvider()
-                        provider.connect("MOCK")
-                        drive_files = provider.list_directory(recursive=True)
-                        
-                        scanned_items = []
-                        for f in drive_files:
-                            if f.is_folder:
-                                continue
-                            size_bytes = f.size_bytes
-                            age_seconds = now - f.modified_epoch_s
-                            age_days = max(0, int(age_seconds / 86400))
-                            
-                            reasons = []
-                            if age_days > 60:
-                                reasons.append(f"Stale cloud file ({age_days}d untouched)")
-                            if size_bytes >= 15 * 1024 * 1024:
-                                reasons.append(f"Heavy file bloat ({format_bytes(size_bytes)})")
-                            if "duplicate" in f.name.lower() or "backup" in f.name.lower() or "copy" in f.name.lower():
-                                reasons.append("Potential duplicate copy")
-                            if not reasons:
-                                reasons.append("Candidate for cloud waste reduction")
-                                
-                            reason_str = " | ".join(reasons)
-                            
-                            item = {
-                                "file_id": f.id,
-                                "file_name": f.name,
-                                "raw_file_name": f.name,
-                                "file_path": f"Google Drive/{f.name}",
-                                "absolute_path": f"Google Drive/{f.name}",
-                                "size_bytes": size_bytes,
-                                "size_formatted": format_bytes(size_bytes),
-                                "last_modified_epoch_s": f.modified_epoch_s,
-                                "last_accessed_epoch_s": f.modified_epoch_s,
-                                "created_epoch_s": f.modified_epoch_s,
-                                "mime_category": f.mime_type,
-                                "is_confidential": False,
-                                "is_dark_data_candidate": True,
-                                "dark_data_reason": reason_str,
-                                "category": "heavy_media" if size_bytes >= 20*1024*1024 else ("duplicate" if "duplicate" in reason_str.lower() else "transient_trash"),
-                                "dark_data_tag": reason_str,
-                                "age_days": age_days,
-                                "is_drive": True
-                            }
-                            scanned_items.append(item)
-                    except Exception as mock_err:
-                        print(f"[!] Cloud storage fallback error: {mock_err}")
-                else:
-                    return jsonify({
-                        "status": "needs_auth",
-                        "error": "Google Drive authentication required or session expired. Please connect your Google account.",
-                        "auth_url": "/auth/google/login"
-                    }), 401
+                return jsonify({
+                    "status": "needs_auth",
+                    "error": "Google Drive authentication required or session expired. Please connect your Google account.",
+                    "auth_url": "/auth/google/login"
+                }), 401
             
             # Sort by size descending
             scanned_items.sort(key=lambda x: x["size_bytes"], reverse=True)
@@ -2004,6 +1911,9 @@ def create_flask_app():
 
         summary = f"Verified: Legitimate cleanup of dark data ({format_bytes(file_size)}). Reason explains redundancy."
         req_id = f"REQ-{int(time.time() * 1000) % 100000}"
+        pts = int((file_size / (1024 * 1024)) * 0.5) + 20
+        trees = int(file_size // (1024**3))
+
         queue_item = {
             "request_id": req_id,
             "student_id": actual_student_id,
@@ -2011,7 +1921,7 @@ def create_flask_app():
             "class_code": student_class_code,
             "file_id": file_id,
             "file_name": file_name,
-            "file_path": data.get("file_path", f"/mock/path/{file_name}"),
+            "file_path": data.get("file_path", file_name),
             "file_size_bytes": file_size,
             "file_age_days": data.get("file_age_days", 30),
             "reason": reason,
@@ -2023,8 +1933,34 @@ def create_flask_app():
                 "is_gaming": False,
             },
             "status": "PENDING",
+            "credited": True,
             "submitted_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
+
+        # Real-time credit: update user stats immediately so storage cleaned & tree growth update in real-time
+        if firestore_db.is_connected and actual_student_id:
+            try:
+                firestore_db.update_user_stats(actual_student_id, file_size, pts, trees)
+            except Exception as fe:
+                print(f"[!] Firestore immediate credit notice: {fe}")
+
+        student["bytes_cleared"] = student.get("bytes_cleared", 0) + file_size
+        student["eco_points"] = student.get("eco_points", 0) + pts
+        student["daily_deletions_today"] = student.get("daily_deletions_today", 0) + 1
+        student["streak_days"] = student.get("streak_days", 0) + 1
+
+        ecofund = state.get("ecofund", {})
+        ecofund["cumulative_waste_bytes"] = ecofund.get("cumulative_waste_bytes", 0) + file_size
+
+        try:
+            record_telemetry_event(
+                action=f"Cleaned {format_bytes(file_size)} dark data ({file_name})",
+                user_id=actual_student_id,
+                role="student",
+                bytes_cleaned=file_size
+            )
+        except Exception as te:
+            print(f"[!] Telemetry error: {te}")
 
         state["teacher_queue"].append(queue_item)
         save_state(state)
@@ -2260,27 +2196,27 @@ def create_flask_app():
                 except Exception:
                     pass
 
-            # Update student in Firestore
+            # Update student in Firestore & local state if not already credited
             student_id = target_item.get("student_id", "")
             pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
             trees = int(file_bytes // (1024**3))
 
-            if firestore_db.is_connected and student_id:
-                try:
-                    firestore_db.update_user_stats(student_id, file_bytes, pts, trees)
-                except Exception as fe:
-                    print(f"[!] Firestore update_user_stats error: {fe}")
+            if not target_item.get("credited"):
+                if firestore_db.is_connected and student_id:
+                    try:
+                        firestore_db.update_user_stats(student_id, file_bytes, pts, trees)
+                    except Exception as fe:
+                        print(f"[!] Firestore update_user_stats error: {fe}")
 
-            # Update student in local state
-            student = state["student"]
-            student["bytes_cleared"] += file_bytes
-            student["eco_points"] += pts
-            student["daily_deletions_today"] += 1
-            student["streak_days"] = student.get("streak_days", 0) + 1
+                student = state["student"]
+                student["bytes_cleared"] += file_bytes
+                student["eco_points"] += pts
+                student["daily_deletions_today"] += 1
+                student["streak_days"] = student.get("streak_days", 0) + 1
 
-            # Update ecofund
-            ecofund = state["ecofund"]
-            ecofund["cumulative_waste_bytes"] += file_bytes
+                ecofund = state["ecofund"]
+                ecofund["cumulative_waste_bytes"] += file_bytes
+                target_item["credited"] = True
 
             # Record telemetry event for analytics real-time update
             try:
@@ -2294,6 +2230,7 @@ def create_flask_app():
                 print(f"[!] Telemetry error: {te}")
 
             # Check 1 GB threshold
+            ecofund = state["ecofund"]
             thresh = ecofund["threshold_bytes"]
             if ecofund["cumulative_waste_bytes"] >= thresh * (ecofund["trees_planted"] + 1):
                 ecofund["trees_planted"] += 1
@@ -2313,12 +2250,39 @@ def create_flask_app():
             target_item["feedback"] = feedback or "File marked for retention by teacher."
             target_item["decided_by"] = teacher_id
             target_item["decided_at"] = time.time()
+            if target_item.get("credited"):
+                student_id = target_item.get("student_id", "")
+                pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
+                trees = int(file_bytes // (1024**3))
+                if firestore_db.is_connected and student_id:
+                    try:
+                        firestore_db.update_user_stats(student_id, -file_bytes, -pts, -trees)
+                    except Exception as fe:
+                        print(f"[!] Firestore deduct error: {fe}")
+                student = state["student"]
+                student["bytes_cleared"] = max(0, student.get("bytes_cleared", 0) - file_bytes)
+                student["eco_points"] = max(0, student.get("eco_points", 0) - pts)
+                ecofund = state["ecofund"]
+                ecofund["cumulative_waste_bytes"] = max(0, ecofund.get("cumulative_waste_bytes", 0) - file_bytes)
+                target_item["credited"] = False
 
         elif action == "flag":
             target_item["status"] = "FLAGGED"
             target_item["feedback"] = feedback or "Intentional gaming detected."
             target_item["decided_by"] = teacher_id
             target_item["decided_at"] = time.time()
+            if target_item.get("credited"):
+                student_id = target_item.get("student_id", "")
+                pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
+                trees = int(file_bytes // (1024**3))
+                if firestore_db.is_connected and student_id:
+                    try:
+                        firestore_db.update_user_stats(student_id, -file_bytes, -pts, -trees)
+                    except Exception as fe:
+                        print(f"[!] Firestore deduct error: {fe}")
+                ecofund = state["ecofund"]
+                ecofund["cumulative_waste_bytes"] = max(0, ecofund.get("cumulative_waste_bytes", 0) - file_bytes)
+                target_item["credited"] = False
             student = state["student"]
             student["strikes"] = student.get("strikes", 0) + 1
             student["streak_days"] = 0
@@ -2374,7 +2338,8 @@ def create_flask_app():
                     sz = d.get("file_size_bytes", 0)
                     pts = int((sz / (1024 * 1024)) * 0.5) + 20
                     trees = int(sz // (1024**3))
-                    firestore_db.update_user_stats(s_id, sz, pts, trees)
+                    if not d.get("credited"):
+                        firestore_db.update_user_stats(s_id, sz, pts, trees)
                     firestore_db.update_deletion_status(r_id, "approve", teacher_id)
                     approved_count += 1
                     total_approved_bytes += sz
@@ -2387,8 +2352,10 @@ def create_flask_app():
                 item["decided_by"] = teacher_id
                 item["decided_at"] = time.time()
                 sz = item.get("file_size_bytes", 0)
-                state["student"]["bytes_cleared"] += sz
-                state["ecofund"]["cumulative_waste_bytes"] += sz
+                if not item.get("credited"):
+                    state["student"]["bytes_cleared"] += sz
+                    state["ecofund"]["cumulative_waste_bytes"] += sz
+                    item["credited"] = True
                 approved_count += 1
                 total_approved_bytes += sz
 
@@ -2633,26 +2600,27 @@ def create_flask_app():
         total_firestore_bytes = 0
         if firestore_db.is_connected:
             try:
-                from google.cloud.firestore_v1.base_query import FieldFilter
-                q = firestore_db.db.collection("deletion_queue").where(filter=FieldFilter("status", "==", "APPROVED"))
-                for doc in q.stream():
+                for doc in firestore_db.db.collection("deletion_queue").stream():
                     d = doc.to_dict()
-                    total_firestore_bytes += d.get("file_size_bytes", 0)
+                    if d.get("status") in ("APPROVED", "PENDING"):
+                        total_firestore_bytes += d.get("file_size_bytes", 0)
             except Exception as fe:
                 print(f"[!] Analytics firestore aggregation notice: {fe}")
 
         ecofund = state.get("ecofund", {})
-        effective_bytes = max(
-            kpis.get("total_bytes_cleaned", 0),
-            total_firestore_bytes,
-            ecofund.get("cumulative_waste_bytes", 0),
-            state.get("student", {}).get("bytes_cleared", 0)
-        )
+        if firestore_db.is_connected and total_firestore_bytes > 0:
+            effective_bytes = total_firestore_bytes
+        else:
+            effective_bytes = max(
+                kpis.get("total_bytes_cleaned", 0),
+                ecofund.get("cumulative_waste_bytes", 0),
+                state.get("student", {}).get("bytes_cleared", 0)
+            )
         kpis["total_bytes_cleaned"] = effective_bytes
 
         # Calculate exact CO2e avoided using Singapore grid constant: 0.28 kWh/GB * 405.7 g/kWh / 1000.0
         co2_kg = (effective_bytes / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
-        kpis["total_carbon_offset_kg"] = round(co2_kg, 2)
+        kpis["total_carbon_offset_kg"] = round(co2_kg, 4) if co2_kg < 1.0 else round(co2_kg, 2)
         kpis["total_trees_funded"] = max(
             int(effective_bytes // TREE_DONATION_THRESHOLD_BYTES),
             ecofund.get("trees_planted", 0)

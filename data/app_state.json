@@ -2,15 +2,32 @@
   "student": {
     "student_id": "STU-001",
     "name": "Alex River",
-    "bytes_cleared": 0,
-    "eco_points": 0,
-    "streak_days": 0,
+    "bytes_cleared": 1048576,
+    "eco_points": 50,
+    "streak_days": 1,
     "last_deletion_date": "2026-10-23",
-    "daily_deletions_today": 0,
+    "daily_deletions_today": 1,
     "daily_deletion_limit": 5,
     "strikes": 0
   },
-  "leaderboard": [],
+  "leaderboard": [
+    {
+      "rank": 1,
+      "name": "Alex River (You)",
+      "eco_points": 50,
+      "data_cleared_bytes": 1048576,
+      "streak_days": 1,
+      "trees": 0
+    },
+    {
+      "rank": 2,
+      "name": "chetan",
+      "eco_points": 40,
+      "data_cleared_bytes": 728731,
+      "streak_days": 1,
+      "trees": 0
+    }
+  ],
   "scanner": {
     "state": "BLIND",
     "current_folder": null,
@@ -18,12 +35,59 @@
     "confidential_ids": [],
     "error": null
   },
-  "teacher_queue": [],
+  "teacher_queue": [
+    {
+      "request_id": "REQ-8337",
+      "student_id": "STU-001",
+      "student_name": "Alex River",
+      "class_code": "bio101",
+      "file_id": "f_onedrive_whatsapp",
+      "file_name": "[OneDrive] WhatsApp Chat with Govind Poshak Kolkata.txt",
+      "file_path": "OneDrive/WhatsApp Chat with Govind Poshak Kolkata.txt",
+      "file_size_bytes": 1048576,
+      "file_age_days": 65,
+      "reason": "Exported chat history backup unreferenced and redundant.",
+      "is_drive": true,
+      "ai_evaluation": {
+        "confidence_score": 0.88,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (1.0 MB).",
+        "is_gaming": false
+      },
+      "status": "APPROVED",
+      "submitted_at": "2026-10-23 18:30:00",
+      "decided_by": "TEACHER-001",
+      "decided_at": 1792765000.0
+    },
+    {
+      "request_id": "REQ-97919",
+      "student_id": "class-a_chetan",
+      "student_name": "chetan",
+      "class_code": "class-a",
+      "file_id": "f_8toh_cif",
+      "file_name": "8TOH.cif",
+      "file_path": "Downloads/8TOH.cif",
+      "file_size_bytes": 728731,
+      "file_age_days": 45,
+      "reason": "Crystallographic data file processed and saved to central repository.",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.92,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (711.6 KB).",
+        "is_gaming": false
+      },
+      "status": "APPROVED",
+      "submitted_at": "2026-10-23 18:35:00",
+      "decided_by": "TEACHER-001",
+      "decided_at": 1792765000.0
+    }
+  ],
   "ecofund": {
     "budget_usd": 100.0,
     "balance_usd": 100.0,
     "trees_planted": 0,
-    "cumulative_waste_bytes": 0,
+    "cumulative_waste_bytes": 1777307,
     "threshold_bytes": 1073741824,
     "cost_per_tree_usd": 1.5,
     "donations_history": []
@@ -33,51 +97,105 @@
     "teacher_pin": "teacher123",
     "admin_pin": "admin123"
   },
-  "students": [],
-  "teachers": [
+  "students": [
     {
-      "teacher_id": "teacher_bio101",
-      "name": "Dr. Evelyn Reed (Biology)",
-      "class_code": "bio101"
+      "user_id": "STU-001",
+      "student_id": "STU-001",
+      "name": "Alex River",
+      "role": "student",
+      "class_code": "bio101",
+      "created_by": "Teacher",
+      "bytes_cleared": 1048576,
+      "carbon_offset_g": 0.12,
+      "eco_points": 50,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 1,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 10:00:00"
     },
     {
-      "teacher_id": "teacher_env201",
-      "name": "Prof. Marcus Green (Environmental Science)",
-      "class_code": "env201"
-    },
-    {
-      "teacher_id": "teacher_cs301",
-      "name": "Ms. Clara Patel (Computer Science)",
-      "class_code": "cs301"
-    },
-    {
-      "teacher_id": "teacher_chem102",
-      "name": "Dr. Arthur Thorne (Chemistry)",
-      "class_code": "chem102"
-    },
-    {
-      "teacher_id": "teacher_earth204",
-      "name": "Mr. Samuel Woods (Earth Systems)",
-      "class_code": "earth204"
+      "user_id": "class-a_chetan",
+      "student_id": "class-a_chetan",
+      "name": "chetan",
+      "role": "student",
+      "class_code": "class-a",
+      "created_by": "Teacher",
+      "bytes_cleared": 728731,
+      "carbon_offset_g": 0.08,
+      "eco_points": 40,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 1,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "created_at_iso": "2026-10-22 10:00:00"
     }
   ],
   "analytics": {
     "global_kpis": {
-      "total_visitors": 0,
-      "total_scans": 0,
-      "total_bytes_cleaned": 0,
-      "total_carbon_offset_kg": 0.0,
+      "total_visitors": 1,
+      "total_scans": 2,
+      "total_bytes_cleaned": 1777307,
+      "total_carbon_offset_kg": 0.0002,
       "total_trees_funded": 0,
-      "active_sessions": 0,
-      "tracked_cities_count": 0
+      "active_sessions": 1,
+      "tracked_cities_count": 1
     },
-    "cities": {},
-    "recent_events": [],
+    "cities": {
+      "Global User": {
+        "city": "Global User",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "region": "",
+        "lat": 0.0,
+        "lon": 0.0,
+        "visitors": 1,
+        "active_users": 1,
+        "scans": 2,
+        "bytes_cleaned": 1777307,
+        "co2_avoided_kg": 0.0002,
+        "last_active": "Just now"
+      }
+    },
+    "recent_events": [
+      {
+        "id": "EVT-GENUINE-02",
+        "timestamp": "2026-10-23 18:35:00",
+        "city": "Global User",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "user_id": "class-a_chetan",
+        "role": "student",
+        "action": "Cleaned 711.6 KB dark data (8TOH.cif)",
+        "device_type": "Local Device",
+        "bytes_cleaned": 728731
+      },
+      {
+        "id": "EVT-GENUINE-01",
+        "timestamp": "2026-10-23 18:30:00",
+        "city": "Global User",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "user_id": "STU-001",
+        "role": "student",
+        "action": "Cleaned 1.0 MB dark data ([OneDrive] WhatsApp Chat with Govind Poshak Kolkata.txt)",
+        "device_type": "Cloud Storage",
+        "bytes_cleaned": 1048576
+      }
+    ],
     "devices": {
-      "desktop": 0,
-      "mobile": 0,
+      "desktop": 1,
+      "mobile": 1,
       "tablet": 0
     },
-    "waste_categories": {}
+    "waste_categories": {
+      "Unreferenced Chat & Message Archives": 59,
+      "Specialized Crystallographic Residue": 41
+    }
   }
 }

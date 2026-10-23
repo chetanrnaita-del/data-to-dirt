@@ -33,6 +33,11 @@ class FirestoreDB:
         self._init_firebase()
 
     def _init_firebase(self):
+        if os.environ.get("TEST_MODE") == "1":
+            print("[i] Running in TEST_MODE. Cloud Firestore is isolated in standby mode to protect production data.")
+            self.is_connected = False
+            return
+
         if not HAS_FIREBASE:
             print("[-] firebase-admin not installed. Running in local fallback mode.")
             return

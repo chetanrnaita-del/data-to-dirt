@@ -2,70 +2,29 @@
   "student": {
     "student_id": "STU-001",
     "name": "Alex River",
-    "bytes_cleared": 975175680,
-    "eco_points": 485,
-    "streak_days": 6,
+    "bytes_cleared": 262144000,
+    "eco_points": 145,
+    "streak_days": 1,
     "last_deletion_date": "2026-10-23",
-    "daily_deletions_today": 2,
+    "daily_deletions_today": 1,
     "daily_deletion_limit": 5,
     "strikes": 1
   },
-  "leaderboard": [
-    {
-      "rank": 1,
-      "name": "Sarah Chen",
-      "eco_points": 480,
-      "data_cleared_bytes": 1420584960,
-      "streak_days": 8,
-      "trees": 3
-    },
-    {
-      "rank": 2,
-      "name": "Alex River (You)",
-      "eco_points": 340,
-      "data_cleared_bytes": 713031680,
-      "streak_days": 5,
-      "trees": 1
-    },
-    {
-      "rank": 3,
-      "name": "Marcus Vance",
-      "eco_points": 290,
-      "data_cleared_bytes": 524288000,
-      "streak_days": 4,
-      "trees": 0
-    },
-    {
-      "rank": 4,
-      "name": "Emily Rodriguez",
-      "eco_points": 210,
-      "data_cleared_bytes": 367001600,
-      "streak_days": 3,
-      "trees": 0
-    },
-    {
-      "rank": 5,
-      "name": "David Kim",
-      "eco_points": 180,
-      "data_cleared_bytes": 280000000,
-      "streak_days": 2,
-      "trees": 0
-    }
-  ],
+  "leaderboard": [],
   "scanner": {
     "state": "COMPLETED",
-    "current_folder": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmpfieujwfn",
+    "current_folder": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmpq8facpky",
     "files": [
       {
-        "file_id": "f_ed64bb0bcea832f8",
+        "file_id": "f_4079db23ed9a3d43",
         "file_name": "build_artifact.tmp",
-        "absolute_path": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmpfieujwfn/build_artifact.tmp",
+        "absolute_path": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmpq8facpky/build_artifact.tmp",
         "relative_path": "build_artifact.tmp",
         "size_bytes": 20,
         "extension": "tmp",
         "mime_category": "other",
-        "last_modified_epoch_s": 1792694055.9461398,
-        "last_accessed_epoch_s": 1792694055.9460888,
+        "last_modified_epoch_s": 1792771137.324731,
+        "last_accessed_epoch_s": 1792771137.3246868,
         "is_confidential": false,
         "is_dark_data_candidate": true,
         "dark_data_reason": "Temporary cache/artifact",
@@ -74,10 +33,10 @@
         "category": "dark_data",
         "dark_data_tag": "Temporary cache/artifact",
         "age_days": 0,
-        "modified_date": "Oct 23, 2026 12:04 AM",
-        "accessed_date": "Oct 23, 2026 12:04 AM",
+        "modified_date": "Oct 23, 2026 09:28 PM",
+        "accessed_date": "Oct 23, 2026 09:28 PM",
         "accessed_days": 0,
-        "created_date": "Oct 08, 2026 12:04 AM",
+        "created_date": "Oct 08, 2026 09:28 PM",
         "sha256": "5c05df5b656ed6da2501d94a0a9419ae4113176b513488b0950e039a3acf7f63",
         "sha256_short": "5c05df5b...cf7f63",
         "carbon_g": 0.0,
@@ -86,15 +45,15 @@
         "ai_forensic_rationale": "\ud83e\uddf9 Disposable System Residue: Temporary cache/log artifact unreferenced by active applications. 100% automated safe reclamation."
       },
       {
-        "file_id": "f_7261d75fbc5e7860",
+        "file_id": "f_7a5775b99e4a4eaf",
         "file_name": "notes.txt",
-        "absolute_path": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmpfieujwfn/notes.txt",
+        "absolute_path": "/var/folders/q8/v0jht0cs2xgfd26lj86gjswr0000gn/T/tmpq8facpky/notes.txt",
         "relative_path": "notes.txt",
         "size_bytes": 32,
         "extension": "txt",
         "mime_category": "document",
-        "last_modified_epoch_s": 1792694055.946051,
-        "last_accessed_epoch_s": 1792694055.946002,
+        "last_modified_epoch_s": 1792771137.3246467,
+        "last_accessed_epoch_s": 1792771137.3245914,
         "is_confidential": false,
         "is_dark_data_candidate": false,
         "dark_data_reason": "",
@@ -103,10 +62,10 @@
         "category": "normal",
         "dark_data_tag": "Normal",
         "age_days": 0,
-        "modified_date": "Oct 23, 2026 12:04 AM",
-        "accessed_date": "Oct 23, 2026 12:04 AM",
+        "modified_date": "Oct 23, 2026 09:28 PM",
+        "accessed_date": "Oct 23, 2026 09:28 PM",
         "accessed_days": 0,
-        "created_date": "Oct 08, 2026 12:04 AM",
+        "created_date": "Oct 08, 2026 09:28 PM",
         "sha256": "7052d07fc0361fdf2be06297959d95ca9de229294c00945f5c95a99eee506751",
         "sha256_short": "7052d07f...506751",
         "carbon_g": 0.0,
@@ -120,32 +79,13 @@
   },
   "teacher_queue": [
     {
-      "request_id": "REQ-1001",
+      "request_id": "REQ-37293",
       "student_id": "STU-001",
-      "student_name": "Alex River",
-      "file_id": "file_sample_01",
-      "file_name": "Screen_Recording_Draft_v1.mov",
-      "file_path": "/Users/student/Movies/Screen_Recording_Draft_v1.mov",
-      "file_size_bytes": 367001600,
-      "file_age_days": 45,
-      "reason": "Rough unedited screen recording already trimmed into final presentation.",
-      "ai_evaluation": {
-        "confidence_score": 0.88,
-        "tier": "HIGH_CONFIDENCE",
-        "summary": "Verified: High-waste redundant video (350 MB .mov). Reason aligns with file age and extension.",
-        "is_gaming": false
-      },
-      "status": "PENDING",
-      "submitted_at": "2026-10-23 00:04:06"
-    },
-    {
-      "request_id": "REQ-55094",
-      "student_id": "STU-001",
-      "student_name": "Alex River",
-      "class_code": "env101",
-      "file_id": "test_01_1792694055093",
+      "student_name": "STU-001",
+      "class_code": "bio101",
+      "file_id": "test_01_1792771137293",
       "file_name": "Presentation_Draft_Old.mov",
-      "file_path": "/mock/path/Presentation_Draft_Old.mov",
+      "file_path": "Presentation_Draft_Old.mov",
       "file_size_bytes": 262144000,
       "file_age_days": 30,
       "reason": "Rough unedited screen recording already merged into final project video.",
@@ -157,34 +97,20 @@
         "is_gaming": false
       },
       "status": "APPROVED",
-      "submitted_at": "2026-10-23 00:04:15",
+      "credited": true,
+      "submitted_at": "2026-10-23 21:28:57",
       "decided_by": "TEACHER-001",
-      "decided_at": 1792694055.9505332
+      "decided_at": 1792771137.328244
     }
   ],
   "ecofund": {
     "budget_usd": 100.0,
-    "balance_usd": 97.0,
-    "trees_planted": 2,
-    "cumulative_waste_bytes": 2776629248,
+    "balance_usd": 100.0,
+    "trees_planted": 0,
+    "cumulative_waste_bytes": 262144000,
     "threshold_bytes": 1073741824,
     "cost_per_tree_usd": 1.5,
-    "donations_history": [
-      {
-        "tree_id": "TN-MOCK-101",
-        "species": "Mangrove (Rhizophora mucronata)",
-        "co2_offset_kg": 250.0,
-        "certificate_url": "datatodirt://certificates/TN-MOCK-101",
-        "planted_at": "2026-09-04 14:20:00"
-      },
-      {
-        "tree_id": "TN-MOCK-102",
-        "species": "Pixel Oak (Quercus pixelata)",
-        "co2_offset_kg": 200.0,
-        "certificate_url": "datatodirt://certificates/TN-MOCK-102",
-        "planted_at": "2026-09-05 11:05:00"
-      }
-    ]
+    "donations_history": []
   },
   "auth": {
     "current_role": "student",
@@ -193,29 +119,9 @@
   },
   "students": [
     {
-      "student_id": "STU-001",
-      "name": "Alex River",
-      "class_code": "env101",
-      "created_by": "TEACHER-001",
-      "created_at_iso": "2026-09-01 10:00:00",
-      "eco_points": 340,
-      "bytes_cleared": 713031680,
-      "trees": 1
-    },
-    {
-      "student_id": "STU-002",
-      "name": "Sarah Chen",
-      "class_code": "env101",
-      "created_by": "TEACHER-001",
-      "created_at_iso": "2026-09-01 10:05:00",
-      "eco_points": 480,
-      "bytes_cleared": 1420584960,
-      "trees": 3
-    },
-    {
-      "user_id": "STU-TEST-874C34",
-      "student_id": "STU-TEST-874C34",
-      "name": "Alice Student 874C34",
+      "user_id": "STU-TEST-2258AC",
+      "student_id": "STU-TEST-2258AC",
+      "name": "Alice Student 2258AC",
       "role": "student",
       "class_code": "bio101",
       "created_by": "Teacher",
@@ -227,12 +133,12 @@
       "daily_deletions_today": 0,
       "daily_deletion_limit": 5,
       "strikes": 0,
-      "created_at_iso": "2026-10-23 00:04:16"
+      "created_at_iso": "2026-10-23 21:28:57"
     },
     {
-      "user_id": "STU-C6223D",
-      "student_id": "STU-C6223D",
-      "name": "Bob AutoGen 874C34",
+      "user_id": "STU-D9089F",
+      "student_id": "STU-D9089F",
+      "name": "Bob AutoGen 2258AC",
       "role": "student",
       "class_code": "bio101",
       "created_by": "Teacher",
@@ -244,189 +150,56 @@
       "daily_deletions_today": 0,
       "daily_deletion_limit": 5,
       "strikes": 0,
-      "created_at_iso": "2026-10-23 00:04:19"
+      "created_at_iso": "2026-10-23 21:28:57"
     }
   ],
   "analytics": {
     "global_kpis": {
-      "total_visitors": 482,
-      "total_scans": 219,
-      "total_bytes_cleaned": 6128492032,
-      "total_carbon_offset_kg": 4.31,
-      "total_trees_funded": 12,
-      "active_sessions": 24
+      "total_visitors": 1,
+      "total_scans": 0,
+      "total_bytes_cleaned": 0,
+      "total_carbon_offset_kg": 0.0,
+      "total_trees_funded": 0,
+      "active_sessions": 0,
+      "tracked_cities_count": 0
     },
     "cities": {
-      "Singapore": {
-        "city": "Singapore",
-        "country": "Singapore",
-        "country_code": "SG",
-        "flag": "\ud83c\uddf8\ud83c\uddec",
-        "region": "Central Singapore",
-        "lat": 1.3521,
-        "lon": 103.8198,
-        "visitors": 164,
-        "active_users": 8,
-        "scans": 74,
-        "bytes_cleaned": 2415919104,
-        "co2_avoided_kg": 1.7,
-        "last_active": "Just now"
-      },
-      "Mumbai": {
-        "city": "Mumbai",
-        "country": "India",
-        "country_code": "IN",
-        "flag": "\ud83c\uddee\ud83c\uddf3",
-        "region": "Maharashtra",
-        "lat": 19.076,
-        "lon": 72.8777,
-        "visitors": 118,
-        "active_users": 6,
-        "scans": 52,
-        "bytes_cleaned": 1572864000,
-        "co2_avoided_kg": 1.11,
-        "last_active": "1 min ago"
-      },
-      "Bengaluru": {
-        "city": "Bengaluru",
-        "country": "India",
-        "country_code": "IN",
-        "flag": "\ud83c\uddee\ud83c\uddf3",
-        "region": "Karnataka",
-        "lat": 12.9716,
-        "lon": 77.5946,
-        "visitors": 76,
-        "active_users": 4,
-        "scans": 38,
-        "bytes_cleaned": 891289600,
-        "co2_avoided_kg": 0.63,
-        "last_active": "4 mins ago"
-      },
-      "New York": {
-        "city": "New York",
-        "country": "United States",
-        "country_code": "US",
-        "flag": "\ud83c\uddfa\ud83c\uddf8",
-        "region": "New York",
-        "lat": 40.7128,
-        "lon": -74.006,
-        "visitors": 52,
-        "active_users": 3,
-        "scans": 27,
-        "bytes_cleaned": 629145600,
-        "co2_avoided_kg": 0.44,
-        "last_active": "12 mins ago"
-      },
-      "London": {
-        "city": "London",
-        "country": "United Kingdom",
-        "country_code": "GB",
-        "flag": "\ud83c\uddec\ud83c\udde7",
-        "region": "Greater London",
-        "lat": 51.5074,
-        "lon": -0.1278,
-        "visitors": 36,
-        "active_users": 2,
-        "scans": 16,
-        "bytes_cleaned": 367001600,
-        "co2_avoided_kg": 0.26,
-        "last_active": "22 mins ago"
-      },
-      "Tokyo": {
-        "city": "Tokyo",
-        "country": "Japan",
-        "country_code": "JP",
-        "flag": "\ud83c\uddef\ud83c\uddf5",
-        "region": "Kanto",
-        "lat": 35.6762,
-        "lon": 139.6503,
-        "visitors": 21,
+      "Global Visitor": {
+        "city": "Global Visitor",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "region": "",
+        "lat": 0.0,
+        "lon": 0.0,
+        "visitors": 1,
         "active_users": 1,
-        "scans": 8,
-        "bytes_cleaned": 157286400,
-        "co2_avoided_kg": 0.11,
-        "last_active": "45 mins ago"
-      },
-      "Sydney": {
-        "city": "Sydney",
-        "country": "Australia",
-        "country_code": "AU",
-        "flag": "\ud83c\udde6\ud83c\uddfa",
-        "region": "New South Wales",
-        "lat": -33.8688,
-        "lon": 151.2093,
-        "visitors": 15,
-        "active_users": 0,
-        "scans": 4,
-        "bytes_cleaned": 95005728,
-        "co2_avoided_kg": 0.06,
-        "last_active": "2 hours ago"
+        "scans": 0,
+        "bytes_cleaned": 0,
+        "co2_avoided_kg": 0.0,
+        "last_active": "2026-10-23 21:28:57"
       }
     },
     "recent_events": [
       {
-        "id": "EVT-8921",
-        "timestamp": "2026-10-23 00:04:06",
-        "city": "Mumbai",
-        "country": "India",
-        "country_code": "IN",
-        "flag": "\ud83c\uddee\ud83c\uddf3",
-        "user_id": "STU-001",
-        "role": "student",
-        "action": "Cleaned 350 MB stale video (Screen_Recording_Draft_v1.mov)",
-        "device_type": "macOS Desktop",
-        "bytes_cleaned": 367001600
-      },
-      {
-        "id": "EVT-8920",
-        "timestamp": "2026-10-23 00:04:06",
-        "city": "Singapore",
-        "country": "Singapore",
-        "country_code": "SG",
-        "flag": "\ud83c\uddf8\ud83c\uddec",
-        "user_id": "STU-002",
-        "role": "student",
-        "action": "Device Scan indexed 84 dark data files (4.2 GB)",
-        "device_type": "Windows Desktop",
-        "bytes_cleaned": 0
-      },
-      {
-        "id": "EVT-8919",
-        "timestamp": "2026-10-23 00:04:06",
-        "city": "Bengaluru",
-        "country": "India",
-        "country_code": "IN",
-        "flag": "\ud83c\uddee\ud83c\uddf3",
-        "user_id": "TEACHER-001",
-        "role": "teacher",
-        "action": "Approved deletion request REQ-1001 (+1 Mangrove Tree)",
-        "device_type": "iPad Tablet",
-        "bytes_cleaned": 367001600
-      },
-      {
-        "id": "EVT-8918",
-        "timestamp": "2026-10-23 00:04:06",
-        "city": "New York",
-        "country": "United States",
-        "country_code": "US",
-        "flag": "\ud83c\uddfa\ud83c\uddf8",
-        "user_id": "STU-003",
-        "role": "student",
-        "action": "Google Drive scan completed (12 duplicates isolated)",
-        "device_type": "Mobile iPhone",
+        "id": "EVT-137331",
+        "timestamp": "2026-10-23 21:28:57",
+        "city": "Global Visitor",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "user_id": "visitor",
+        "role": "visitor",
+        "action": "Page Visit",
+        "device_type": "Desktop Browser",
         "bytes_cleaned": 0
       }
     ],
     "devices": {
-      "desktop": 62,
-      "mobile": 30,
-      "tablet": 8
+      "desktop": 1,
+      "mobile": 0,
+      "tablet": 0
     },
-    "waste_categories": {
-      "High-Waste Video & Screen Captures": 44,
-      "Stale Disk Images & Installers (.dmg / .iso)": 28,
-      "Forgotten Build Artifacts & Caches": 16,
-      "Identical Redundant Duplicate Backups": 12
-    }
+    "waste_categories": {}
   }
 }
