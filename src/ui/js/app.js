@@ -48,6 +48,13 @@ class DataToDirtApp {
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
 
+    // Handle return from Google OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+    if (tokenFromUrl) {
+      localStorage.setItem("d2d_google_access_token", tokenFromUrl);
+    }
+
     // Direct URL navigation support for /analytics
     if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
       this.switchRole("analytics");
@@ -59,6 +66,12 @@ class DataToDirtApp {
     const savedRole = localStorage.getItem("d2d_role");
     const savedUserId = localStorage.getItem("d2d_user_id");
     const savedPin = localStorage.getItem("d2d_pin");
+
+    if (urlParams.get("oauth") === "success" && !savedRole) {
+      console.log("[+] Auto-provisioning student session on OAuth return...");
+      this.completeLogin("student", "STU-001", "", "class-a");
+      return;
+    }
 
     if (existingToken && savedRole) {
       try {

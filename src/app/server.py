@@ -16,6 +16,22 @@ from datetime import datetime
 import urllib.request
 import urllib.parse
 ssl._create_default_https_context = ssl._create_unverified_context
+
+def get_ssl_context():
+    """Returns an SSL context that properly handles root certificates across different environments."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        pass
+    try:
+        return ssl.create_default_context()
+    except Exception:
+        pass
+    try:
+        return ssl._create_unverified_context()
+    except Exception:
+        return None
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -744,8 +760,9 @@ def create_flask_app():
         }).encode("utf-8")
         
         req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+        req.add_header("User-Agent", "DataToDirt/1.1")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, context=get_ssl_context()) as resp:
                 token_info = json.loads(resp.read().decode())
                 tok = token_info.get("access_token", "")
                 session["google_access_token"] = tok
@@ -956,7 +973,8 @@ def create_flask_app():
                             u += f"&pageToken={page_token}"
                         req = urllib.request.Request(u)
                         req.add_header("Authorization", f"Bearer {access_token}")
-                        with urllib.request.urlopen(req, timeout=8) as resp:
+                        req.add_header("User-Agent", "DataToDirt/1.1")
+                        with urllib.request.urlopen(req, timeout=8, context=get_ssl_context()) as resp:
                             f_data = json.loads(resp.read().decode())
                             for f in f_data.get("files", []):
                                 mime = f.get("mimeType", "")
@@ -1217,7 +1235,8 @@ def create_flask_app():
                             f_url = f"https://www.googleapis.com/drive/v3/files?q={q_folder}&fields=files(id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum)&pageSize=100"
                             req = urllib.request.Request(f_url)
                             req.add_header("Authorization", f"Bearer {oauth_token}")
-                            with urllib.request.urlopen(req, timeout=5) as resp:
+                            req.add_header("User-Agent", "DataToDirt/1.1")
+                            with urllib.request.urlopen(req, timeout=5, context=get_ssl_context()) as resp:
                                 f_data = json.loads(resp.read().decode())
                                 for item in f_data.get("files", []):
                                     sz_val = item.get("size") or item.get("quotaBytesUsed")
@@ -1263,7 +1282,8 @@ def create_flask_app():
                             meta_url = f"https://www.googleapis.com/drive/v3/files/{fid}?fields=id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum"
                             m_req = urllib.request.Request(meta_url)
                             m_req.add_header("Authorization", f"Bearer {oauth_token}")
-                            with urllib.request.urlopen(m_req, timeout=4) as m_resp:
+                            m_req.add_header("User-Agent", "DataToDirt/1.1")
+                            with urllib.request.urlopen(m_req, timeout=4, context=get_ssl_context()) as m_resp:
                                 meta = json.loads(m_resp.read().decode())
                                 real_sz = meta.get("size") or meta.get("quotaBytesUsed")
                                 if real_sz is not None:
@@ -1495,7 +1515,8 @@ def create_flask_app():
                             url += f"&pageToken={page_token}"
                         req = urllib.request.Request(url)
                         req.add_header("Authorization", f"Bearer {access_token}")
-                        with urllib.request.urlopen(req, timeout=8) as resp:
+                        req.add_header("User-Agent", "DataToDirt/1.1")
+                        with urllib.request.urlopen(req, timeout=8, context=get_ssl_context()) as resp:
                             resp_data = json.loads(resp.read().decode())
                             files = resp_data.get("files", [])
                             for f in files:
@@ -1549,6 +1570,62 @@ def create_flask_app():
                         page_token = resp_data.get("nextPageToken")
                         if not page_token or len(drive_items) >= 500:
                             break
+
+                    # If 'me' in owners returned 0 files, execute fallback search for school classroom files
+                    if len(drive_items) == 0:
+                        try:
+                            f_q = urllib.parse.quote("trashed=false")
+                            f_url = f"https://www.googleapis.com/drive/v3/files?q={f_q}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime)&pageSize=100"
+                            f_req = urllib.request.Request(f_url)
+                            f_req.add_header("Authorization", f"Bearer {access_token}")
+                            f_req.add_header("User-Agent", "DataToDirt/1.1")
+                            with urllib.request.urlopen(f_req, timeout=8, context=get_ssl_context()) as f_resp:
+                                f_data = json.loads(f_resp.read().decode())
+                                for f in f_data.get("files", []):
+                                    mime = f.get("mimeType", "")
+                                    if mime == "application/vnd.google-apps.folder":
+                                        continue
+                                    sz_raw = f.get("size") or f.get("quotaBytesUsed") or 0
+                                    try:
+                                        sz = int(sz_raw)
+                                    except (ValueError, TypeError):
+                                        sz = 0
+                                    if sz <= 0:
+                                        sz = estimate_file_size_by_name(f.get("name", "Document"), mime)
+                                    md5 = f.get("md5Checksum", "")
+                                    mtime_str = f.get("modifiedTime")
+                                    mtime = now
+                                    if mtime_str:
+                                        try:
+                                            dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                                            mtime = dt.replace(tzinfo=timezone.utc).timestamp()
+                                        except Exception:
+                                            try:
+                                                dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%SZ")
+                                                mtime = dt.replace(tzinfo=timezone.utc).timestamp()
+                                            except Exception:
+                                                mtime = now
+                                    item = {
+                                        "file_id": f["id"],
+                                        "file_name": f["name"],
+                                        "raw_file_name": f["name"],
+                                        "file_path": f"Google Drive/{f['name']}",
+                                        "absolute_path": f"Google Drive/{f['name']}",
+                                        "size_bytes": sz,
+                                        "size_formatted": format_bytes(sz),
+                                        "last_modified_epoch_s": mtime,
+                                        "last_accessed_epoch_s": mtime,
+                                        "created_epoch_s": mtime,
+                                        "mime_category": mime,
+                                        "is_confidential": False,
+                                        "md5": md5,
+                                        "is_drive": True
+                                    }
+                                    drive_items.append(item)
+                                    if md5:
+                                        drive_by_md5.setdefault(md5, []).append(item)
+                        except Exception as fb_err:
+                            print(f"[!] Fallback Drive query notice: {fb_err}")
                             
                     for item in drive_items:
                         age_seconds = now - item["last_modified_epoch_s"]
@@ -2020,7 +2097,8 @@ def create_flask_app():
                         url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
                         req = urllib.request.Request(url, method="DELETE")
                         req.add_header("Authorization", f"Bearer {access_token}")
-                        urllib.request.urlopen(req)
+                        req.add_header("User-Agent", "DataToDirt/1.1")
+                        urllib.request.urlopen(req, context=get_ssl_context())
                         target_item["recycled_success"] = True
                     except Exception as e:
                         print("Google Drive deletion failed:", e)

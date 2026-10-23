@@ -202,8 +202,9 @@ class StudentDashboardView {
     const btnRevoke = document.getElementById("btn-revoke-scan");
     const btnCheer = document.getElementById("btn-tree-celebrate");
 
-    const isMobileOrTablet = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIPad = /iPad/i.test(navigator.userAgent) || 
+      (navigator.maxTouchPoints > 1 && (navigator.platform === 'MacIntel' || navigator.userAgent.includes('Macintosh')));
+    const isMobileOrTablet = isIPad || /iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1);
 
     // Auto-scan on return from successful Google OAuth consent
     const urlParams = new URLSearchParams(window.location.search);
@@ -226,13 +227,18 @@ class StudentDashboardView {
     if (btnScanDrive) {
       btnScanDrive.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
+        const existingToken = localStorage.getItem("d2d_google_access_token");
         if (isMobileOrTablet) {
-          // On iPad / iPhone / Android, directly run Live Google Drive scan
-          // This avoids Safari popup blocker and Google Picker ITP iframe restrictions
-          this.executeScan("__google_drive__", true, "drive");
-        } else {
-          this.showGoogleDriveModal();
+          if (!existingToken) {
+            // Directly navigate to Google OAuth to prevent Safari popup blocker on iPad/iOS
+            window.location.href = "/auth/google/login";
+            return;
+          }
+          // If token already exists on iPad, run direct Live Google Drive scan
+          this.executeScan("__google_drive__", true, "drive", [], existingToken);
+          return;
         }
+        this.showGoogleDriveModal();
       });
     }
 
@@ -411,6 +417,12 @@ class StudentDashboardView {
               Opens Google selection window. Best for desktop browsers.
             </div>
           </button>
+          <button class="retro-btn retro-btn-wood" id="btn-gdrive-reconnect" style="width: 100%; padding: 10px; font-size: 12px; text-align: left; cursor: pointer;">
+            <strong>🔄 Switch / Connect Google Account</strong>
+            <div style="font-size: 10.5px; opacity: 0.85; margin-top: 2px;">
+              Re-authenticate or switch between school and personal Google accounts.
+            </div>
+          </button>
           <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-gdrive-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
             ✖ Cancel
           </button>
@@ -429,6 +441,12 @@ class StudentDashboardView {
     modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {
       dismiss();
       this.openGooglePicker();
+    });
+
+    modal.querySelector("#btn-gdrive-reconnect")?.addEventListener("click", () => {
+      dismiss();
+      localStorage.removeItem("d2d_google_access_token");
+      window.location.href = "/auth/google/login";
     });
 
     modal.querySelector("#btn-gdrive-cancel")?.addEventListener("click", dismiss);
@@ -499,7 +517,7 @@ class StudentDashboardView {
       if (window.google && window.google.accounts && window.google.accounts.oauth2) {
         const tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          scope: "https://www.googleapis.com/auth/drive.file",
+          scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file",
           callback: (resp) => {
             if (resp && resp.access_token) {
               loadGapiAndPicker(resp.access_token);
@@ -695,6 +713,7 @@ class StudentDashboardView {
       }
 
       if (response.status === 401 && res.status === "needs_auth") {
+        localStorage.removeItem("d2d_google_access_token");
         const lastRedirect = sessionStorage.getItem("d2d_last_oauth_redirect");
         const now = Date.now();
         if (lastRedirect && (now - Number(lastRedirect)) < 15000) {
@@ -817,14 +836,26 @@ class StudentDashboardView {
 
     if (this.scannedFiles.length === 0) {
       if (this.lastScanCompleted) {
-        const scanSourceLabel = this.lastScanType === "drive" || this.lastScanType === "picker_files" ? "Google Drive" : "Device Storage";
+        const isDrive = this.lastScanType === "drive" || this.lastScanType === "picker_files";
+        const scanSourceLabel = isDrive ? "Google Drive" : "Device Storage";
         container.innerHTML = `
           <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
-            <div style="font-size: 22px; margin-bottom: 6px;">🌱</div>
-            <div style="font-size: 13px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">Zero Waste Identified</div>
-            <div>Your ${scanSourceLabel} currently has zero dark data bloat. You are operating 100% lean and green!</div>
+            <div style="font-size: 26px; margin-bottom: 8px;">🌱</div>
+            <div style="font-size: 14px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">Zero Waste Identified</div>
+            <div>Your ${scanSourceLabel} was analyzed by AI and currently has zero dark data bloat. You are operating 100% lean and green!</div>
+            ${isDrive ? `
+              <div style="margin-top: 14px;">
+                <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-reconnect-gdrive" style="font-size: 11px; padding: 6px 12px; cursor: pointer;">
+                  🔄 Connect Different Google Account
+                </button>
+              </div>
+            ` : ""}
           </div>
         `;
+        container.querySelector("#btn-reconnect-gdrive")?.addEventListener("click", () => {
+          localStorage.removeItem("d2d_google_access_token");
+          window.location.href = "/auth/google/login";
+        });
         return;
       }
       container.innerHTML = `
