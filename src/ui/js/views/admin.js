@@ -370,12 +370,20 @@ class AdminEcoFundView {
     // Tree Certificates
     const elLedger = document.getElementById("adm-tree-ledger");
     if (elLedger && this.ecofund.donations_history) {
-      elLedger.innerHTML = this.ecofund.donations_history.map((d) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px dashed var(--c-parchment-border);">
-          <span>🌲 <strong>${d.tree_id}</strong>: ${d.species}</span>
-          <span style="color: var(--c-eco-leaf); font-weight: bold;">+${d.co2_offset_kg} kg CO₂</span>
-        </div>
-      `).join("");
+      if (this.ecofund.donations_history.length === 0) {
+        elLedger.innerHTML = `
+          <div style="text-align: center; color: var(--c-ink-muted); font-size: 11px; padding: 12px;">
+            No tree certificates issued yet. Trees are funded automatically as participants clean storage.
+          </div>
+        `;
+      } else {
+        elLedger.innerHTML = this.ecofund.donations_history.map((d) => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px dashed var(--c-parchment-border);">
+            <span>🌲 <strong>${d.tree_id}</strong>: ${d.species}</span>
+            <span style="color: var(--c-eco-leaf); font-weight: bold;">+${d.co2_offset_kg} kg CO₂</span>
+          </div>
+        `).join("");
+      }
     }
   }
 

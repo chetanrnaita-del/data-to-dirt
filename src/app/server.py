@@ -79,21 +79,15 @@ def get_default_state() -> Dict[str, Any]:
         "student": {
             "student_id": "STU-001",
             "name": "Alex River",
-            "bytes_cleared": 680 * 1024 * 1024,  # 680 MB initial demo progress
-            "eco_points": 340,
-            "streak_days": 5,
+            "bytes_cleared": 0,
+            "eco_points": 0,
+            "streak_days": 0,
             "last_deletion_date": time.strftime("%Y-%m-%d"),
-            "daily_deletions_today": 1,
+            "daily_deletions_today": 0,
             "daily_deletion_limit": DAILY_DELETION_LIMIT,
             "strikes": 0,
         },
-        "leaderboard": [
-            {"rank": 1, "name": "Sarah Chen", "eco_points": 480, "data_cleared_bytes": 1420584960, "streak_days": 8, "trees": 3},
-            {"rank": 2, "name": "Alex River (You)", "eco_points": 340, "data_cleared_bytes": 713031680, "streak_days": 5, "trees": 1},
-            {"rank": 3, "name": "Marcus Vance", "eco_points": 290, "data_cleared_bytes": 524288000, "streak_days": 4, "trees": 0},
-            {"rank": 4, "name": "Emily Rodriguez", "eco_points": 210, "data_cleared_bytes": 367001600, "streak_days": 3, "trees": 0},
-            {"rank": 5, "name": "David Kim", "eco_points": 180, "data_cleared_bytes": 280000000, "streak_days": 2, "trees": 0},
-        ],
+        "leaderboard": [],
         "scanner": {
             "state": "BLIND",  # BLIND, SCANNING, COMPLETED, REVOKED, ERROR
             "current_folder": None,
@@ -101,259 +95,40 @@ def get_default_state() -> Dict[str, Any]:
             "confidential_ids": [],
             "error": None,
         },
-        "teacher_queue": [
-            {
-                "request_id": "REQ-1001",
-                "student_id": "STU-001",
-                "student_name": "Alex River",
-                "file_id": "file_sample_01",
-                "file_name": "Screen_Recording_Draft_v1.mov",
-                "file_path": "/Users/student/Movies/Screen_Recording_Draft_v1.mov",
-                "file_size_bytes": 350 * 1024 * 1024,
-                "file_age_days": 45,
-                "reason": "Rough unedited screen recording already trimmed into final presentation.",
-                "ai_evaluation": {
-                    "confidence_score": 0.88,
-                    "tier": "HIGH_CONFIDENCE",
-                    "summary": "Verified: High-waste redundant video (350 MB .mov). Reason aligns with file age and extension.",
-                    "is_gaming": False,
-                },
-                "status": "PENDING",
-                "submitted_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            }
-        ],
+        "teacher_queue": [],
         "ecofund": {
             "budget_usd": 100.00,
-            "balance_usd": 97.00,
-            "trees_planted": 2,
-            "cumulative_waste_bytes": 2 * TREE_DONATION_THRESHOLD_BYTES + 350 * 1024 * 1024,
+            "balance_usd": 100.00,
+            "trees_planted": 0,
+            "cumulative_waste_bytes": 0,
             "threshold_bytes": TREE_DONATION_THRESHOLD_BYTES,
             "cost_per_tree_usd": 1.50,
-            "donations_history": [
-                {
-                    "tree_id": "TN-MOCK-101",
-                    "species": "Mangrove (Rhizophora mucronata)",
-                    "co2_offset_kg": 250.0,
-                    "certificate_url": "datatodirt://certificates/TN-MOCK-101",
-                    "planted_at": "2026-09-04 14:20:00",
-                },
-                {
-                    "tree_id": "TN-MOCK-102",
-                    "species": "Pixel Oak (Quercus pixelata)",
-                    "co2_offset_kg": 200.0,
-                    "certificate_url": "datatodirt://certificates/TN-MOCK-102",
-                    "planted_at": "2026-09-05 11:05:00",
-                }
-            ]
+            "donations_history": []
         },
         "auth": {
             "current_role": "student",
             "teacher_pin": "teacher123",
             "admin_pin": "admin123"
         },
-        "students": [
-            {
-                "student_id": "STU-001",
-                "name": "Alex River",
-                "class_code": "env101",
-                "created_by": "TEACHER-001",
-                "created_at_iso": "2026-09-01 10:00:00",
-                "eco_points": 340,
-                "bytes_cleared": 680 * 1024 * 1024,
-                "trees": 1
-            },
-            {
-                "student_id": "STU-002",
-                "name": "Sarah Chen",
-                "class_code": "env101",
-                "created_by": "TEACHER-001",
-                "created_at_iso": "2026-09-01 10:05:00",
-                "eco_points": 480,
-                "bytes_cleared": 1420584960,
-                "trees": 3
-            }
-        ],
+        "students": [],
         "analytics": {
             "global_kpis": {
-                "total_visitors": 482,
-                "total_scans": 219,
-                "total_bytes_cleaned": 6128492032,
-                "total_carbon_offset_kg": 4.31,
-                "total_trees_funded": 12,
-                "active_sessions": 24,
+                "total_visitors": 0,
+                "total_scans": 0,
+                "total_bytes_cleaned": 0,
+                "total_carbon_offset_kg": 0.0,
+                "total_trees_funded": 0,
+                "active_sessions": 0,
+                "tracked_cities_count": 0,
             },
-            "cities": {
-                "Singapore": {
-                    "city": "Singapore",
-                    "country": "Singapore",
-                    "country_code": "SG",
-                    "flag": "🇸🇬",
-                    "region": "Central Singapore",
-                    "lat": 1.3521,
-                    "lon": 103.8198,
-                    "visitors": 164,
-                    "active_users": 8,
-                    "scans": 74,
-                    "bytes_cleaned": 2415919104,
-                    "co2_avoided_kg": 1.70,
-                    "last_active": "Just now",
-                },
-                "Mumbai": {
-                    "city": "Mumbai",
-                    "country": "India",
-                    "country_code": "IN",
-                    "flag": "🇮🇳",
-                    "region": "Maharashtra",
-                    "lat": 19.0760,
-                    "lon": 72.8777,
-                    "visitors": 118,
-                    "active_users": 6,
-                    "scans": 52,
-                    "bytes_cleaned": 1572864000,
-                    "co2_avoided_kg": 1.11,
-                    "last_active": "1 min ago",
-                },
-                "Bengaluru": {
-                    "city": "Bengaluru",
-                    "country": "India",
-                    "country_code": "IN",
-                    "flag": "🇮🇳",
-                    "region": "Karnataka",
-                    "lat": 12.9716,
-                    "lon": 77.5946,
-                    "visitors": 76,
-                    "active_users": 4,
-                    "scans": 38,
-                    "bytes_cleaned": 891289600,
-                    "co2_avoided_kg": 0.63,
-                    "last_active": "4 mins ago",
-                },
-                "New York": {
-                    "city": "New York",
-                    "country": "United States",
-                    "country_code": "US",
-                    "flag": "🇺🇸",
-                    "region": "New York",
-                    "lat": 40.7128,
-                    "lon": -74.0060,
-                    "visitors": 52,
-                    "active_users": 3,
-                    "scans": 27,
-                    "bytes_cleaned": 629145600,
-                    "co2_avoided_kg": 0.44,
-                    "last_active": "12 mins ago",
-                },
-                "London": {
-                    "city": "London",
-                    "country": "United Kingdom",
-                    "country_code": "GB",
-                    "flag": "🇬🇧",
-                    "region": "Greater London",
-                    "lat": 51.5074,
-                    "lon": -0.1278,
-                    "visitors": 36,
-                    "active_users": 2,
-                    "scans": 16,
-                    "bytes_cleaned": 367001600,
-                    "co2_avoided_kg": 0.26,
-                    "last_active": "22 mins ago",
-                },
-                "Tokyo": {
-                    "city": "Tokyo",
-                    "country": "Japan",
-                    "country_code": "JP",
-                    "flag": "🇯🇵",
-                    "region": "Kanto",
-                    "lat": 35.6762,
-                    "lon": 139.6503,
-                    "visitors": 21,
-                    "active_users": 1,
-                    "scans": 8,
-                    "bytes_cleaned": 157286400,
-                    "co2_avoided_kg": 0.11,
-                    "last_active": "45 mins ago",
-                },
-                "Sydney": {
-                    "city": "Sydney",
-                    "country": "Australia",
-                    "country_code": "AU",
-                    "flag": "🇦🇺",
-                    "region": "New South Wales",
-                    "lat": -33.8688,
-                    "lon": 151.2093,
-                    "visitors": 15,
-                    "active_users": 0,
-                    "scans": 4,
-                    "bytes_cleaned": 95005728,
-                    "co2_avoided_kg": 0.06,
-                    "last_active": "2 hours ago",
-                }
-            },
-            "recent_events": [
-                {
-                    "id": "EVT-8921",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "city": "Mumbai",
-                    "country": "India",
-                    "country_code": "IN",
-                    "flag": "🇮🇳",
-                    "user_id": "STU-001",
-                    "role": "student",
-                    "action": "Cleaned 350 MB stale video (Screen_Recording_Draft_v1.mov)",
-                    "device_type": "macOS Desktop",
-                    "bytes_cleaned": 367001600,
-                },
-                {
-                    "id": "EVT-8920",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "city": "Singapore",
-                    "country": "Singapore",
-                    "country_code": "SG",
-                    "flag": "🇸🇬",
-                    "user_id": "STU-002",
-                    "role": "student",
-                    "action": "Device Scan indexed 84 dark data files (4.2 GB)",
-                    "device_type": "Windows Desktop",
-                    "bytes_cleaned": 0,
-                },
-                {
-                    "id": "EVT-8919",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "city": "Bengaluru",
-                    "country": "India",
-                    "country_code": "IN",
-                    "flag": "🇮🇳",
-                    "user_id": "TEACHER-001",
-                    "role": "teacher",
-                    "action": "Approved deletion request REQ-1001 (+1 Mangrove Tree)",
-                    "device_type": "iPad Tablet",
-                    "bytes_cleaned": 367001600,
-                },
-                {
-                    "id": "EVT-8918",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "city": "New York",
-                    "country": "United States",
-                    "country_code": "US",
-                    "flag": "🇺🇸",
-                    "user_id": "STU-003",
-                    "role": "student",
-                    "action": "Google Drive scan completed (12 duplicates isolated)",
-                    "device_type": "Mobile iPhone",
-                    "bytes_cleaned": 0,
-                }
-            ],
+            "cities": {},
+            "recent_events": [],
             "devices": {
-                "desktop": 62,
-                "mobile": 30,
-                "tablet": 8
+                "desktop": 0,
+                "mobile": 0,
+                "tablet": 0
             },
-            "waste_categories": {
-                "High-Waste Video & Screen Captures": 44,
-                "Stale Disk Images & Installers (.dmg / .iso)": 28,
-                "Forgotten Build Artifacts & Caches": 16,
-                "Identical Redundant Duplicate Backups": 12
-            }
+            "waste_categories": {}
         }
     }
 
@@ -967,128 +742,7 @@ def create_flask_app():
                                 all_files.append(f_obj)
                 except Exception as dir_err:
                     print(f"[!] Auto-scan notice on {source_name}: {dir_err}")
-                    
-            # Cloud container fallback (when on Render or host with 0 user files):
-            if not all_files:
-                total_scanned_count = 18450
-                cloud_samples = [
-                    # (filename, source, size_bytes, age_days, accessed_days, reasons, explicit_sha, explicit_match_fn)
-                    ("[OneDrive] 0921 (1).mp4", "OneDrive", 1996 * 1024 * 1024, 31, 31, "Large media capture | Exact SHA Duplicate", "9d82a17b018cf423c52e8d356ef231a49c6d32fe41b31238914bca82d93e1102", "[OneDrive] 0921.mp4"),
-                    ("[OneDrive] 0921.mp4", "OneDrive", 1996 * 1024 * 1024, 31, 31, "Large media capture | Heavy file bloat", "9d82a17b018cf423c52e8d356ef231a49c6d32fe41b31238914bca82d93e1102", "[OneDrive] 0921 (1).mp4"),
-                    ("[OneDrive] double_click_to_convert_01.zoom", "OneDrive", 1114 * 1024 * 1024, 1906, 1850, "Stale relic (1906d) | Heavy file bloat (1.1 GB)", "a829103829102938102938102938102938102938102938102938102938102938", "[OneDrive] double_click_to_convert_01_copy.zoom"),
-                    ("[OneDrive] double_click_to_convert_01_copy.zoom", "OneDrive", 1114 * 1024 * 1024, 1906, 1850, "Stale relic (1906d) | Exact SHA Duplicate", "a829103829102938102938102938102938102938102938102938102938102938", "[OneDrive] double_click_to_convert_01.zoom"),
-                    ("[OneDrive] double_click_to_convert_03.zoom", "OneDrive", 1046 * 1024 * 1024, 1906, 1820, "Stale relic (1906d) | Heavy file bloat (1.0 GB)", None, None),
-                    ("[OneDrive] IGNICÓN.pptx", "OneDrive", 641 * 1024 * 1024, 128, 120, "Stale relic (128d) | Heavy file bloat (641 MB)", None, None),
-                    ("[Local Disk (Movies)] Problme Statement.mp4", "Local Disk (Movies)", 606 * 1024 * 1024, 32, 28, "Large media capture | Heavy file bloat (606 MB)", None, None),
-                    ("[OneDrive] Untitled video.mp4", "OneDrive", 606 * 1024 * 1024, 128, 120, "Stale relic (128d) | Large media capture", None, None),
-                    ("[Local Disk (Movies)] Screen Recording 2024-03-12 (1).mov", "Local Disk (Movies)", 540 * 1024 * 1024, 224, 210, "Large media capture | Exact SHA Duplicate", "f918203948571029384756102938475610293847561029384756102938475610", "[Local Disk (Movies)] Screen Recording 2024-03-12.mov"),
-                    ("[Local Disk (Movies)] Screen Recording 2024-03-12.mov", "Local Disk (Movies)", 540 * 1024 * 1024, 224, 210, "Large media capture | Stale relic (224d)", "f918203948571029384756102938475610293847561029384756102938475610", "[Local Disk (Movies)] Screen Recording 2024-03-12 (1).mov"),
-                    ("[OneDrive] 20260614_153411000_iOS.MOV", "OneDrive", 514 * 1024 * 1024, 116, 110, "Stale relic (116d) | Large media capture", None, None),
-                    ("[Local Disk (Downloads)] Docker_Desktop_v4.28 (1).dmg", "Local Disk (Downloads)", 480 * 1024 * 1024, 180, 175, "Archive / installer bloat | Exact SHA Duplicate", "3b8912fc89d412e6840742a033f218204618e219ba46914b4393b3921ec5b410", "[Local Disk (Downloads)] Docker_Desktop_v4.28.dmg"),
-                    ("[Local Disk (Downloads)] Docker_Desktop_v4.28.dmg", "Local Disk (Downloads)", 480 * 1024 * 1024, 180, 175, "Archive / installer bloat | Heavy file bloat (480 MB)", "3b8912fc89d412e6840742a033f218204618e219ba46914b4393b3921ec5b410", "[Local Disk (Downloads)] Docker_Desktop_v4.28 (1).dmg"),
-                    ("[Local Disk (Downloads)] Xcode_Simulator_Runtimes.pkg", "Local Disk (Downloads)", 420 * 1024 * 1024, 210, 205, "Archive / installer bloat | Stale relic (210d)", None, None),
-                    ("[Local Disk (Movies)] OBS_Recording_2023_11_04.mkv", "Local Disk (Movies)", 410 * 1024 * 1024, 350, 340, "Large media capture | Stale relic (350d)", None, None),
-                    ("[iCloud Drive] 4K_Drone_Footage_RAW_004.mov", "iCloud Drive", 380 * 1024 * 1024, 98, 90, "Heavy file bloat (380 MB) | Large media capture", None, None),
-                    ("[Google Drive (Desktop)] Zoom_Meeting_Recording_2024_01_15.mp4", "Google Drive (Desktop)", 360 * 1024 * 1024, 280, 270, "Large media capture | Cloud storage bloat", None, None),
-                    ("[iCloud Drive] Burst_IMG_4920_Archive_backup.zip", "iCloud Drive", 340 * 1024 * 1024, 140, 135, "Archive / installer bloat | Exact SHA Duplicate", "c123491823901928301928301928301928301928301928301928301928301928", "[iCloud Drive] Burst_IMG_4920_Archive.zip"),
-                    ("[iCloud Drive] Burst_IMG_4920_Archive.zip", "iCloud Drive", 340 * 1024 * 1024, 140, 135, "Archive / installer bloat | Stale relic", "c123491823901928301928301928301928301928301928301928301928301928", "[iCloud Drive] Burst_IMG_4920_Archive_backup.zip"),
-                    ("[Local Disk (Desktop)] Machine_Learning_Dataset_2023.tar.gz", "Local Disk (Desktop)", 310 * 1024 * 1024, 260, 250, "Archive / installer bloat | Stale relic (260d)", None, None),
-                    ("[Local Disk (Documents)] Final_Video_Project_Export_untrimmed.mov", "Local Disk (Documents)", 295 * 1024 * 1024, 190, 180, "Large media capture | Heavy file bloat", None, None),
-                    ("[OneDrive] Raw_Footage_Trimmed_Backup.mp4", "OneDrive", 242 * 1024 * 1024, 210, 200, "Large media capture | Stale relic (210d)", None, None),
-                    ("[Local Disk (Downloads)] AndroidStudio_2023.3.1_patch.dmg", "Local Disk (Downloads)", 240 * 1024 * 1024, 160, 150, "Archive / installer bloat | Stale relic", None, None),
-                    ("[Google Drive (Desktop)] Assets_Batch_Export_Final.zip", "Google Drive (Desktop)", 210 * 1024 * 1024, 155, 150, "Archive / installer bloat | Heavy file bloat", None, None),
-                    ("[Local Disk (Pictures)] Poster_Design_Mockup_Layered.psd", "Local Disk (Pictures)", 185 * 1024 * 1024, 160, 155, "Heavy PSD design file | Inactive project", None, None),
-                    ("[Local Disk (Downloads)] dataset_coco_sample_2023.rar", "Local Disk (Downloads)", 185 * 1024 * 1024, 240, 230, "Archive / installer bloat | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] zoom_us_installer_2023.pkg", "Local Disk (Downloads)", 178 * 1024 * 1024, 340, 330, "Archive / installer bloat | Stale relic (340d)", None, None),
-                    ("[iCloud Drive] Presentation_Rehearsal_Take_1.mov", "iCloud Drive", 160 * 1024 * 1024, 140, 130, "Large media capture | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] Postman-mac-arm64-10.22.dmg", "Local Disk (Downloads)", 145 * 1024 * 1024, 170, 165, "Archive / installer bloat | Stale relic", None, None),
-                    ("[Local Disk (Music)] GarageBand_Project_Scratch.band.zip", "Local Disk (Music)", 140 * 1024 * 1024, 275, 270, "Heavy audio project archive | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] VSCode-darwin-universal.zip", "Local Disk (Downloads)", 135 * 1024 * 1024, 205, 200, "Archive / installer bloat | Stale relic", None, None),
-                    ("[OneDrive] Backup_Catalog_Sync_2023.tar", "OneDrive", 130 * 1024 * 1024, 330, 320, "Archive / installer bloat | Stale relic (330d)", None, None),
-                    ("[Local Disk (Downloads)] VirtualBox_6.1.34_installer (1).dmg", "Local Disk (Downloads)", 125 * 1024 * 1024, 400, 390, "Archive / installer bloat | Exact SHA Duplicate", "2918273645102938475610293847561029384756102938475610293847561029", "[Local Disk (Downloads)] VirtualBox_6.1.34_installer.dmg"),
-                    ("[Local Disk (Downloads)] VirtualBox_6.1.34_installer.dmg", "Local Disk (Downloads)", 125 * 1024 * 1024, 400, 390, "Archive / installer bloat | Stale relic (400d)", "2918273645102938475610293847561029384756102938475610293847561029", "[Local Disk (Downloads)] VirtualBox_6.1.34_installer (1).dmg"),
-                    ("[Local Disk (Desktop)] temp_scratch_dataset_2023.zip", "Local Disk (Desktop)", 115 * 1024 * 1024, 260, 255, "Archive / installer bloat | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] Slack-Setup-v4.35.0.dmg", "Local Disk (Downloads)", 110 * 1024 * 1024, 190, 185, "Archive / installer bloat | Redundant installer", None, None),
-                    ("[Local Disk (Downloads)] GoogleChrome_installer.dmg", "Local Disk (Downloads)", 95 * 1024 * 1024, 220, 215, "Archive / installer bloat | Redundant installer", None, None),
-                    ("[Local Disk (Music)] Voice_Memos_Archive_Raw_sync.aif", "Local Disk (Music)", 95 * 1024 * 1024, 310, 300, "Large media capture | Exact SHA Duplicate", "8920192830192830192830192830192830192830192830192830192830192830", "[Local Disk (Music)] Voice_Memos_Archive_Raw.aif"),
-                    ("[Local Disk (Music)] Voice_Memos_Archive_Raw.aif", "Local Disk (Music)", 95 * 1024 * 1024, 310, 300, "Large media capture | Stale relic (310d)", "8920192830192830192830192830192830192830192830192830192830192830", "[Local Disk (Music)] Voice_Memos_Archive_Raw_sync.aif"),
-                    ("[Local Disk (Downloads)] Textbook_HighRes_Chemistry_Chapters1-10.pdf", "Local Disk (Downloads)", 92 * 1024 * 1024, 215, 210, "Heavy file bloat | Stale download", None, None),
-                    ("[Local Disk (Pictures)] Unsorted_Scans_Archive_2023.zip", "Local Disk (Pictures)", 88 * 1024 * 1024, 280, 275, "Archive / installer bloat | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] node-v20.10.0-darwin-arm64 (1).tar.gz", "Local Disk (Downloads)", 84 * 1024 * 1024, 195, 190, "Archive / installer bloat | Exact SHA Duplicate", "1029384756102938475610293847561029384756102938475610293847561029", "[Local Disk (Downloads)] Node_v20.10.0_darwin_arm64.tar.gz"),
-                    ("[Local Disk (Downloads)] Node_v20.10.0_darwin_arm64.tar.gz", "Local Disk (Downloads)", 84 * 1024 * 1024, 195, 190, "Archive / installer bloat | Stale relic", "1029384756102938475610293847561029384756102938475610293847561029", "[Local Disk (Downloads)] node-v20.10.0-darwin-arm64 (1).tar.gz"),
-                    ("[Local Disk (Desktop)] rough_cut_draft_audio.wav", "Local Disk (Desktop)", 72 * 1024 * 1024, 145, 140, "Large media capture | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] unfinished_transfer.crdownload", "Local Disk (Downloads)", 64 * 1024 * 1024, 180, 175, "Temporary system junk | Abandoned download", None, None),
-                    ("[OneDrive] Marketing_Deck_v2_final_final(1).pptx", "OneDrive", 52 * 1024 * 1024, 175, 170, "Potential duplicate copy | Exact SHA Duplicate", "e4392819da218b48c340b492985f39281a8f928e718b29381c828e1927364819", "[OneDrive] Marketing_Deck_v2_final.pptx"),
-                    ("[OneDrive] Marketing_Deck_v2_final.pptx", "OneDrive", 52 * 1024 * 1024, 175, 170, "Stale relic | Presentation", "e4392819da218b48c340b492985f39281a8f928e718b29381c828e1927364819", "[OneDrive] Marketing_Deck_v2_final_final(1).pptx"),
-                    ("[OneDrive] Science_Project_Report_copy(1).docx", "OneDrive", 48 * 1024 * 1024, 185, 180, "Potential duplicate copy | Exact SHA Duplicate", "9182736450192837465019283746501928374650192837465019283746501928", "[OneDrive] Science_Project_Report.docx"),
-                    ("[OneDrive] Science_Project_Report.docx", "OneDrive", 48 * 1024 * 1024, 185, 180, "Stale relic | Document", "9182736450192837465019283746501928374650192837465019283746501928", "[OneDrive] Science_Project_Report_copy(1).docx"),
-                    ("[Local Disk (Pictures)] DSC_8492_RAW_BURST_01.nef", "Local Disk (Pictures)", 45 * 1024 * 1024, 180, 175, "Heavy raw image | Unsorted burst", None, None),
-                    ("[Local Disk (Pictures)] DSC_8493_RAW_BURST_02.nef", "Local Disk (Pictures)", 45 * 1024 * 1024, 180, 175, "Heavy raw image | Unsorted burst", None, None),
-                    ("[Local Disk (Documents)] Thesis_Literature_Review_unformatted.docx", "Local Disk (Documents)", 38 * 1024 * 1024, 305, 300, "Stale relic (305d) | Document bloat", None, None),
-                    ("[Local Disk (Desktop)] crashdump_analytics_2023.dmp", "Local Disk (Desktop)", 28 * 1024 * 1024, 290, 285, "Temporary system junk | Crashdump", None, None),
-                    ("[Google Drive (Desktop)] Annual_Budget_Projection_v3_copy.xlsx", "Google Drive (Desktop)", 22 * 1024 * 1024, 210, 200, "Potential duplicate copy | Stale spreadsheet", None, None),
-                    ("[Local Disk (Desktop)] Screen Shot 2024-02-14 at 11.23.44 AM copy.png", "Local Disk (Desktop)", 18 * 1024 * 1024, 250, 245, "Unorganized screenshot relic | Exact SHA Duplicate", "7a10294fc31289ae832104928192716381920381928371920192837192837192", "[Local Disk (Desktop)] Screen Shot 2024-02-14 at 11.23.44 AM.png"),
-                    ("[Local Disk (Desktop)] Screen Shot 2024-02-14 at 11.23.44 AM.png", "Local Disk (Desktop)", 18 * 1024 * 1024, 250, 245, "Unorganized screenshot relic | Stale relic", "7a10294fc31289ae832104928192716381920381928371920192837192837192", "[Local Disk (Desktop)] Screen Shot 2024-02-14 at 11.23.44 AM copy.png"),
-                    ("[Local Disk (Desktop)] Screen Shot 2024-02-14 at 11.24.01 AM.png", "Local Disk (Desktop)", 19 * 1024 * 1024, 250, 245, "Unorganized screenshot relic | Stale relic", None, None),
-                    ("[Local Disk (Desktop)] Screen Shot 2024-03-01 at 09.11.22 AM.png", "Local Disk (Desktop)", 16 * 1024 * 1024, 230, 225, "Unorganized screenshot relic | Stale relic", None, None),
-                    ("[Local Disk (Desktop)] Screen Shot 2024-03-15 at 14.05.59 PM.png", "Local Disk (Desktop)", 17 * 1024 * 1024, 215, 210, "Unorganized screenshot relic | Stale relic", None, None),
-                    ("[Local Disk (Documents)] auto_recovery_save_word_2023.asd", "Local Disk (Documents)", 15 * 1024 * 1024, 310, 305, "Temporary system junk | Orphaned auto-recovery", None, None),
-                    ("[Local Disk (Documents)] Physics_Lab_Report_draft2_copy.pdf", "Local Disk (Documents)", 14 * 1024 * 1024, 140, 135, "Potential duplicate copy | Exact SHA Duplicate", "4918203918203918203918203918203918203918203918203918203918203918", "[Local Disk (Documents)] Physics_Lab_Report_draft2.pdf"),
-                    ("[Local Disk (Documents)] Physics_Lab_Report_draft2.pdf", "Local Disk (Documents)", 14 * 1024 * 1024, 140, 135, "Stale relic | Document", "4918203918203918203918203918203918203918203918203918203918203918", "[Local Disk (Documents)] Physics_Lab_Report_draft2_copy.pdf"),
-                    ("[Google Drive (Desktop)] synctemp_conflict_0489.tmp", "Google Drive (Desktop)", 12 * 1024 * 1024, 195, 190, "Temporary system junk | Sync conflict", None, None),
-                    ("[Local Disk (Downloads)] npm_debug_2023_10_22.log", "Local Disk (Downloads)", 8 * 1024 * 1024, 360, 355, "Temporary system junk | Stale log", None, None),
-                    ("[Local Disk (Movies)] Render_Draft_Pass_01.mov", "Local Disk (Movies)", 495 * 1024 * 1024, 140, 130, "Large media capture | Unrendered test export", None, None),
-                    ("[Local Disk (Movies)] Render_Draft_Pass_02.mov", "Local Disk (Movies)", 510 * 1024 * 1024, 138, 128, "Large media capture | Unrendered test export", None, None),
-                    ("[iCloud Drive] Keynote_Animation_Assets_v1.zip", "iCloud Drive", 190 * 1024 * 1024, 210, 200, "Archive / installer bloat | Stale project archive", None, None),
-                    ("[OneDrive] Raw_Audio_Podcast_Episode_12.wav", "OneDrive", 310 * 1024 * 1024, 170, 160, "Large media capture | Unedited podcast stem", None, None),
-                    ("[Local Disk (Downloads)] Figma_mac_arm64_release_2023.dmg", "Local Disk (Downloads)", 115 * 1024 * 1024, 290, 280, "Archive / installer bloat | Outdated release installer", None, None),
-                    ("[Local Disk (Downloads)] Blender_3.6.0_macos_arm64.dmg", "Local Disk (Downloads)", 320 * 1024 * 1024, 260, 250, "Archive / installer bloat | Redundant major version", None, None),
-                    ("[Local Disk (Documents)] Calculus_Homework_Scan_Unoptimized.pdf", "Local Disk (Documents)", 42 * 1024 * 1024, 180, 170, "Heavy uncompressed scan | Stale document", None, None),
-                    ("[Local Disk (Pictures)] Lightroom_Preview_Cache_Catalog.lrdata.zip", "Local Disk (Pictures)", 275 * 1024 * 1024, 230, 220, "Temporary system junk | Dormant preview cache", None, None),
-                    ("[OneDrive] Chemistry_Lab_Spectrometry_Data.csv", "OneDrive", 18 * 1024 * 1024, 240, 230, "Stale relic (240d) | Raw uncompressed data", None, None),
-                    ("[Local Disk (Desktop)] Screen Recording 2024-04-10 at 16.20.11.mov", "Local Disk (Desktop)", 220 * 1024 * 1024, 190, 185, "Large media capture | Desktop clutter", None, None),
-                    ("[Google Drive (Desktop)] Conference_Keynote_Presentation_Backup.key", "Google Drive (Desktop)", 140 * 1024 * 1024, 215, 205, "Stale presentation | Cloud storage relic", None, None),
-                    ("[Local Disk (Downloads)] Rust_Toolchain_Archive_x86_64.tar.gz", "Local Disk (Downloads)", 165 * 1024 * 1024, 310, 300, "Archive / installer bloat | Stale development artifact", None, None),
-                    ("[Local Disk (Music)] Rehearsal_Stereo_Mixdown_Take4.wav", "Local Disk (Music)", 88 * 1024 * 1024, 195, 190, "Large media capture | Unused stem", None, None),
-                    ("[Local Disk (Pictures)] Unsorted_iPhone_Import_2023_08.zip", "Local Disk (Pictures)", 420 * 1024 * 1024, 380, 370, "Archive / installer bloat | Massive photo archive", None, None),
-                    ("[Local Disk (Documents)] History_Term_Paper_Final_v1_old.docx", "Local Disk (Documents)", 12 * 1024 * 1024, 290, 280, "Stale relic | Superseded term paper", None, None),
-                    ("[Local Disk (Desktop)] Unity_Shader_Cache_Temp.tar", "Local Disk (Desktop)", 95 * 1024 * 1024, 270, 260, "Temporary system junk | Unity shader artifacts", None, None),
-                    ("[OneDrive] Zoom_Chat_Transcript_2023_11_12.txt", "OneDrive", 2 * 1024 * 1024, 340, 330, "Stale relic (340d) | Ephemeral chat log", None, None),
-                    ("[Local Disk (Downloads)] Java_JDK_21_macos-aarch64_bin.dmg", "Local Disk (Downloads)", 195 * 1024 * 1024, 230, 220, "Archive / installer bloat | Old JDK installer", None, None),
-                    ("[Local Disk (Desktop)] Screen Shot 2024-05-02 at 08.45.10 AM.png", "Local Disk (Desktop)", 14 * 1024 * 1024, 170, 165, "Unorganized screenshot relic | Stale relic", None, None),
-                    ("[Local Disk (Downloads)] Ollama_macos_install.zip", "Local Disk (Downloads)", 68 * 1024 * 1024, 210, 200, "Archive / installer bloat | Outdated binary package", None, None),
-                    ("[Google Drive (Desktop)] Team_Sprint_Retrospective_Notes_Archive.pdf", "Google Drive (Desktop)", 26 * 1024 * 1024, 280, 270, "Stale relic | Inactive team retro archive", None, None)
-                ]
-                for idx, item in enumerate(cloud_samples):
-                    fn, source, sz, age, accessed_days, reasons = item[0], item[1], item[2], item[3], item[4], item[5]
-                    exp_sha = item[6] if len(item) > 6 else None
-                    exp_match = item[7] if len(item) > 7 else None
-                    cat = "heavy_media" if sz >= 50 * 1024 * 1024 else ("duplicate" if "Duplicate" in reasons else "transient_trash")
-                    f_obj = {
-                        "file_id": f"auto_file_{idx+1}_{int(now_epoch)}",
-                        "file_name": fn,
-                        "raw_file_name": fn.split("] ")[-1],
-                        "file_path": f"/SystemStorage/{source}/{fn.split('] ')[-1]}",
-                        "absolute_path": f"/SystemStorage/{source}/{fn.split('] ')[-1]}",
-                        "size_bytes": sz,
-                        "size_formatted": format_bytes(sz),
-                        "last_modified_epoch_s": now_epoch - (age * 86400),
-                        "last_accessed_epoch_s": now_epoch - (accessed_days * 86400),
-                        "created_epoch_s": now_epoch - ((age + 15) * 86400),
-                        "age_days": age,
-                        "accessed_days": accessed_days,
-                        "is_confidential": False,
-                        "is_dark_data_candidate": True,
-                        "dark_data_reason": reasons,
-                        "category": cat,
-                        "dark_data_tag": reasons,
-                        "storage_source": source,
-                        "is_drive": False,
-                        "sha256": exp_sha,
-                        "sha_match_filename": exp_match,
-                    }
-                    all_files.append(f_obj)
-                    
+
             # Sort dark candidates by size DESCENDING so heaviest storage hogs are prioritized!
             all_files.sort(key=lambda x: x["size_bytes"], reverse=True)
             
@@ -1245,27 +899,25 @@ def create_flask_app():
                     last_modified = now_epoch
                 age_days = max(0, int((now_epoch - last_modified) / 86400))
                 
-                # Simple logic for dark data:
-                is_dark = False
-                reason = ""
-                if age_days > 365:
-                    is_dark = True
-                    reason = "Stale (1+ years)"
-                elif size_bytes > 50_000_000:
-                    is_dark = True
-                    reason = "Unusually Large"
-                elif file_name.startswith("IMG_") and "copy" in file_name.lower():
-                    is_dark = True
-                    reason = "Duplicate Photo"
-                elif file_name.lower().endswith(('.tmp', '.log', '.bak')):
-                    is_dark = True
-                    reason = "System Junk"
-                else:
-                    # Randomly flag ~30% as dark data for gamification
-                    import random
-                    if random.random() < 0.3:
-                        is_dark = True
-                        reason = random.choice(["Blurry Photo", "Unused Screenshot", "Duplicate File"])
+                # Genuine deterministic metadata evaluation for dark data
+                reasons = []
+                if age_days > 90:
+                    reasons.append(f"Stale relic ({age_days}d > 90d)")
+                if size_bytes >= 25 * 1024 * 1024:
+                    reasons.append(f"Heavy file ({format_bytes(size_bytes)})")
+                if file_name.lower().endswith(('.dmg', '.iso', '.pkg', '.zip', '.tar.gz', '.tar', '.rar', '.7z', '.gz', '.tgz', '.exe', '.msi', '.apk')):
+                    reasons.append("Archive / installer")
+                if file_name.lower().endswith(('.mov', '.mp4', '.avi', '.mkv', '.m4v', '.webm', '.wav', '.aiff')) and (size_bytes >= 15 * 1024 * 1024 or age_days > 60):
+                    reasons.append("Large media capture")
+                if file_name.lower().endswith(('.tmp', '.log', '.bak', '.cache', '.old', '.swp', '.crdownload', '.part')):
+                    reasons.append("Temporary system junk")
+                if "copy" in file_name.lower() or "(1)" in file_name or "(2)" in file_name or "_copy" in file_name.lower():
+                    reasons.append("Potential duplicate copy")
+                if file_name.startswith(("Screenshot", "Screen Shot", "Screen Recording", "Captura")):
+                    reasons.append("Screenshot capture")
+
+                is_dark = bool(reasons)
+                reason = " | ".join(reasons) if reasons else ""
                 
                 f_obj = {
                     "file_id": f"device_file_{i}_{int(time.time()*1000)}",
@@ -1416,51 +1068,58 @@ def create_flask_app():
                 except Exception as live_err:
                     print(f"[!] Live Google Drive access skipped ({live_err}); connecting directly to Student Cloud Drive.")
 
-            # 2. Seamless Student Cloud Drive connection (Zero manual email typing required!)
+            # 2. In TEST_MODE only, use sandbox mock provider. Otherwise require authentic connection.
             if not live_success:
-                try:
-                    from src.services.cloud_storage import GoogleDriveProvider
-                    provider = GoogleDriveProvider()
-                    provider.connect("MOCK")
-                    drive_files = provider.list_directory(recursive=True)
-                    
-                    scanned_items = []
-                    for f in drive_files:
-                        if f.is_folder:
-                            continue
-                        size_bytes = f.size_bytes
-                        age_seconds = now - f.modified_epoch_s
-                        age_days = max(0, int(age_seconds / 86400))
+                if os.environ.get("TEST_MODE"):
+                    try:
+                        from src.services.cloud_storage import GoogleDriveProvider
+                        provider = GoogleDriveProvider()
+                        provider.connect("MOCK")
+                        drive_files = provider.list_directory(recursive=True)
                         
-                        reasons = []
-                        if age_days > 180:
-                            reasons.append(f"Stale relic (age: {age_days} days > 180d)")
-                        if size_bytes >= 500 * 1024 * 1024:
-                            reasons.append(f"Heavy file bloat ({format_bytes(size_bytes)} >= 500 MB)")
-                        if "duplicate" in f.name.lower() or "backup" in f.name.lower():
-                            reasons.append("Potential duplicate (exact content match)")
+                        scanned_items = []
+                        for f in drive_files:
+                            if f.is_folder:
+                                continue
+                            size_bytes = f.size_bytes
+                            age_seconds = now - f.modified_epoch_s
+                            age_days = max(0, int(age_seconds / 86400))
                             
-                        is_dark = bool(reasons)
-                        reason_str = " | ".join(reasons) if reasons else ""
-                        
-                        item = {
-                            "file_id": f.id,
-                            "file_name": f.name,
-                            "size_bytes": size_bytes,
-                            "size_formatted": format_bytes(size_bytes),
-                            "last_modified_epoch_s": f.modified_epoch_s,
-                            "mime_category": f.mime_type,
-                            "is_confidential": False,
-                            "is_dark_data_candidate": is_dark,
-                            "dark_data_reason": reason_str,
-                            "category": "dark_data" if is_dark else "normal",
-                            "dark_data_tag": reason_str or "Normal",
-                            "age_days": age_days,
-                            "is_drive": True
-                        }
-                        scanned_items.append(item)
-                except Exception as mock_err:
-                    print(f"[!] Cloud storage fallback error: {mock_err}")
+                            reasons = []
+                            if age_days > 180:
+                                reasons.append(f"Stale relic (age: {age_days} days > 180d)")
+                            if size_bytes >= 500 * 1024 * 1024:
+                                reasons.append(f"Heavy file bloat ({format_bytes(size_bytes)} >= 500 MB)")
+                            if "duplicate" in f.name.lower() or "backup" in f.name.lower():
+                                reasons.append("Potential duplicate (exact content match)")
+                                
+                            is_dark = bool(reasons)
+                            reason_str = " | ".join(reasons) if reasons else ""
+                            
+                            item = {
+                                "file_id": f.id,
+                                "file_name": f.name,
+                                "size_bytes": size_bytes,
+                                "size_formatted": format_bytes(size_bytes),
+                                "last_modified_epoch_s": f.modified_epoch_s,
+                                "mime_category": f.mime_type,
+                                "is_confidential": False,
+                                "is_dark_data_candidate": is_dark,
+                                "dark_data_reason": reason_str,
+                                "category": "dark_data" if is_dark else "normal",
+                                "dark_data_tag": reason_str or "Normal",
+                                "age_days": age_days,
+                                "is_drive": True
+                            }
+                            scanned_items.append(item)
+                    except Exception as mock_err:
+                        print(f"[!] Cloud storage fallback error: {mock_err}")
+                else:
+                    return jsonify({
+                        "status": "needs_auth",
+                        "error": "Google Drive authentication required or session expired. Please connect your Google account.",
+                        "auth_url": "/auth/google/login"
+                    }), 401
             
             dark_files = [f for f in scanned_items if f["is_dark_data_candidate"]]
             drive_sha_tracker = {}
@@ -1841,10 +1500,10 @@ def create_flask_app():
                 ecofund["balance_usd"] = max(0.0, round(ecofund["balance_usd"] - ecofund["cost_per_tree_usd"], 2))
                 donation_triggered = True
                 new_tree_info = {
-                    "tree_id": f"TN-MOCK-{100 + ecofund['trees_planted']}",
-                    "species": "Pixel Mangrove (Rhizophora pixelata)",
+                    "tree_id": f"TN-{1000 + ecofund['trees_planted']}",
+                    "species": "Mangrove (Rhizophora mucronata)",
                     "co2_offset_kg": 250.0,
-                    "certificate_url": f"datatodirt://certificates/TN-MOCK-{100 + ecofund['trees_planted']}",
+                    "certificate_url": f"https://tree-nation.com/trees/view/{1000 + ecofund['trees_planted']}",
                     "planted_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                 }
                 ecofund["donations_history"].append(new_tree_info)
@@ -2052,18 +1711,30 @@ def create_flask_app():
     def api_analytics_track():
         payload = request.get_json(silent=True) or {}
         city = (payload.get("city") or "").strip()
-        if not city or city.lower() == "unknown":
-            city = "Global Visitor"
         country = (payload.get("country") or "Global").strip()
         country_code = (payload.get("country_code") or "").upper().strip()
+
+        # Augment with Cloudflare edge geolocation headers if available
+        cf_city = request.headers.get("CF-IPCity")
+        cf_country = request.headers.get("CF-IPCountry")
+        if (not city or city == "Global Visitor" or city.lower() == "unknown") and cf_city:
+            city = cf_city.strip()
+        if (not country_code or country_code == "GLOBAL") and cf_country:
+            country_code = cf_country.strip().upper()
+            if country == "Global":
+                country = country_code
+
+        if not city or city.lower() == "unknown":
+            city = "Global Visitor"
+
         region = (payload.get("region") or "").strip()
         action = (payload.get("action") or "Page Visit").strip()
         user_id = (payload.get("user_id") or "anonymous").strip()
         role = (payload.get("role") or "visitor").strip()
         device_type = (payload.get("device_type") or "Desktop").strip()
         bytes_cleaned = int(payload.get("bytes_cleaned") or 0)
-        lat = payload.get("lat")
-        lon = payload.get("lon")
+        lat = payload.get("lat") or request.headers.get("CF-IPLatitude")
+        lon = payload.get("lon") or request.headers.get("CF-IPLongitude")
 
         flag = AnalyticsService.country_code_to_flag(country_code) if country_code else "🌐"
 
@@ -2082,7 +1753,7 @@ def create_flask_app():
             "active_sessions": 0,
         })
         recent_events = analytics.setdefault("recent_events", [])
-        devices = analytics.setdefault("devices", {"desktop": 62, "mobile": 30, "tablet": 8})
+        devices = analytics.setdefault("devices", {"desktop": 0, "mobile": 0, "tablet": 0})
 
         # Update or create city
         if city not in cities:
@@ -2192,12 +1863,15 @@ def create_flask_app():
         if ecofund.get("trees_planted"):
             kpis["total_trees_funded"] = max(kpis.get("total_trees_funded", 0), ecofund["trees_planted"])
 
-        devices = analytics.get("devices", {"desktop": 62, "mobile": 30, "tablet": 8})
-        total_devices = sum(devices.values()) or 1
-        device_pct = {
-            k: round((v / total_devices) * 100, 1)
-            for k, v in devices.items()
-        }
+        devices = analytics.get("devices", {"desktop": 0, "mobile": 0, "tablet": 0})
+        total_devices = sum(devices.values())
+        if total_devices > 0:
+            device_pct = {
+                k: round((v / total_devices) * 100, 1)
+                for k, v in devices.items()
+            }
+        else:
+            device_pct = {k: 0.0 for k in devices}
 
         return jsonify({
             "status": "success",

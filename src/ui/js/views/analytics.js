@@ -338,10 +338,13 @@ class AnalyticsDashboardView {
     }
 
     if (cities.length === 0) {
+      const msg = this.searchQuery
+        ? `No cities match the filter query "${this.searchQuery}".`
+        : "No participant cities tracked yet. Real visitor locations will stream here as users access the app.";
       tbody.innerHTML = `
         <tr>
           <td colspan="8" style="text-align: center; padding: 24px; color: var(--c-ink-muted);">
-            No cities match the filter query "${this.searchQuery}".
+            ${msg}
           </td>
         </tr>
       `;
@@ -394,7 +397,7 @@ class AnalyticsDashboardView {
 
     const events = this.data.recent_events || [];
     if (events.length === 0) {
-      stream.innerHTML = `<div style="text-align: center; padding: 12px; font-size: 11px; color: var(--c-ink-muted);">No activity recorded yet.</div>`;
+      stream.innerHTML = `<div style="text-align: center; padding: 16px; font-size: 11px; color: var(--c-ink-muted);">No activity recorded yet. Live participant events will appear here in real-time.</div>`;
       return;
     }
 
@@ -427,8 +430,8 @@ class AnalyticsDashboardView {
     if (!container || !this.data) return;
 
     const devices = this.data.devices || {};
-    const counts = devices.counts || { desktop: 62, mobile: 30, tablet: 8 };
-    const pcts = devices.percentages || { desktop: 62.0, mobile: 30.0, tablet: 8.0 };
+    const counts = devices.counts || { desktop: 0, mobile: 0, tablet: 0 };
+    const pcts = devices.percentages || { desktop: 0.0, mobile: 0.0, tablet: 0.0 };
 
     const items = [
       { name: "Desktop Computer", icon: "💻", count: counts.desktop || 0, pct: pcts.desktop || 0, color: "#3498db" },
@@ -453,17 +456,22 @@ class AnalyticsDashboardView {
     const container = document.getElementById("an-waste-container");
     if (!container || !this.data) return;
 
-    const waste = this.data.waste_categories || {
-      "High-Waste Video & Screen Captures": 44,
-      "Stale Disk Images & Installers (.dmg / .iso)": 28,
-      "Forgotten Build Artifacts & Caches": 16,
-      "Identical Redundant Duplicate Backups": 12
-    };
+    const waste = this.data.waste_categories || {};
+    const entries = Object.entries(waste);
+
+    if (entries.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 12px; font-size: 11px; color: var(--c-ink-muted);">
+          No dark data categories recorded yet. Categories will appear as files are analyzed.
+        </div>
+      `;
+      return;
+    }
 
     const colors = ["#e74c3c", "#f39c12", "#9b59b6", "#1abc9c"];
     let idx = 0;
 
-    container.innerHTML = Object.entries(waste).map(([cat, pct]) => {
+    container.innerHTML = entries.map(([cat, pct]) => {
       const color = colors[idx % colors.length];
       idx++;
       return `

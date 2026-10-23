@@ -27,7 +27,7 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertEqual(AnalyticsService.country_code_to_flag("INVALID"), "🌐")
 
     def test_api_analytics_dashboard_retrieval(self):
-        """GET /api/analytics/dashboard returns seeded KPIs, cities list, and device stats."""
+        """GET /api/analytics/dashboard returns genuine KPIs, cities list, and device stats."""
         res = self.client.get("/api/analytics/dashboard")
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
@@ -38,12 +38,9 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertIn("devices", data)
         self.assertIn("waste_categories", data)
 
-        # Assert key cities are present
+        # Assert cities list is a valid list
         cities = data["cities"]
-        self.assertGreaterEqual(len(cities), 4)
-        city_names = [c["city"] for c in cities]
-        self.assertIn("Singapore", city_names)
-        self.assertIn("Mumbai", city_names)
+        self.assertIsInstance(cities, list)
 
         # Assert KPIs structure
         kpis = data["kpis"]
@@ -104,6 +101,13 @@ class TestCityAnalytics(unittest.TestCase):
 
     def test_api_analytics_export_csv(self):
         """GET /api/analytics/export returns a downloadable CSV with city telemetry."""
+        # Ensure a city is tracked
+        self.client.post("/api/analytics/track", json={
+            "city": "Singapore",
+            "country": "Singapore",
+            "country_code": "SG",
+            "action": "Page Visit"
+        })
         res = self.client.get("/api/analytics/export")
         self.assertEqual(res.status_code, 200)
         self.assertIn("text/csv", res.headers.get("Content-Type", ""))
@@ -111,7 +115,6 @@ class TestCityAnalytics(unittest.TestCase):
         content = res.get_data(as_text=True)
         self.assertIn("Rank,City,Country,Code,Visitors,Active_Sessions,Total_Scans,Data_Cleaned_GB,CO2_Avoided_kg,Last_Active", content)
         self.assertIn("Singapore", content)
-        self.assertIn("Mumbai", content)
 
     def test_api_config_analytics(self):
         """GET /api/config/analytics returns external analytics configuration keys."""
