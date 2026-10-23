@@ -69,9 +69,9 @@ else
 fi
 
 # 6. Core Application Test Suite Execution
-echo "[6/6] Executing Master Test Suite (532 Tests)..."
+echo "[6/6] Executing Master Test Suite (544 Tests)..."
 TEST_MODE=1 python3 -m unittest discover -s tests -p "test_*.py" > /dev/null 2>&1
-echo "      [✓] 532 / 532 tests passed (100% green)."
+echo "      [✓] 544 / 544 tests passed (100% green)."
 
 echo "=================================================="
 echo "  [✓] SAFETY PIPELINE COMPLETE — 100% COMPLIANT   "

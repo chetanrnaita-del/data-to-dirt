@@ -15,6 +15,9 @@ class TestCityAnalytics(unittest.TestCase):
     def setUpClass(cls):
         cls.app = create_flask_app()
         cls.client = cls.app.test_client()
+        from src.services.auth import default_auth_service
+        cls.admin_token = default_auth_service.login(role="admin", pin="admin2026", user_id="admin")["token"]
+        cls.admin_headers = {"Authorization": f"Bearer {cls.admin_token}"}
 
     def test_country_code_to_flag(self):
         """Validates conversion of ISO country codes to Unicode flag emojis."""
@@ -28,7 +31,7 @@ class TestCityAnalytics(unittest.TestCase):
 
     def test_api_analytics_dashboard_retrieval(self):
         """GET /api/analytics/dashboard returns genuine KPIs, cities list, and device stats."""
-        res = self.client.get("/api/analytics/dashboard")
+        res = self.client.get("/api/analytics/dashboard", headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertEqual(data["status"], "success")
@@ -74,7 +77,7 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertEqual(resp_data["tracked"]["flag"], "🇫🇷")
 
         # Now verify it appears in dashboard
-        dash_res = self.client.get("/api/analytics/dashboard")
+        dash_res = self.client.get("/api/analytics/dashboard", headers=self.admin_headers)
         dash_data = dash_res.get_json()
         paris_match = [c for c in dash_data["cities"] if c["city"] == "Paris"]
         self.assertEqual(len(paris_match), 1)
@@ -108,13 +111,18 @@ class TestCityAnalytics(unittest.TestCase):
             "country_code": "SG",
             "action": "Page Visit"
         })
-        res = self.client.get("/api/analytics/export")
+        res = self.client.get("/api/analytics/export", headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         self.assertIn("text/csv", res.headers.get("Content-Type", ""))
         self.assertIn("attachment; filename=data_to_dirt_city_telemetry.csv", res.headers.get("Content-Disposition", ""))
         content = res.get_data(as_text=True)
         self.assertIn("Rank,City,Country,Code,Visitors,Active_Sessions,Total_Scans,Data_Cleaned_GB,CO2_Avoided_kg,Last_Active", content)
         self.assertIn("Singapore", content)
+
+        # Also verify query-string token export (for browser window.open downloads)
+        res_param = self.client.get(f"/api/analytics/export?token={self.admin_token}")
+        self.assertEqual(res_param.status_code, 200)
+        self.assertIn("text/csv", res_param.headers.get("Content-Type", ""))
 
     def test_api_config_analytics(self):
         """GET /api/config/analytics returns external analytics configuration keys."""

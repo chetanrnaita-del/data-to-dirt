@@ -842,6 +842,7 @@ class StudentDashboardView {
     try {
       await fetch("/api/scan/revoke", { method: "POST" });
       this.scannedFiles = [];
+      this.lastScanCompleted = false;
       this.renderScannedFiles();
 
       if (banner) {
@@ -896,10 +897,12 @@ class StudentDashboardView {
             ` : ""}
           </div>
         `;
-        container.querySelector("#btn-reconnect-gdrive")?.addEventListener("click", () => {
-          localStorage.removeItem("d2d_google_access_token");
-          window.location.href = "/auth/google/login";
-        });
+        if (typeof container.querySelector === "function") {
+          container.querySelector("#btn-reconnect-gdrive")?.addEventListener("click", () => {
+            localStorage.removeItem("d2d_google_access_token");
+            window.location.href = "/auth/google/login";
+          });
+        }
         return;
       }
       container.innerHTML = `

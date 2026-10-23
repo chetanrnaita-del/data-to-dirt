@@ -258,7 +258,9 @@ class AnalyticsDashboardView {
     if (btnExport) {
       btnExport.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playCoinDing();
-        window.open("/api/analytics/export", "_blank");
+        const token = localStorage.getItem("d2d_session_token");
+        const exportUrl = "/api/analytics/export" + (token ? `?token=${encodeURIComponent(token)}` : "");
+        window.open(exportUrl, "_blank");
       });
     }
 

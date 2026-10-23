@@ -649,6 +649,13 @@ def create_flask_app():
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
 
+    @app.after_request
+    def add_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
     @app.route("/")
     def serve_index():
         _track_request(request, action="Page Visit")
@@ -1971,6 +1978,7 @@ def create_flask_app():
         return jsonify({"status": "authenticated", "session": session})
 
     @app.route("/api/teacher/queue", methods=["GET"])
+    @default_auth_service.require_role("teacher")
     def api_teacher_queue():
         status_filter = request.args.get("status")
         search_query = request.args.get("search")
@@ -2048,6 +2056,7 @@ def create_flask_app():
         return jsonify({"queue": result_items, "total_count": len(result_items)})
 
     @app.route("/api/teacher/decide", methods=["POST"])
+    @default_auth_service.require_role("teacher")
     def api_teacher_decide():
         data = request.get_json() or {}
         req_id = data.get("request_id")
@@ -2222,6 +2231,7 @@ def create_flask_app():
         })
 
     @app.route("/api/teacher/decide_all", methods=["POST"])
+    @default_auth_service.require_role("teacher")
     def api_teacher_decide_all():
         data = request.get_json() or {}
         teacher_id = data.get("teacher_id", "TEACHER-001")
@@ -2285,6 +2295,7 @@ def create_flask_app():
         })
 
     @app.route("/api/teacher/analytics", methods=["GET"])
+    @default_auth_service.require_role("teacher")
     def api_teacher_analytics():
         state = load_state()
         items = state.get("teacher_queue", [])
@@ -2293,6 +2304,7 @@ def create_flask_app():
         return jsonify(stats.to_dict())
 
     @app.route("/api/teacher/students", methods=["GET"])
+    @default_auth_service.require_role("teacher")
     def api_teacher_students():
         auth_header = request.headers.get("Authorization", "")
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
@@ -2340,6 +2352,7 @@ def create_flask_app():
         })
 
     @app.route("/api/teacher/students/create", methods=["POST"])
+    @default_auth_service.require_role("teacher")
     def api_teacher_create_student():
         auth_header = request.headers.get("Authorization", "")
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
@@ -2414,6 +2427,7 @@ def create_flask_app():
         }), 201
 
     @app.route("/api/admin/ecofund", methods=["GET", "POST"])
+    @default_auth_service.require_role("admin")
     def api_admin_ecofund():
         state = load_state()
         if request.method == "POST":
@@ -2431,6 +2445,7 @@ def create_flask_app():
         return jsonify(state["ecofund"])
 
     @app.route("/api/admin/audit", methods=["GET"])
+    @default_auth_service.require_role("admin")
     def api_admin_audit():
         state = load_state()
         items = state.get("teacher_queue", [])
@@ -2485,6 +2500,7 @@ def create_flask_app():
         return jsonify(res)
 
     @app.route("/api/analytics/dashboard", methods=["GET"])
+    @default_auth_service.require_role("admin")
     def api_analytics_dashboard():
         state = load_state()
         if "analytics" not in state or not isinstance(state["analytics"], dict):
@@ -2564,6 +2580,7 @@ def create_flask_app():
         })
 
     @app.route("/api/analytics/export", methods=["GET"])
+    @default_auth_service.require_role("admin")
     def api_analytics_export():
         state = load_state()
         analytics = state.get("analytics", {})

@@ -32,6 +32,7 @@ from src.app.server import (
     calculate_tree_progress_pct,
     format_bytes,
 )
+from src.services.auth import default_auth_service
 
 
 class TestBuildAndFilesystem(unittest.TestCase):
@@ -165,6 +166,12 @@ class TestServerRestEndpoints(unittest.TestCase):
     def setUpClass(cls):
         cls.app = create_flask_app()
         cls.client = cls.app.test_client()
+        cls.teacher_token = default_auth_service.login(role="teacher", pin="teacher123", user_id="TEACHER-001")["token"]
+        cls.teacher_headers = {"Authorization": f"Bearer {cls.teacher_token}"}
+        cls.admin_token = default_auth_service.login(role="admin", pin="admin2026", user_id="admin")["token"]
+        cls.admin_headers = {"Authorization": f"Bearer {cls.admin_token}"}
+        cls.student_token = default_auth_service.login(role="student", user_id="STU-001")["token"]
+        cls.student_headers = {"Authorization": f"Bearer {cls.student_token}"}
 
     def test_index_route(self):
         res = self.client.get("/")
@@ -172,6 +179,13 @@ class TestServerRestEndpoints(unittest.TestCase):
         text = res.get_data(as_text=True)
         self.assertIn("DATA-TO-DIRT", text)
         self.assertIn("particle-canvas", text)
+
+    def test_security_headers_present(self):
+        """Verifies HTTP security headers (nosniff, SAMEORIGIN, strict-origin) are present on responses."""
+        res = self.client.get("/api/health")
+        self.assertEqual(res.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(res.headers.get("X-Frame-Options"), "SAMEORIGIN")
+        self.assertEqual(res.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
 
     def test_api_health(self):
         res = self.client.get("/api/health")
@@ -349,7 +363,7 @@ class TestServerRestEndpoints(unittest.TestCase):
 
     def test_api_teacher_queue_and_decision(self):
         # Get queue
-        res_q = self.client.get("/api/teacher/queue")
+        res_q = self.client.get("/api/teacher/queue", headers=self.teacher_headers)
         self.assertEqual(res_q.status_code, 200)
         queue = res_q.get_json()["queue"]
         self.assertIsInstance(queue, list)
@@ -360,13 +374,13 @@ class TestServerRestEndpoints(unittest.TestCase):
                 "request_id": target_id,
                 "action": "approve",
                 "feedback": "Great cleanup"
-            })
+            }, headers=self.teacher_headers)
             self.assertEqual(res_decide.status_code, 200)
             data_decide = res_decide.get_json()
             self.assertEqual(data_decide["action_taken"], "approve")
 
     def test_api_admin_ecofund(self):
-        res = self.client.get("/api/admin/ecofund")
+        res = self.client.get("/api/admin/ecofund", headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertIn("budget_usd", data)
@@ -381,11 +395,11 @@ class TestServerRestEndpoints(unittest.TestCase):
         custom_id = f"STU-TEST-{test_suffix}"
         
         # 1. Validation: Name required
-        res_no_name = self.client.post("/api/teacher/students/create", json={"class_code": "bio101"})
+        res_no_name = self.client.post("/api/teacher/students/create", json={"class_code": "bio101"}, headers=self.teacher_headers)
         self.assertEqual(res_no_name.status_code, 400)
         
         # 2. Validation: Class code required
-        res_no_class = self.client.post("/api/teacher/students/create", json={"name": "Alice"})
+        res_no_class = self.client.post("/api/teacher/students/create", json={"name": "Alice"}, headers=self.teacher_headers)
         self.assertEqual(res_no_class.status_code, 400)
         
         # 3. Successful creation with custom student_id
@@ -393,7 +407,7 @@ class TestServerRestEndpoints(unittest.TestCase):
             "name": f"Alice Student {test_suffix}",
             "class_code": "bio101",
             "student_id": custom_id
-        })
+        }, headers=self.teacher_headers)
         self.assertEqual(res_create.status_code, 201)
         data_create = res_create.get_json()
         self.assertEqual(data_create["status"], "created")
@@ -406,20 +420,20 @@ class TestServerRestEndpoints(unittest.TestCase):
             "name": "Another Alice",
             "class_code": "bio101",
             "student_id": custom_id
-        })
+        }, headers=self.teacher_headers)
         self.assertEqual(res_dup.status_code, 409)
         
         # 5. Successful creation with auto-generated student_id (omitted)
         res_auto = self.client.post("/api/teacher/students/create", json={
             "name": f"Bob AutoGen {test_suffix}",
             "class_code": "bio101"
-        })
+        }, headers=self.teacher_headers)
         self.assertEqual(res_auto.status_code, 201)
         data_auto = res_auto.get_json()
         self.assertTrue(data_auto["student"]["student_id"].startswith("STU-"))
         
         # 6. Retrieve student directory
-        res_dir = self.client.get("/api/teacher/students?class_code=bio101")
+        res_dir = self.client.get("/api/teacher/students?class_code=bio101", headers=self.teacher_headers)
         self.assertEqual(res_dir.status_code, 200)
         data_dir = res_dir.get_json()
         self.assertEqual(data_dir["status"], "ok")
@@ -437,6 +451,40 @@ class TestServerRestEndpoints(unittest.TestCase):
         data_login = res_login.get_json()
         self.assertEqual(data_login["status"], "authenticated")
         self.assertEqual(data_login["role"], "student")
+
+    def test_unauthenticated_access_to_protected_routes_returns_401(self):
+        """Verifies that accessing teacher and admin routes without token returns HTTP 401."""
+        # Teacher routes
+        self.assertEqual(self.client.get("/api/teacher/queue").status_code, 401)
+        self.assertEqual(self.client.post("/api/teacher/decide", json={"request_id": "test"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/teacher/decide_all").status_code, 401)
+        self.assertEqual(self.client.get("/api/teacher/analytics").status_code, 401)
+        self.assertEqual(self.client.get("/api/teacher/students").status_code, 401)
+        self.assertEqual(self.client.post("/api/teacher/students/create", json={"name": "Test"}).status_code, 401)
+        
+        # Admin routes
+        self.assertEqual(self.client.get("/api/admin/ecofund").status_code, 401)
+        self.assertEqual(self.client.get("/api/admin/audit").status_code, 401)
+        self.assertEqual(self.client.get("/api/analytics/dashboard").status_code, 401)
+        self.assertEqual(self.client.get("/api/analytics/export").status_code, 401)
+
+    def test_insufficient_role_access_returns_403(self):
+        """Verifies that a student token cannot access teacher or admin endpoints (HTTP 403)."""
+        # Student attempting teacher routes
+        self.assertEqual(self.client.get("/api/teacher/queue", headers=self.student_headers).status_code, 403)
+        self.assertEqual(self.client.post("/api/teacher/decide", json={"request_id": "test"}, headers=self.student_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/teacher/students", headers=self.student_headers).status_code, 403)
+        
+        # Student attempting admin routes
+        self.assertEqual(self.client.get("/api/admin/ecofund", headers=self.student_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/analytics/dashboard", headers=self.student_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/analytics/export", headers=self.student_headers).status_code, 403)
+        
+        # Teacher attempting admin routes (Teacher role is 2, Admin is 3)
+        self.assertEqual(self.client.get("/api/admin/ecofund", headers=self.teacher_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/admin/audit", headers=self.teacher_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/analytics/dashboard", headers=self.teacher_headers).status_code, 403)
+        self.assertEqual(self.client.get("/api/analytics/export", headers=self.teacher_headers).status_code, 403)
 
 
 if __name__ == "__main__":

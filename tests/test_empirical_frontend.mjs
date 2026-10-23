@@ -15,6 +15,7 @@ function createMockElement(id) {
     disabled: false,
     textContent: '',
     onclick: null,
+    querySelector: () => null,
     querySelectorAll: () => [],
     classList: {
       add: () => {},
@@ -211,8 +212,8 @@ function runEmpiricalFrontendSuite() {
 
     assert.strictEqual(banner.style.borderColor, "", "Banner border should be reset on success");
     assert.strictEqual(banner.style.backgroundColor, "", "Banner bg should be reset on success");
-    assert(banner.innerHTML.includes("Access Active"), "Banner must show Access Active");
-    assert(banner.innerHTML.includes("2 files indexed"), "Banner must show file count");
+    assert(banner.innerHTML.includes("Device Storage Scanned"), "Banner must show Device Storage Scanned");
+    assert(banner.innerHTML.includes("2 files analyzed"), "Banner must show files analyzed");
     assert.strictEqual(btnRevoke.style.display, "inline-flex", "Revoke button must be shown on success");
     assert.strictEqual(audioCalls.playCoinDing, 1, "Must play coin ding on success");
     assert.strictEqual(audioCalls.playGamingBuzzer, 0, "Must NOT play buzzer on success");
@@ -245,7 +246,7 @@ function runEmpiricalFrontendSuite() {
     assert(banner.innerHTML.includes("Blind State"), "Banner must show Blind State after revoke");
     assert.strictEqual(btnRevoke.style.display, "none", "Revoke button must be hidden");
     assert.strictEqual(audioCalls.playBlip, 1, "Must play blip sound on revoke");
-    assert(container.innerHTML.includes("No active files in memory"), "Container must show blind state");
+    assert(container.innerHTML.includes("Ready to Clean Real Data") || container.innerHTML.includes("No active files in memory"), "Container must show blind state");
     assert.strictEqual(view.scannedFiles.length, 0, "scannedFiles must be purged");
 
     console.log("✔ Test Revoke Folder Access passed");

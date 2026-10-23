@@ -55,14 +55,6 @@ class DataToDirtApp {
       localStorage.setItem("d2d_google_access_token", tokenFromUrl);
     }
 
-    // Direct URL navigation support for /analytics (Admin only)
-    if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
-      if (savedRole === "admin" && existingToken) {
-        this.switchRole("analytics");
-        return;
-      }
-    }
-
     // Check if user is already logged in
     const existingToken = localStorage.getItem("d2d_session_token");
     const savedRole = localStorage.getItem("d2d_role");
@@ -87,6 +79,11 @@ class DataToDirtApp {
               this.switchRole("admin");
             }
           }
+          if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
+            if (data.session.role === "admin") {
+              this.switchRole("analytics");
+            }
+          }
           return;
         }
       } catch (e) {
@@ -109,6 +106,11 @@ class DataToDirtApp {
             if (window.location.pathname === "/admin" || window.location.hash === "#admin") {
               if (savedRole === "admin") {
                 this.switchRole("admin");
+              }
+            }
+            if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
+              if (savedRole === "admin") {
+                this.switchRole("analytics");
               }
             }
             return;
@@ -1016,6 +1018,30 @@ class DataToDirtApp {
     }
   }
 }
+
+// Global fetch interceptor to automatically attach Authorization Bearer token for /api/ calls
+const _originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  const token = localStorage.getItem("d2d_session_token");
+  if (token && typeof url === "string" && url.startsWith("/api/")) {
+    options = options || {};
+    options.headers = options.headers || {};
+    if (options.headers instanceof Headers) {
+      if (!options.headers.has("Authorization")) {
+        options.headers.set("Authorization", `Bearer ${token}`);
+      }
+    } else if (Array.isArray(options.headers)) {
+      if (!options.headers.some(([k]) => k.toLowerCase() === "authorization")) {
+        options.headers.push(["Authorization", `Bearer ${token}`]);
+      }
+    } else {
+      if (!options.headers["Authorization"]) {
+        options.headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+  }
+  return _originalFetch.call(this, url, options);
+};
 
 // Global App Singleton & Startup
 window.DataToDirt = new DataToDirtApp();
