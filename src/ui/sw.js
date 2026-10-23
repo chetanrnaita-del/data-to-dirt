@@ -1,4 +1,4 @@
-const CACHE_NAME = 'data-to-dirt-v46';
+const CACHE_NAME = 'data-to-dirt-v47';
 const ASSETS = [
   '/',
   '/index.html',
@@ -42,6 +42,12 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  // Strictly bypass service worker for OAuth and API routes to prevent duplicate requests / invalid_grant errors
+  if (url.pathname.startsWith('/auth/') || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   // Add bypass-tunnel-reminder header to all outgoing requests
   let req = event.request;
   try {

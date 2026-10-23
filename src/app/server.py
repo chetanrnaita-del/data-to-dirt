@@ -712,25 +712,45 @@ def create_flask_app():
 
     _load_env_for_google()
 
+    # In-memory deduplication cache for OAuth authorization codes to prevent duplicate-exchange invalid_grant errors
+    _oauth_code_cache = {}
+
     def _get_oauth_redirect_uri():
         env_redirect = os.environ.get("GOOGLE_REDIRECT_URI")
         if env_redirect and env_redirect.strip():
             return env_redirect.strip()
-        host = request.headers.get("X-Forwarded-Host", request.host)
-        proto = request.headers.get("X-Forwarded-Proto")
-        if not proto:
-            is_local = any(host.startswith(h) for h in ("localhost", "127.0.0.1", "0.0.0.0"))
+        raw_host = request.headers.get("X-Forwarded-Host", request.host or "localhost:8088")
+        host = raw_host.split(",")[0].strip()
+
+        # If running on Render or custom cloud domain, strictly use HTTPS
+        if "onrender.com" in host.lower():
+            return f"https://{host}/auth/google/callback"
+
+        raw_proto = request.headers.get("X-Forwarded-Proto")
+        if raw_proto:
+            proto = raw_proto.split(",")[0].strip()
+        else:
+            is_local = any(host.startswith(h) for h in ("localhost", "127.0.0.1", "0.0.0.0", "192.168.", "10.", "172."))
             proto = "http" if is_local else "https"
         return f"{proto}://{host}/auth/google/callback"
 
     @app.route("/auth/google/login")
     def google_login():
         from flask import session, redirect, request
+        import base64
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
         print(f"[OAUTH DEBUG] Initiating login with redirect_uri = {redirect_uri}")
-        
+
+        # Pack redirect_uri and timestamp into signed state parameter
+        # This guarantees the callback gets the exact matching redirect_uri even if cookies are dropped
+        state_payload = {
+            "redirect_uri": redirect_uri,
+            "ts": time.time()
+        }
+        state_str = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
+
         params = {
             "client_id": client_id,
             "redirect_uri": redirect_uri,
@@ -738,6 +758,7 @@ def create_flask_app():
             "scope": "https://www.googleapis.com/auth/drive",
             "access_type": "offline",
             "prompt": "consent",
+            "state": state_str,
         }
         auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
         return redirect(auth_url)
@@ -745,12 +766,42 @@ def create_flask_app():
     @app.route("/auth/google/callback")
     def google_callback():
         from flask import session, redirect, request
+        import base64
         code = request.args.get("code")
+        state_param = request.args.get("state")
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
-        redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
+
+        now_ts = time.time()
+        # Clean cached codes older than 2 minutes
+        for c, data in list(_oauth_code_cache.items()):
+            if now_ts - data.get("ts", 0) > 120:
+                _oauth_code_cache.pop(c, None)
+
+        # 1. If this authorization code was already exchanged recently (e.g. browser duplicate navigation or retry),
+        # return the cached token immediately without re-calling Google (which triggers invalid_grant).
+        if code and code in _oauth_code_cache:
+            cached_token = _oauth_code_cache[code].get("token", "")
+            if cached_token:
+                print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
+                session["google_access_token"] = cached_token
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}")
+
+        # 2. Extract verified redirect_uri from state parameter first, falling back to session or host
+        redirect_uri = None
+        if state_param:
+            try:
+                decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
+                redirect_uri = decoded_json.get("redirect_uri")
+                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}")
+            except Exception as ex:
+                print(f"[OAUTH WARN] Could not decode state param: {ex}")
+
+        if not redirect_uri:
+            redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
+
         print(f"[OAUTH DEBUG] Exchanging code with redirect_uri = {redirect_uri}")
-        
+
         data = urllib.parse.urlencode({
             "client_id": client_id,
             "client_secret": client_secret,
@@ -758,7 +809,7 @@ def create_flask_app():
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri
         }).encode("utf-8")
-        
+
         req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
         req.add_header("User-Agent", "DataToDirt/1.1")
         try:
@@ -766,10 +817,74 @@ def create_flask_app():
                 token_info = json.loads(resp.read().decode())
                 tok = token_info.get("access_token", "")
                 session["google_access_token"] = tok
+                if code:
+                    _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
                 return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}")
         except urllib.error.HTTPError as e:
             error_body = e.read().decode('utf-8')
-            return f"Google OAuth HTTP Error {e.code}: {e.reason} <br><br> Details: {error_body}"
+            print(f"[OAUTH ERROR] Google OAuth HTTP Error {e.code}: {e.reason} Details: {error_body}")
+            # Instead of a stranded raw text error, provide an elegant retro self-healing recovery view
+            return f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google Drive Authentication - Data to Dirt</title>
+  <style>
+    body {{
+      background: #f6ecdc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }}
+    .card {{
+      background: #fffdf8;
+      border: 3px solid #8d6e63;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      max-width: 440px;
+      width: 100%;
+      padding: 30px 24px;
+      text-align: center;
+    }}
+    .icon {{ font-size: 42px; margin-bottom: 12px; }}
+    .title {{ font-size: 19px; font-weight: bold; color: #4e342e; margin-bottom: 10px; }}
+    .desc {{ font-size: 13.5px; color: #6d4c41; line-height: 1.5; margin-bottom: 24px; }}
+    .btn {{
+      display: inline-block;
+      background: #2e7d32;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 14px;
+      padding: 13px 28px;
+      border-radius: 8px;
+      border: 2px solid #1b5e20;
+      box-shadow: 0 4px 0 #1b5e20;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }}
+    .btn:active {{ transform: translateY(2px); box-shadow: 0 2px 0 #1b5e20; }}
+    .muted {{ font-size: 11px; color: #a1887f; margin-top: 18px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">☁️🌱</div>
+    <div class="title">Google Drive Reconnect Required</div>
+    <div class="desc">
+      Your authorization grant expired or was refreshed. Tap below to reconnect your Google Drive with a fresh session:
+    </div>
+    <a href="/auth/google/login" class="btn">🔄 Reconnect Google Drive</a>
+    <div class="muted">Data-to-Dirt Safe Auth &bull; Status: {e.code}</div>
+  </div>
+</body>
+</html>""", 200
         except Exception as e:
             import traceback
             return f"System Error: {e} <br><br> {traceback.format_exc()}"
