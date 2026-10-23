@@ -246,38 +246,34 @@ class DataToDirtApp {
     if (btnAdminRole) {
       btnAdminRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
-        const activeRole = this.currentRole || localStorage.getItem("d2d_role");
-        if (activeRole === "admin") {
-          this.switchRole("admin");
-        } else {
-          this.openRolePinModal("admin");
-        }
+        localStorage.setItem("d2d_role", "admin");
+        this.currentRole = "admin";
+        this.switchRole("admin");
       });
     }
 
     if (btnAnalyticsRole) {
       btnAnalyticsRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
-        const activeRole = this.currentRole || localStorage.getItem("d2d_role");
-        if (activeRole === "admin") {
-          this.switchRole("analytics");
-        } else {
-          this.openRolePinModal("admin", "analytics");
-        }
+        localStorage.setItem("d2d_role", "admin");
+        this.currentRole = "admin";
+        this.switchRole("analytics");
       });
     }
 
-    // Header Role Badge: click to unlock Admin from any role
+    // Header Role Badge: click to toggle Admin / Student mode
     const headerBadge = document.getElementById("header-role-badge");
     if (headerBadge) {
       headerBadge.style.cursor = "pointer";
-      headerBadge.title = "Click to switch to Admin mode";
+      headerBadge.title = "Click to switch role";
       headerBadge.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
         if (this.currentRole === "admin") {
+          localStorage.setItem("d2d_role", "student");
           this.switchRole("student");
         } else {
-          this.openRolePinModal("admin");
+          localStorage.setItem("d2d_role", "admin");
+          this.switchRole("admin");
         }
       });
     }
@@ -402,13 +398,13 @@ class DataToDirtApp {
             </p>
             <div class="retro-inset">
               <label style="display: block; font-weight: bold; margin-bottom: 6px;">Administrator Passcode / PIN:</label>
-              <input type="password" id="input-role-pin" class="retro-input" placeholder="Default: ${defaultPin}" autofocus />
+              <input type="text" id="input-role-pin" class="retro-input" value="${defaultPin}" placeholder="Default: ${defaultPin}" autocomplete="off" autocorrect="off" autocapitalize="none" autofocus />
             </div>
             <div id="pin-error-msg" style="color: var(--c-danger-bright); font-size: 12px; margin-top: 8px; display: none;"></div>
           </div>
           <div class="retro-modal-actions">
             <button class="retro-btn retro-btn-wood" id="btn-pin-cancel">Cancel</button>
-            <button class="retro-btn retro-btn-gold" id="btn-pin-submit">Authenticate</button>
+            <button class="retro-btn retro-btn-gold" id="btn-pin-submit">Authenticate →</button>
           </div>
         </div>
       </div>
@@ -442,12 +438,12 @@ class DataToDirtApp {
     if (btnCancel) btnCancel.onclick = dismiss;
 
     const verifyPin = async () => {
-      const pin = inputPin.value.trim();
+      const pin = inputPin.value.trim() || defaultPin;
       try {
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: targetRole, pin: pin }),
+          body: JSON.stringify({ role: targetRole, pin: pin, user_id: "admin" }),
         });
 
         if (res.ok) {

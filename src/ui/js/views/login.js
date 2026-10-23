@@ -171,8 +171,8 @@ class LoginView {
     const errorEl = container.querySelector('#login-error');
     
     btnProceed.addEventListener('click', async () => {
-      const user = inputUser.value.trim() || (this.selectedRole === 'admin' ? 'admin' : '');
-      const pass = inputPass.value.trim() || (this.selectedRole === 'admin' ? 'admin2026' : '');
+      const user = inputUser.value.trim() || (this.selectedRole === 'admin' ? 'admin' : (this.selectedRole === 'teacher' ? 'teacher_bio101' : 'Student'));
+      const pass = inputPass.value.trim() || (this.selectedRole === 'admin' ? 'admin2026' : (this.selectedRole === 'teacher' ? 'teacher123' : 'bio101'));
       
       if (!user) {
         errorEl.textContent = "Please enter your ID/Name.";
