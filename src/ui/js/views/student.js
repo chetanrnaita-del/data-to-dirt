@@ -302,9 +302,13 @@ class StudentDashboardView {
 
   async fetchData() {
     try {
+      const token = localStorage.getItem("d2d_session_token");
+      const userId = localStorage.getItem("d2d_user_id");
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const userParam = userId ? `?student_id=${encodeURIComponent(userId)}` : "";
       const [statsRes, lbRes] = await Promise.all([
-        fetch("/api/student/stats").then((r) => r.json()),
-        fetch("/api/student/leaderboard").then((r) => r.json()),
+        fetch(`/api/student/stats${userParam}`, { headers }).then((r) => r.json()),
+        fetch(`/api/student/leaderboard${userParam}`, { headers }).then((r) => r.json()),
       ]);
 
       this.stats = statsRes;

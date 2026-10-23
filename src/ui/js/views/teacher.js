@@ -87,7 +87,10 @@ class TeacherConfirmationView {
 
           <!-- Search & Sort -->
           <div style="display: flex; align-items: center; gap: 8px;">
-            <input type="text" id="t-search-input" class="retro-input" placeholder="Search filename, reason, student..." style="padding: 4px 8px; font-size: 12px; width: 220px;" />
+            <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
+              ⚡ Approve All Pending
+            </button>
+            <input type="text" id="t-search-input" class="retro-input" placeholder="Search filename, reason, student..." style="padding: 4px 8px; font-size: 12px; width: 180px;" />
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-sort-confidence" title="Sort by AI Confidence (Low/High)">
               🤖 AI Score: <span id="sort-order-label">Lowest First</span>
             </button>
@@ -113,6 +116,33 @@ class TeacherConfirmationView {
   }
 
   bindEvents() {
+    // Approve all pending requests
+    document.getElementById("btn-approve-all-pending")?.addEventListener("click", async () => {
+      const btn = document.getElementById("btn-approve-all-pending");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+      }
+      try {
+        const res = await fetch("/api/teacher/decide_all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001" })
+        }).then(r => r.json());
+        if (this.audioSynth) this.audioSynth.playVictoryFanfare();
+        if (this.particleEngine) this.particleEngine.emitConfetti();
+        this.showToast(`⚡ ${res.message || "All pending files approved!"}`, "success");
+        await this.fetchData();
+      } catch (e) {
+        this.showToast(`Error batch approving: ${e.message}`, "error");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "⚡ Approve All Pending";
+        }
+      }
+    });
+
     // Student directory & creation
     document.getElementById("btn-t-manage-students")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();

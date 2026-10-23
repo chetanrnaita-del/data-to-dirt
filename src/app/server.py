@@ -923,9 +923,29 @@ def create_flask_app():
 
     @app.route("/api/student/stats", methods=["GET"])
     def api_student_stats():
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+
         state = load_state()
-        student = state["student"]
-        bytes_cleared = student["bytes_cleared"]
+        student = dict(state["student"])
+
+        target_student_id = session.get("user_id") if session else request.args.get("student_id")
+
+        if target_student_id and firestore_db.is_connected:
+            try:
+                f_user = firestore_db.get_or_create_user(target_student_id, role="student")
+                if f_user:
+                    student["student_id"] = target_student_id
+                    student["name"] = f_user.get("name", target_student_id)
+                    student["bytes_cleared"] = f_user.get("bytes_cleared", student.get("bytes_cleared", 0))
+                    student["eco_points"] = f_user.get("eco_points", student.get("eco_points", 0))
+                    student["streak_days"] = f_user.get("streak_days", student.get("streak_days", 1))
+                    student["strikes"] = f_user.get("strikes", student.get("strikes", 0))
+            except Exception as ex:
+                print(f"[!] Firestore student stats lookup notice: {ex}")
+
+        bytes_cleared = student.get("bytes_cleared", 0)
         carbon_g = calculate_carbon_offset_g(bytes_cleared)
         trees_eq = round((carbon_g / 1000.0) / TREE_ABSORPTION_KG_YEAR, 4)
         stage = calculate_tree_stage(bytes_cleared)
@@ -933,17 +953,17 @@ def create_flask_app():
         stage_name = TREE_STAGE_THRESHOLDS[stage][1]
 
         return jsonify({
-            "student_id": student["student_id"],
-            "student_name": student["name"],
+            "student_id": student.get("student_id", "STU-001"),
+            "student_name": student.get("name", "Student"),
             "bytes_cleared": bytes_cleared,
             "bytes_cleared_formatted": format_bytes(bytes_cleared),
             "carbon_offset_g": carbon_g,
             "trees_equivalent": trees_eq,
-            "eco_points": student["eco_points"],
-            "current_streak_days": student["streak_days"],
-            "daily_deletions_today": student["daily_deletions_today"],
-            "daily_deletion_limit": student["daily_deletion_limit"],
-            "can_delete": student["daily_deletions_today"] < student["daily_deletion_limit"],
+            "eco_points": student.get("eco_points", 0),
+            "current_streak_days": student.get("streak_days", 1),
+            "daily_deletions_today": student.get("daily_deletions_today", 0),
+            "daily_deletion_limit": student.get("daily_deletion_limit", 5),
+            "can_delete": student.get("daily_deletions_today", 0) < student.get("daily_deletion_limit", 5),
             "tree_growth_stage": stage,
             "tree_growth_stage_name": stage_name,
             "tree_growth_progress_pct": progress_pct,
@@ -953,12 +973,25 @@ def create_flask_app():
     @app.route("/api/student/leaderboard", methods=["GET"])
     def api_student_leaderboard():
         state = load_state()
-        leaderboard = state["leaderboard"]
+        leaderboard = []
+        if firestore_db.is_connected:
+            try:
+                class_code = request.args.get("class_code", "")
+                f_lb = firestore_db.get_class_leaderboard(class_code=class_code, limit=25)
+                if f_lb:
+                    leaderboard = f_lb
+            except Exception as e:
+                print(f"[!] Leaderboard firestore error: {e}")
+
+        if not leaderboard:
+            leaderboard = state.get("leaderboard", [])
+
         # Recalculate formatted data
         formatted_list = []
-        for entry in sorted(leaderboard, key=lambda x: x["eco_points"], reverse=True):
+        for entry in sorted(leaderboard, key=lambda x: x.get("eco_points", 0), reverse=True):
             item = dict(entry)
-            item["data_cleared_formatted"] = format_bytes(item["data_cleared_bytes"])
+            b_val = item.get("data_cleared_bytes", 0) or item.get("bytes_cleared", 0)
+            item["data_cleared_formatted"] = format_bytes(b_val)
             formatted_list.append(item)
         for i, item in enumerate(formatted_list):
             item["rank"] = i + 1
@@ -2227,16 +2260,38 @@ def create_flask_app():
                 except Exception:
                     pass
 
-            # Update student
+            # Update student in Firestore
+            student_id = target_item.get("student_id", "")
+            pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
+            trees = int(file_bytes // (1024**3))
+
+            if firestore_db.is_connected and student_id:
+                try:
+                    firestore_db.update_user_stats(student_id, file_bytes, pts, trees)
+                except Exception as fe:
+                    print(f"[!] Firestore update_user_stats error: {fe}")
+
+            # Update student in local state
             student = state["student"]
             student["bytes_cleared"] += file_bytes
-            student["eco_points"] += int((file_bytes / (1024 * 1024)) * 0.5) + 20
+            student["eco_points"] += pts
             student["daily_deletions_today"] += 1
             student["streak_days"] = student.get("streak_days", 0) + 1
 
             # Update ecofund
             ecofund = state["ecofund"]
             ecofund["cumulative_waste_bytes"] += file_bytes
+
+            # Record telemetry event for analytics real-time update
+            try:
+                record_telemetry_event(
+                    action=f"Approved Deletion: {target_item.get('file_name', 'file')}",
+                    user_id=student_id or teacher_id,
+                    role="teacher",
+                    bytes_cleaned=file_bytes
+                )
+            except Exception as te:
+                print(f"[!] Telemetry error: {te}")
 
             # Check 1 GB threshold
             thresh = ecofund["threshold_bytes"]
@@ -2295,6 +2350,66 @@ def create_flask_app():
             "new_tree": new_tree_info,
             "student_bytes_cleared": state["student"]["bytes_cleared"],
             "cumulative_waste_bytes": state["ecofund"]["cumulative_waste_bytes"]
+        })
+
+    @app.route("/api/teacher/decide_all", methods=["POST"])
+    def api_teacher_decide_all():
+        data = request.get_json() or {}
+        teacher_id = data.get("teacher_id", "TEACHER-001")
+        state = load_state()
+        queue = state.get("teacher_queue", [])
+
+        approved_count = 0
+        total_approved_bytes = 0
+
+        # Also pull from firestore pending
+        if firestore_db.is_connected:
+            try:
+                from google.cloud.firestore_v1.base_query import FieldFilter
+                q = firestore_db.db.collection("deletion_queue").where(filter=FieldFilter("status", "==", "PENDING"))
+                for doc in q.stream():
+                    d = doc.to_dict()
+                    r_id = d.get("request_id")
+                    s_id = d.get("student_id", "")
+                    sz = d.get("file_size_bytes", 0)
+                    pts = int((sz / (1024 * 1024)) * 0.5) + 20
+                    trees = int(sz // (1024**3))
+                    firestore_db.update_user_stats(s_id, sz, pts, trees)
+                    firestore_db.update_deletion_status(r_id, "approve", teacher_id)
+                    approved_count += 1
+                    total_approved_bytes += sz
+            except Exception as e:
+                print(f"[!] Decide all firestore error: {e}")
+
+        for item in queue:
+            if item.get("status") == "PENDING":
+                item["status"] = "APPROVED"
+                item["decided_by"] = teacher_id
+                item["decided_at"] = time.time()
+                sz = item.get("file_size_bytes", 0)
+                state["student"]["bytes_cleared"] += sz
+                state["ecofund"]["cumulative_waste_bytes"] += sz
+                approved_count += 1
+                total_approved_bytes += sz
+
+        save_state(state)
+
+        if total_approved_bytes > 0:
+            try:
+                record_telemetry_event(
+                    action=f"Batch Approved {approved_count} files",
+                    user_id=teacher_id,
+                    role="teacher",
+                    bytes_cleaned=total_approved_bytes
+                )
+            except Exception as te:
+                print(f"[!] Telemetry error: {te}")
+
+        return jsonify({
+            "status": "success",
+            "approved_count": approved_count,
+            "total_bytes": total_approved_bytes,
+            "message": f"Successfully approved {approved_count} pending deletion requests."
         })
 
     @app.route("/api/teacher/analytics", methods=["GET"])
@@ -2514,10 +2629,43 @@ def create_flask_app():
         kpis["tracked_cities_count"] = len(cities_list)
         kpis["active_sessions"] = sum(c.get("active_users", 0) for c in cities_list)
 
-        # Pull latest state for tree donations and ecofund
+        # Pull persistent data directly from Cloud Firestore
+        total_firestore_bytes = 0
+        if firestore_db.is_connected:
+            try:
+                from google.cloud.firestore_v1.base_query import FieldFilter
+                q = firestore_db.db.collection("deletion_queue").where(filter=FieldFilter("status", "==", "APPROVED"))
+                for doc in q.stream():
+                    d = doc.to_dict()
+                    total_firestore_bytes += d.get("file_size_bytes", 0)
+            except Exception as fe:
+                print(f"[!] Analytics firestore aggregation notice: {fe}")
+
         ecofund = state.get("ecofund", {})
-        if ecofund.get("trees_planted"):
-            kpis["total_trees_funded"] = max(kpis.get("total_trees_funded", 0), ecofund["trees_planted"])
+        effective_bytes = max(
+            kpis.get("total_bytes_cleaned", 0),
+            total_firestore_bytes,
+            ecofund.get("cumulative_waste_bytes", 0),
+            state.get("student", {}).get("bytes_cleared", 0)
+        )
+        kpis["total_bytes_cleaned"] = effective_bytes
+
+        # Calculate exact CO2e avoided using Singapore grid constant: 0.28 kWh/GB * 405.7 g/kWh / 1000.0
+        co2_kg = (effective_bytes / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
+        kpis["total_carbon_offset_kg"] = round(co2_kg, 2)
+        kpis["total_trees_funded"] = max(
+            int(effective_bytes // TREE_DONATION_THRESHOLD_BYTES),
+            ecofund.get("trees_planted", 0)
+        )
+
+        # Ensure participating cities reflect cleaned storage
+        if effective_bytes > 0 and cities_list:
+            city_sum = sum(c.get("bytes_cleaned", 0) for c in cities_list)
+            if city_sum < effective_bytes:
+                remainder = effective_bytes - city_sum
+                top_c = cities_list[0]
+                top_c["bytes_cleaned"] = top_c.get("bytes_cleaned", 0) + remainder
+                top_c["co2_avoided_kg"] = round((top_c["bytes_cleaned"] / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0), 3)
 
         devices = analytics.get("devices", {"desktop": 0, "mobile": 0, "tablet": 0})
         total_devices = sum(devices.values())
