@@ -44,17 +44,25 @@ class DataToDirtApp {
 
     const mainView = document.getElementById("view-content");
     
-    // Ensure analytics button is visible in header navigation
+    // Hide admin and analytics buttons by default (Admin restricted)
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+    const btnNavAdmin = document.getElementById("nav-admin-view");
+    if (btnNavAnalytics) btnNavAnalytics.style.display = "none";
+    if (btnNavAdmin) btnNavAdmin.style.display = "none";
 
     // Auto-detect participant city and report initial telemetry beacon
     this.detectAndTrackLocation("Participant Session Start");
 
-    // Direct URL navigation support for /analytics and #analytics
+    // Direct URL navigation support for /analytics and #analytics (Admin Restricted)
     if (window.location.pathname === "/analytics" || window.location.hash === "#analytics") {
-      this.switchRole("analytics");
-      return;
+      const savedRole = localStorage.getItem("d2d_role");
+      if (savedRole === "admin") {
+        this.switchRole("analytics");
+        return;
+      } else {
+        this.openRolePinModal("admin", "analytics");
+        return;
+      }
     }
 
     // Check if user is already logged in
@@ -112,12 +120,14 @@ class DataToDirtApp {
     document.getElementById("nav-logout-btn").style.display = "inline-block";
     document.getElementById("header-role-badge").style.display = "inline-block";
     
-    // Show role navigation buttons
+    // Show role navigation buttons (Analytics & Admin only visible to Administrator)
     const btnStudent = document.getElementById("nav-student-view");
+    const btnAdmin = document.getElementById("nav-admin-view");
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
 
     if (btnStudent) btnStudent.style.display = "inline-block";
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+    if (btnAdmin) btnAdmin.style.display = (role === "admin") ? "inline-block" : "none";
+    if (btnNavAnalytics) btnNavAnalytics.style.display = (role === "admin") ? "inline-block" : "none";
 
     this.switchRole(role);
     this.detectAndTrackLocation(`User Login (${role.toUpperCase()})`, { user_id: userId, role: role });
@@ -136,12 +146,13 @@ class DataToDirtApp {
     document.getElementById("nav-logout-btn").style.display = "none";
     document.getElementById("header-role-badge").style.display = "none";
 
-    // Hide role navigation buttons on logout
+    // Hide all role navigation buttons on logout
     const btnStudent = document.getElementById("nav-student-view");
-    if (btnStudent) btnStudent.style.display = "none";
-
+    const btnAdmin = document.getElementById("nav-admin-view");
     const btnNavAnalytics = document.getElementById("nav-analytics-view");
-    if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+    if (btnStudent) btnStudent.style.display = "none";
+    if (btnAdmin) btnAdmin.style.display = "none";
+    if (btnNavAnalytics) btnNavAnalytics.style.display = "none";
     
     // Clear the main view and show login
     const mainView = document.getElementById("view-content");
@@ -211,12 +222,20 @@ class DataToDirtApp {
 
     // Role Selector Buttons
     const btnStudentRole = document.getElementById("nav-student-view");
+    const btnAdminRole = document.getElementById("nav-admin-view");
     const btnAnalyticsRole = document.getElementById("nav-analytics-view");
 
     if (btnStudentRole) {
       btnStudentRole.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
         this.switchRole("student");
+      });
+    }
+
+    if (btnAdminRole) {
+      btnAdminRole.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        this.switchRole("admin");
       });
     }
 
@@ -298,6 +317,11 @@ class DataToDirtApp {
         this.renderTeacherView();
       }
     } else if (role === "analytics") {
+      const activeRole = this.currentRole || localStorage.getItem("d2d_role");
+      if (activeRole !== "admin") {
+        this.openRolePinModal("admin", "analytics");
+        return;
+      }
       if (btnAnalytics) {
         btnAnalytics.classList.add("retro-btn-gold");
         btnAnalytics.classList.remove("retro-btn-wood");
@@ -305,6 +329,7 @@ class DataToDirtApp {
       if (userRoleBadge) {
         userRoleBadge.textContent = "📊 ANALYTICS";
         userRoleBadge.style.background = "linear-gradient(135deg, #0984e3, #74b9ff)";
+        userRoleBadge.style.display = "inline-block";
       }
       if (window.AnalyticsView) {
         window.AnalyticsView.mount("view-content");
@@ -312,24 +337,28 @@ class DataToDirtApp {
     }
   }
 
-  openRolePinModal(targetRole) {
+  openRolePinModal(targetRole, destinationView = null) {
     const isTeacher = targetRole === "teacher";
     const defaultPin = isTeacher ? "teacher123" : "admin2026";
-    const roleTitle = isTeacher ? "Teacher Confirmation Queue" : "Admin Eco-Fund Console";
+    const roleTitle = destinationView === "analytics"
+      ? "Administrator Clearance (Analytics)"
+      : (isTeacher ? "Teacher Confirmation Queue" : "Admin Eco-Fund Console");
 
     const modalHtml = `
       <div class="retro-modal-backdrop" id="modal-role-pin">
         <div class="retro-card retro-modal">
           <div class="retro-modal-header">
-            <span>🔐 ${roleTitle} (R4)</span>
+            <span>🔐 ${roleTitle}</span>
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-pin-close">✕</button>
           </div>
           <div class="retro-modal-body">
             <p style="margin-bottom: 12px;">
-              Enter the passcode to access the <strong>${roleTitle}</strong>.
+              ${destinationView === "analytics" 
+                ? "The Global City Telemetry & Analytics console is strictly restricted to system administrators. Enter the admin passcode to access:" 
+                : `Enter the passcode to access the <strong>${roleTitle}</strong>.`}
             </p>
             <div class="retro-inset">
-              <label style="display: block; font-weight: bold; margin-bottom: 6px;">Passcode / PIN:</label>
+              <label style="display: block; font-weight: bold; margin-bottom: 6px;">Administrator Passcode / PIN:</label>
               <input type="password" id="input-role-pin" class="retro-input" placeholder="Default: ${defaultPin}" autofocus />
             </div>
             <div id="pin-error-msg" style="color: var(--c-danger-bright); font-size: 12px; margin-top: 8px; display: none;"></div>
@@ -353,6 +382,14 @@ class DataToDirtApp {
 
     const dismiss = () => {
       if (modal) modal.remove();
+      if (destinationView === "analytics" && (this.currentRole !== "admin" && localStorage.getItem("d2d_role") !== "admin")) {
+        if (this.userId) {
+          this.switchRole("student");
+        } else {
+          const mainView = document.getElementById("view-content");
+          if (mainView && this.loginView) this.loginView.render(mainView);
+        }
+      }
     };
 
     if (btnClose) btnClose.onclick = dismiss;
@@ -372,9 +409,21 @@ class DataToDirtApp {
           if (data.token) {
             localStorage.setItem("d2d_session_token", data.token);
           }
-          dismiss();
+          localStorage.setItem("d2d_role", targetRole);
+          this.currentRole = targetRole;
+
+          const btnAdmin = document.getElementById("nav-admin-view");
+          const btnNavAnalytics = document.getElementById("nav-analytics-view");
+          const btnStudent = document.getElementById("nav-student-view");
+          if (btnStudent) btnStudent.style.display = "inline-block";
+          if (btnAdmin) btnAdmin.style.display = "inline-block";
+          if (btnNavAnalytics) btnNavAnalytics.style.display = "inline-block";
+          document.getElementById("nav-logout-btn").style.display = "inline-block";
+          document.getElementById("header-role-badge").style.display = "inline-block";
+
+          modal.remove();
           if (this.audioSynth) this.audioSynth.playCoinDing();
-          this.switchRole(targetRole);
+          this.switchRole(destinationView || targetRole);
         } else {
           errEl.style.display = "block";
           errEl.textContent = `[-] Invalid Passcode. Try '${defaultPin}'`;

@@ -67,6 +67,7 @@ class AnalyticsDashboardView {
           <div>
             <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px;">
               <span>📊 Global City Telemetry & Environmental Analytics</span>
+              <span class="retro-tag retro-tag-leaf" style="font-size: 10px;">⚙️ ADMIN ONLY ACCESS</span>
               <span class="retro-tag retro-tag-clean" id="an-live-badge" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
                 <span class="pulse-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2ecc71;"></span>
                 LIVE TRACKING ACTIVE
@@ -86,6 +87,9 @@ class AnalyticsDashboardView {
             </button>
             <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-an-export" title="Export CSV Report">
               📥 Export CSV
+            </button>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-an-return-admin" title="Back to Admin Console">
+              ⚙️ Admin Console
             </button>
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-an-return-student" title="Back to Student View">
               🎒 Student
@@ -247,6 +251,15 @@ class AnalyticsDashboardView {
       btnExport.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playCoinDing();
         window.open("/api/analytics/export", "_blank");
+      });
+    }
+
+    const btnReturnAdmin = document.getElementById("btn-an-return-admin");
+    if (btnReturnAdmin) {
+      btnReturnAdmin.addEventListener("click", () => {
+        if (window.appInstance) {
+          window.appInstance.switchRole("admin");
+        }
       });
     }
 
