@@ -24,12 +24,12 @@ class AdminEcoFundView {
 
   renderLayout() {
     this.container.innerHTML = `
-      <div class="admin-dashboard" style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+      <div class="admin-dashboard" style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; box-sizing: border-box;">
 
         <!-- Top Admin Header Bar -->
-        <div class="retro-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px;">
+        <div class="retro-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; flex-wrap: wrap; gap: 10px;">
           <div>
-            <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px;">
+            <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span>⚙️ Admin Eco-Fund Budget & Environmental Console</span>
               <span class="retro-tag retro-tag-leaf">ADMINISTRATOR ACCESS</span>
             </div>
@@ -37,7 +37,7 @@ class AdminEcoFundView {
               Manage cloud storage savings budget, configure donation triggers, and audit student actions.
             </div>
           </div>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-refresh">
               🔄 Refresh
             </button>
@@ -50,14 +50,17 @@ class AdminEcoFundView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-return-student">
               🎒 Student View
             </button>
+            <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-adm-logout">
+              🚪 Logout
+            </button>
           </div>
         </div>
 
-        <!-- Two-Column Master Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; overflow: hidden;">
+        <!-- Responsive Master Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; flex: 1;">
 
           <!-- Left Column: Eco-Fund Budget & Tree-Nation Threshold Controller -->
-          <div style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 4px;">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
 
             <!-- Eco-Fund Budget Widget -->
             <div class="retro-card" style="display: flex; flex-direction: column; gap: 10px;">
@@ -73,13 +76,13 @@ class AdminEcoFundView {
                 </div>
                 <div class="retro-inset" style="padding: 10px;">
                   <div style="font-size: 11px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold;">Available Balance</div>
-                  <div id="adm-balance-val" style="font-size: 24px; font-weight: bold; color: var(--c-eco-leaf);">$97.00</div>
-                  <div id="adm-disbursed-label" style="font-size: 10px; color: var(--c-ink-light); margin-top: 2px;">Disbursed: $3.00</div>
+                  <div id="adm-balance-val" style="font-size: 24px; font-weight: bold; color: var(--c-eco-leaf);">$100.00</div>
+                  <div id="adm-disbursed-label" style="font-size: 10px; color: var(--c-ink-light); margin-top: 2px;">Disbursed: $0.00</div>
                 </div>
               </div>
 
               <!-- Budget Top-up & Adjust Form -->
-              <div class="retro-inset" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px;">
+              <div class="retro-inset" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex-wrap: wrap;">
                 <label style="font-size: 11px; font-weight: bold; white-space: nowrap;">Set Budget ($):</label>
                 <input type="number" id="input-budget-amount" class="retro-input" style="width: 90px; padding: 3px 6px; font-size: 12px;" min="10" step="10" value="100" />
                 <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-save-budget">Save Budget</button>
@@ -140,11 +143,11 @@ class AdminEcoFundView {
           </div>
 
           <!-- Right Column: School-Wide Impact Metrics & Incident Audit Log -->
-          <div style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 4px;">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
 
             <!-- Environmental Impact Charts & Equivalencies -->
             <div class="retro-card" style="display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 4px; flex-wrap: wrap; gap: 6px;">
                 <span style="font-weight: bold; font-size: 14px; color: var(--c-wood-border);">
                   🌍 School Environmental Impact
                 </span>
@@ -170,13 +173,13 @@ class AdminEcoFundView {
             </div>
 
             <!-- Disciplinary Incident Audit Register -->
-            <div class="retro-card" style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 220px;">
+            <div class="retro-card" style="display: flex; flex-direction: column; gap: 8px; min-height: 200px;">
               <div style="font-weight: bold; font-size: 14px; color: var(--c-danger-bright); border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 4px; display: flex; justify-content: space-between;">
                 <span>🚩 Anti-Gaming Incident Register</span>
                 <span id="adm-incident-count" class="retro-tag retro-tag-danger" style="font-size: 10px;">0 Flags</span>
               </div>
 
-              <div id="adm-incident-list" class="retro-inset" style="flex: 1; overflow-y: auto; max-height: 180px; display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+              <div id="adm-incident-list" class="retro-inset" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
                 <div style="text-align: center; padding: 20px; color: var(--c-ink-light);">
                   No disciplinary incidents recorded yet. Clean classroom!
                 </div>
@@ -188,7 +191,7 @@ class AdminEcoFundView {
               <div style="font-weight: bold; font-size: 13px; color: var(--c-wood-border);">
                 📜 Tree-Nation Certificates Ledger
               </div>
-              <div id="adm-tree-ledger" class="retro-inset" style="max-height: 120px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
+              <div id="adm-tree-ledger" class="retro-inset" style="max-height: 140px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
                 <div>No trees planted yet.</div>
               </div>
             </div>
@@ -215,7 +218,11 @@ class AdminEcoFundView {
 
     document.getElementById("btn-adm-teacher-queue")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
-      if (window.TeacherView) window.TeacherView.mount("view-content");
+      if (window.DataToDirt) {
+        window.DataToDirt.switchRole("teacher");
+      } else if (window.TeacherView) {
+        window.TeacherView.mount("view-content");
+      }
     });
 
     document.getElementById("btn-adm-analytics")?.addEventListener("click", () => {
@@ -299,31 +306,35 @@ class AdminEcoFundView {
     const elDisbursed = document.getElementById("adm-disbursed-label");
     const inputBudget = document.getElementById("input-budget-amount");
 
-    if (elBudget) elBudget.textContent = `$${this.ecofund.budget_usd.toFixed(2)}`;
-    if (elBalance) elBalance.textContent = `$${this.ecofund.balance_usd.toFixed(2)}`;
-    if (inputBudget) inputBudget.value = this.ecofund.budget_usd;
+    const budget = Number(this.ecofund.budget_usd != null ? this.ecofund.budget_usd : 100);
+    const balance = Number(this.ecofund.balance_usd != null ? this.ecofund.balance_usd : 100);
 
-    const disbursed = Math.max(0, this.ecofund.budget_usd - this.ecofund.balance_usd);
-    if (elDisbursed) elDisbursed.textContent = `Disbursed: $${disbursed.toFixed(2)} (${this.ecofund.trees_planted} trees)`;
+    if (elBudget) elBudget.textContent = `$${budget.toFixed(2)}`;
+    if (elBalance) elBalance.textContent = `$${balance.toFixed(2)}`;
+    if (inputBudget) inputBudget.value = budget;
+
+    const disbursed = Math.max(0, budget - balance);
+    const treesPlanted = Number(this.ecofund.trees_planted || 0);
+    if (elDisbursed) elDisbursed.textContent = `Disbursed: $${disbursed.toFixed(2)} (${treesPlanted} trees)`;
 
     // Projected Savings ROI
     const elSavings = document.getElementById("adm-savings-calc");
-    const clearedGb = this.analytics?.total_data_cleaned_gb || (this.ecofund.cumulative_waste_bytes / (1024 ** 3));
+    const clearedGb = Number(this.analytics?.total_data_cleaned_gb || 0) || (Number(this.ecofund.cumulative_waste_bytes || 0) / (1024 ** 3));
     const annualSavings = clearedGb * 0.02 * 12.0;
     if (elSavings) {
       elSavings.textContent = `Projected Annual Cloud Savings: $${annualSavings.toFixed(2)} (Net ROI: +$${Math.max(0, annualSavings - disbursed).toFixed(2)})`;
     }
 
     // Threshold & Progress
-    const threshBytes = this.ecofund.threshold_bytes || 1073741824;
+    const threshBytes = Number(this.ecofund.threshold_bytes) || 1073741824;
     const threshGb = threshBytes / (1024 ** 3);
     const slider = document.getElementById("slider-threshold-gb");
     const label = document.getElementById("label-threshold-gb");
     if (slider) slider.value = threshGb;
     if (label) label.textContent = `${threshGb.toFixed(1)} GB`;
 
-    const cumulative = this.ecofund.cumulative_waste_bytes || 0;
-    const prevTarget = (this.ecofund.trees_planted || 0) * threshBytes;
+    const cumulative = Number(this.ecofund.cumulative_waste_bytes) || 0;
+    const prevTarget = treesPlanted * threshBytes;
     const progress = Math.min(100, Math.max(0, Math.round(((cumulative - prevTarget) / threshBytes) * 100)));
 
     const elPct = document.getElementById("adm-threshold-pct");
@@ -335,14 +346,16 @@ class AdminEcoFundView {
     const elCar = document.getElementById("adm-eq-car");
     const elPhone = document.getElementById("adm-eq-phone");
     const elActive = document.getElementById("adm-active-students");
-    if (elCar) elCar.textContent = `${(this.analytics?.car_km_avoided || 0).toFixed(1)} km`;
-    if (elPhone) elPhone.textContent = `${Math.round(this.analytics?.smartphone_charges_avoided || 0)}`;
-    if (elActive) elActive.textContent = `${this.analytics?.active_students_count || 0}`;
+    if (elCar) elCar.textContent = `${Number(this.analytics?.car_km_avoided || 0).toFixed(1)} km`;
+    if (elPhone) elPhone.textContent = `${Math.round(Number(this.analytics?.smartphone_charges_avoided || 0))}`;
+    if (elActive) elActive.textContent = `${Number(this.analytics?.active_students_count || 0)}`;
 
     // Incident Log
     const elIncidentCount = document.getElementById("adm-incident-count");
     const elIncidentList = document.getElementById("adm-incident-list");
-    const incidents = this.auditData?.incident_log || this.analytics?.incident_log || [];
+    const incidents = Array.isArray(this.auditData?.incident_log)
+      ? this.auditData.incident_log
+      : (Array.isArray(this.analytics?.incident_log) ? this.analytics.incident_log : []);
     if (elIncidentCount) elIncidentCount.textContent = `${incidents.length} Flags`;
 
     if (elIncidentList) {
@@ -354,13 +367,13 @@ class AdminEcoFundView {
         `;
       } else {
         elIncidentList.innerHTML = incidents.map((inc) => `
-          <div style="border-left: 3px solid var(--c-danger-bright); padding: 4px 8px; background: rgba(255,255,255,0.4);">
+          <div style="border-left: 3px solid var(--c-danger-bright); padding: 4px 8px; background: rgba(255,255,255,0.4); margin-bottom: 4px;">
             <div style="font-weight: bold; color: var(--c-danger-bright); display: flex; justify-content: space-between;">
-              <span>Student: ${inc.student_id}</span>
-              <span style="font-size: 10px; color: var(--c-ink-muted);">${inc.request_id}</span>
+              <span>Student: ${inc.student_id || 'Unknown'}</span>
+              <span style="font-size: 10px; color: var(--c-ink-muted);">${inc.request_id || ''}</span>
             </div>
-            <div>File: <strong>${inc.file_name}</strong> • AI Score: ${Math.round((inc.ai_score || 0) * 100)}%</div>
-            <div style="font-style: italic; color: var(--c-ink-muted);">"${inc.reason}"</div>
+            <div>File: <strong>${inc.file_name || 'unknown'}</strong> • AI Score: ${Math.round(Number(inc.ai_score || 0) * 100)}%</div>
+            <div style="font-style: italic; color: var(--c-ink-muted);">"${inc.reason || 'Flagged by Teacher'}"</div>
             <div style="color: var(--c-ink-text);">Action Note: ${inc.feedback || "Strike applied"}</div>
           </div>
         `).join("");
@@ -369,22 +382,24 @@ class AdminEcoFundView {
 
     // Tree Certificates
     const elLedger = document.getElementById("adm-tree-ledger");
-    if (elLedger && this.ecofund.donations_history) {
-      if (this.ecofund.donations_history.length === 0) {
+    const history = Array.isArray(this.ecofund.donations_history) ? this.ecofund.donations_history : [];
+    if (elLedger) {
+      if (history.length === 0) {
         elLedger.innerHTML = `
           <div style="text-align: center; color: var(--c-ink-muted); font-size: 11px; padding: 12px;">
             No tree certificates issued yet. Trees are funded automatically as participants clean storage.
           </div>
         `;
       } else {
-        elLedger.innerHTML = this.ecofund.donations_history.map((d) => `
+        elLedger.innerHTML = history.map((d) => `
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px dashed var(--c-parchment-border);">
-            <span>🌲 <strong>${d.tree_id}</strong>: ${d.species}</span>
-            <span style="color: var(--c-eco-leaf); font-weight: bold;">+${d.co2_offset_kg} kg CO₂</span>
+            <span>🌲 <strong>${d.tree_id || d.id || 'TN-TREE'}</strong>: ${d.species || 'Mangrove'}</span>
+            <span style="color: var(--c-eco-leaf); font-weight: bold;">+${Number(d.co2_offset_kg || 250).toFixed(0)} kg CO₂</span>
           </div>
         `).join("");
       }
     }
+  }
   }
 
   async updateEcoFundSettings(payload) {

@@ -41,9 +41,18 @@ class TeacherConfirmationView {
               Verify student dark data deletion requests with on-device AI accountability loop.
             </div>
           </div>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-t-refresh" title="Refresh Queue">
               🔄 Refresh
+            </button>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-t-manage-students" title="Student Directory">
+              👥 Students
+            </button>
+            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-t-admin" title="Admin Panel">
+              ⚙️ Admin
+            </button>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-t-return-student" title="Student View">
+              🎒 Student
             </button>
           </div>
         </div>
@@ -122,7 +131,9 @@ class TeacherConfirmationView {
     // Admin panel switch
     document.getElementById("btn-t-admin")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
-      if (window.AdminView) {
+      if (window.DataToDirt) {
+        window.DataToDirt.switchRole("admin");
+      } else if (window.AdminView) {
         window.AdminView.mount("view-content");
       }
     });

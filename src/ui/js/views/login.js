@@ -66,6 +66,14 @@ class LoginView {
               <button type="button" class="t-pill" data-tid="teacher_earth204" data-pass="teacher123" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">⛰️ Mr. Samuel Woods — Earth 204 (10 students)</button>
             </div>
           </div>
+
+          <!-- Quick Select Shortcuts for Admin -->
+          <div id="admin-quick-select" style="display: none; margin-bottom: 20px;">
+            <div style="font-size: 11px; font-weight: bold; color: #636e72; margin-bottom: 6px;">Administrator Credentials:</div>
+            <button type="button" id="btn-admin-pill" style="width: 100%; font-size: 11px; padding: 8px 12px; border: 1.5px solid #fab1a0; border-radius: 8px; background: #fff5f5; cursor: pointer; text-align: left; font-weight: 600; color: #d63031; transition: all 0.2s;">
+              ⚙️ Auto-fill Administrator (admin / admin2026)
+            </button>
+          </div>
           
           <div id="login-error" style="color: #e74c3c; font-size: 13px; margin-bottom: 15px; display: none; font-weight: 600;"></div>
 
@@ -115,6 +123,7 @@ class LoginView {
         this.selectedRole = btn.dataset.role;
         
         const teacherPills = container.querySelector('#teacher-quick-select');
+        const adminPills = container.querySelector('#admin-quick-select');
 
         // Update Labels
         if (this.selectedRole === 'student') {
@@ -123,18 +132,23 @@ class LoginView {
           labelPass.textContent = "Class Code";
           inputPass.placeholder = "Enter class code (e.g., bio101)";
           if (teacherPills) teacherPills.style.display = 'none';
+          if (adminPills) adminPills.style.display = 'none';
         } else if (this.selectedRole === 'teacher') {
           labelUser.textContent = "Teacher Account / Class Code";
           inputUser.placeholder = "e.g. teacher_bio101 or bio101";
           labelPass.textContent = "Password";
           inputPass.placeholder = "teacher123";
           if (teacherPills) teacherPills.style.display = 'block';
+          if (adminPills) adminPills.style.display = 'none';
         } else {
           labelUser.textContent = "Admin ID";
-          inputUser.placeholder = "Please enter admin ID";
-          labelPass.textContent = "Password";
-          inputPass.placeholder = "Please enter admin password";
+          inputUser.placeholder = "admin";
+          inputUser.value = inputUser.value.trim() || "admin";
+          labelPass.textContent = "Administrator Passcode";
+          inputPass.placeholder = "admin2026";
+          inputPass.value = inputPass.value.trim() || "admin2026";
           if (teacherPills) teacherPills.style.display = 'none';
+          if (adminPills) adminPills.style.display = 'block';
         }
       });
     });
@@ -147,12 +161,18 @@ class LoginView {
       });
     });
 
+    // Bind admin quick-select pill
+    container.querySelector('#btn-admin-pill')?.addEventListener('click', () => {
+      inputUser.value = 'admin';
+      inputPass.value = 'admin2026';
+    });
+
     const btnProceed = container.querySelector('#btn-proceed');
     const errorEl = container.querySelector('#login-error');
     
     btnProceed.addEventListener('click', async () => {
-      const user = inputUser.value.trim();
-      const pass = inputPass.value.trim();
+      const user = inputUser.value.trim() || (this.selectedRole === 'admin' ? 'admin' : '');
+      const pass = inputPass.value.trim() || (this.selectedRole === 'admin' ? 'admin2026' : '');
       
       if (!user) {
         errorEl.textContent = "Please enter your ID/Name.";

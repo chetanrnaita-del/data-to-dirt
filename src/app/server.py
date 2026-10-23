@@ -1673,6 +1673,12 @@ def create_flask_app():
         state = load_state()
         teacher_class_code = "bio101"
 
+        if role == "admin":
+            if not user_id:
+                user_id = "admin"
+            if not raw_username:
+                raw_username = "Administrator"
+
         if role == "teacher":
             raw_t = (user_id or "teacher_bio101").strip().lower()
             for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
@@ -2073,7 +2079,11 @@ def create_flask_app():
         if request.method == "POST":
             data = request.get_json() or {}
             if "budget_usd" in data:
-                state["ecofund"]["budget_usd"] = float(data["budget_usd"])
+                old_budget = float(state["ecofund"].get("budget_usd", 100.0))
+                new_budget = float(data["budget_usd"])
+                diff = new_budget - old_budget
+                state["ecofund"]["budget_usd"] = new_budget
+                state["ecofund"]["balance_usd"] = max(0.0, round(float(state["ecofund"].get("balance_usd", 100.0)) + diff, 2))
             if "threshold_bytes" in data:
                 state["ecofund"]["threshold_bytes"] = int(data["threshold_bytes"])
             save_state(state)
