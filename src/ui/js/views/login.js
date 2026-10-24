@@ -52,7 +52,7 @@ class LoginView {
                 <span id="label-pass">Class Code</span> <span style="color: #e74c3c;">*</span>
               </label>
             </div>
-            <input type="password" id="login-pass" placeholder="Enter class code (e.g., class-a)" style="width: 100%; padding: 14px 16px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
+            <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" style="width: 100%; padding: 14px 16px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
           </div>
 
           <!-- Quick Select Shortcuts for Demo/Evaluation -->
@@ -229,13 +229,17 @@ class LoginView {
           }
           // Save credentials for session restore after OAuth redirect / server restart
           localStorage.setItem("d2d_role", this.selectedRole);
-          localStorage.setItem("d2d_user_id", user);
+          const effectiveUserId = data.user_id || user;
+          localStorage.setItem("d2d_user_id", effectiveUserId);
           localStorage.setItem("d2d_pin", pass);
           if (data.class_code) {
             localStorage.setItem("d2d_class_code", data.class_code);
           }
+          if (data.student_name) {
+            localStorage.setItem("d2d_student_name", data.student_name);
+          }
           // Instruct app to switch to the main interface for this role
-          this.app.completeLogin(this.selectedRole, user, pass, data.class_code);
+          this.app.completeLogin(this.selectedRole, effectiveUserId, pass, data.class_code);
         } else {
           errorEl.textContent = data.message || "Invalid credentials.";
           errorEl.style.display = "block";

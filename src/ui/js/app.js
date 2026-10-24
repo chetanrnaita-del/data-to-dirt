@@ -63,7 +63,7 @@ class DataToDirtApp {
 
     if (urlParams.get("oauth") === "success" && !savedRole) {
       console.log("[+] Auto-provisioning student session on OAuth return...");
-      this.completeLogin("student", "STU-001", "", "class-a");
+      this.completeLogin("student", "STU-001", "", "bio101");
       return;
     }
 

@@ -12,6 +12,7 @@ import socket
 import threading
 import ssl
 import hashlib
+import hmac
 from datetime import datetime
 import urllib.request
 import urllib.parse
@@ -1903,87 +1904,232 @@ def create_flask_app():
     @app.route("/api/auth/login", methods=["POST"])
     def api_auth_login():
         data = request.get_json() or {}
-        role = data.get("role", "student").lower()
-        pin = data.get("pin", "")
-        user_id = data.get("user_id", "")
-        
-        # If student logs in, prefix their user ID with their class code (pin) to group them
-        raw_username = data.get("user_id", "")
-        state = load_state()
-        teacher_class_code = "bio101"
+        role = (data.get("role") or "student").strip().lower()
+        pin = str(data.get("pin") or "").strip()
+        user_id = str(data.get("user_id") or "").strip()
 
+        state = load_state()
+
+        if role not in ["student", "teacher", "admin"]:
+            return jsonify({"status": "error", "message": f"Invalid role '{role}'. Must be student, teacher, or admin."}), 400
+
+        # ==========================================
+        # 1. ADMIN AUTHENTICATION
+        # ==========================================
         if role == "admin":
             if not user_id:
                 user_id = "admin"
-            if not raw_username:
-                raw_username = "Administrator"
-            pin_str = str(pin or "").strip()
-            if not pin_str:
+            if user_id.lower() not in ["admin", "administrator"]:
+                return jsonify({"status": "error", "message": f"Administrator ID '{user_id}' is not recognized. Expected 'admin'."}), 401
+
+            if not pin:
                 return jsonify({"status": "error", "message": "Administrator passcode is required."}), 401
-            if pin_str.lower() in ["admin", "admin2026", "admin123", "2026", "1234", "code", "password", "root"]:
-                pin = "admin2026"
 
+            # Validate admin PIN strictly (admin2026 or admin123)
+            admin_pin_expected = state.get("auth", {}).get("admin_pin", default_auth_service.admin_pin)
+            if not (hmac.compare_digest(pin, "admin2026") or hmac.compare_digest(pin, "admin123") or hmac.compare_digest(pin, admin_pin_expected)):
+                return jsonify({"status": "error", "message": "Invalid administrator passcode."}), 401
+
+            try:
+                session = default_auth_service.login(role="admin", pin=pin, user_id="admin")
+                state["auth"]["current_role"] = "admin"
+                save_state(state)
+                return jsonify({
+                    "status": "authenticated",
+                    "role": "admin",
+                    "user_id": "admin",
+                    "class_code": "admin2026",
+                    "token": session["token"],
+                    "expires_at": session["expires_at"]
+                })
+            except Exception as e:
+                return jsonify({"status": "error", "message": str(e)}), 401
+
+        # ==========================================
+        # 2. TEACHER AUTHENTICATION
+        # ==========================================
         if role == "teacher":
-            pin_str = str(pin or "").strip()
-            if not pin_str:
-                return jsonify({"status": "error", "message": "Teacher password is required."}), 401
-            if pin_str.lower() in ["teacher", "teacher123", "1234", "123", "code"]:
-                pin = "teacher123"
-            raw_t = (user_id or "teacher_bio101").strip().lower()
-            for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
-                if c in raw_t:
-                    teacher_class_code = c
-                    break
-            if not user_id or user_id.lower() == "teacher":
-                user_id = f"teacher_{teacher_class_code}"
-            elif not user_id.startswith("teacher_") and user_id in ["bio101", "env201", "cs301", "chem102", "earth204"]:
-                user_id = f"teacher_{user_id}"
+            # Default to teacher_bio101 if user_id is omitted (for test suite compatibility)
+            if not user_id:
+                user_id = "teacher_bio101"
 
-        if role == "student":
-            pin_str = str(pin or "").strip()
-            if not pin_str:
-                return jsonify({"status": "error", "message": "Class code is required."}), 401
-            matched = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == raw_username.lower()), None)
-            if not matched and firestore_db.is_connected:
+            if not pin:
+                return jsonify({"status": "error", "message": "Teacher password is required."}), 401
+
+            # Check teacher password strictly (teacher123)
+            teacher_pin_expected = state.get("auth", {}).get("teacher_pin", default_auth_service.teacher_pin)
+            if not hmac.compare_digest(pin, teacher_pin_expected):
+                return jsonify({"status": "error", "message": "Invalid teacher password."}), 401
+
+            # Normalize teacher identifier
+            raw_t = user_id.strip().lower()
+            normalized_teacher_id = raw_t
+            teacher_class_code = None
+
+            KNOWN_CLASSES = ["bio101", "env201", "cs301", "chem102", "earth204"]
+            for c in KNOWN_CLASSES:
+                if raw_t == c or raw_t == f"teacher_{c}" or f"teacher_{c}" in raw_t:
+                    teacher_class_code = c
+                    normalized_teacher_id = f"teacher_{c}"
+                    break
+
+            if raw_t in ["teacher-001", "teacher_001", "teacher"]:
+                normalized_teacher_id = "TEACHER-001"
+                teacher_class_code = "bio101"
+
+            # Check if teacher exists:
+            # 1. In standard teacher accounts
+            # 2. Or in Firestore users collection with role == 'teacher'
+            is_valid_teacher = False
+
+            if normalized_teacher_id in [f"teacher_{c}" for c in KNOWN_CLASSES] or normalized_teacher_id == "TEACHER-001":
+                is_valid_teacher = True
+
+            if not is_valid_teacher and firestore_db.is_connected:
                 try:
-                    doc = firestore_db.db.collection("users").document(raw_username.upper()).get()
+                    t_doc = firestore_db.db.collection("users").document(user_id).get()
+                    if not t_doc.exists:
+                        t_doc = firestore_db.db.collection("users").document(user_id.upper()).get()
+                    if t_doc.exists:
+                        d = t_doc.to_dict()
+                        if d.get("role") == "teacher":
+                            is_valid_teacher = True
+                            teacher_class_code = d.get("class_code", teacher_class_code)
+                            normalized_teacher_id = d.get("user_id", user_id)
+                except Exception as fe:
+                    print(f"[!] Firestore teacher check error: {fe}")
+
+            if not is_valid_teacher:
+                return jsonify({"status": "error", "message": f"Teacher account '{user_id}' not found. Please enter a valid teacher ID or class code."}), 401
+
+            if not teacher_class_code:
+                teacher_class_code = "bio101"
+
+            try:
+                session = default_auth_service.login(role="teacher", pin=teacher_pin_expected, user_id=normalized_teacher_id)
+                state["auth"]["current_role"] = "teacher"
+                save_state(state)
+                return jsonify({
+                    "status": "authenticated",
+                    "role": "teacher",
+                    "user_id": normalized_teacher_id,
+                    "class_code": teacher_class_code,
+                    "token": session["token"],
+                    "expires_at": session["expires_at"]
+                })
+            except Exception as e:
+                return jsonify({"status": "error", "message": str(e)}), 401
+
+        # ==========================================
+        # 3. STUDENT AUTHENTICATION
+        # ==========================================
+        if role == "student":
+            if not user_id:
+                return jsonify({"status": "error", "message": "Student ID or Name is required."}), 401
+            if not pin:
+                return jsonify({"status": "error", "message": "Class code is required."}), 401
+
+            entered_ident = user_id.strip()
+            entered_pin = pin.strip().lower()
+
+            matched_student = None
+
+            # 1. Search local state students
+            for s in state.get("students", []):
+                s_id = (s.get("student_id") or s.get("user_id") or "").strip().lower()
+                s_name = (s.get("name") or "").strip().lower()
+                if s_id == entered_ident.lower() or s_name == entered_ident.lower():
+                    matched_student = s
+                    break
+
+            # 2. Search Firestore users collection
+            if not matched_student and firestore_db.is_connected:
+                try:
+                    # Check by Document ID (exact or upper-case)
+                    doc = firestore_db.db.collection("users").document(entered_ident).get()
+                    if not doc.exists:
+                        doc = firestore_db.db.collection("users").document(entered_ident.upper()).get()
                     if doc.exists:
-                        matched = doc.to_dict()
+                        d = doc.to_dict()
+                        if d.get("role") == "student":
+                            matched_student = d
+
+                    # If not matched by doc ID, query by student_id field
+                    if not matched_student:
+                        q_id = firestore_db.db.collection("users").where("student_id", "==", entered_ident.upper()).limit(1).get()
+                        for qd in q_id:
+                            d = qd.to_dict()
+                            if d.get("role") == "student":
+                                matched_student = d
+                                break
+
+                    # If still not matched, query by name field
+                    if not matched_student:
+                        q_name = firestore_db.db.collection("users").where("role", "==", "student").stream()
+                        for qd in q_name:
+                            d = qd.to_dict()
+                            s_name = (d.get("name") or "").strip().lower()
+                            s_id = (d.get("student_id") or d.get("user_id") or "").strip().lower()
+                            if s_name == entered_ident.lower() or s_id == entered_ident.lower():
+                                matched_student = d
+                                break
+                except Exception as fe:
+                    print(f"[!] Firestore student search error: {fe}")
+
+            # IF STUDENT NOT FOUND: REJECT IMMEDIATELY! NO AUTO-CREATION!
+            if not matched_student:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Student '{entered_ident}' not found. Please enter a valid registered Student ID or Name."
+                }), 401
+
+            # LIVE CHECK: VERIFY ENTERED CLASS CODE / PASSWORD
+            expected_class_code = (matched_student.get("class_code") or "").strip().lower()
+            stored_student_pin = str(matched_student.get("pin") or matched_student.get("password") or "").strip().lower()
+
+            password_matches = False
+            if entered_pin == expected_class_code:
+                password_matches = True
+            elif stored_student_pin and entered_pin == stored_student_pin:
+                password_matches = True
+
+            if not password_matches:
+                student_display_name = matched_student.get("name") or matched_student.get("student_id") or entered_ident
+                return jsonify({
+                    "status": "error",
+                    "message": f"Incorrect class code for student '{student_display_name}'. Please enter your valid class code."
+                }), 401
+
+            # Both Username & Password verified!
+            actual_student_id = matched_student.get("student_id") or matched_student.get("user_id") or entered_ident
+            actual_student_name = matched_student.get("name") or actual_student_id
+            student_class = matched_student.get("class_code") or expected_class_code
+
+            # Update last_active in Firestore
+            if firestore_db.is_connected:
+                try:
+                    from google.cloud import firestore as gc_firestore
+                    doc_ref = firestore_db.db.collection("users").document(actual_student_id.upper())
+                    if doc_ref.get().exists:
+                        doc_ref.update({"last_active": gc_firestore.SERVER_TIMESTAMP})
                 except Exception:
                     pass
 
-            if matched:
-                user_id = matched.get("student_id", raw_username)
-                raw_username = matched.get("name", user_id)
-            elif pin and not raw_username.startswith("STU-"):
-                user_id = f"{pin.lower()}_{user_id}"
-
-        try:
-            firestore_db.get_or_create_user(
-                user_id=user_id,
-                role=role,
-                class_code=teacher_class_code if role == "teacher" else (pin if role == "student" else ""),
-                name=raw_username
-            )
-        except Exception as e:
-            print(f"[!] Firestore sync notice: {e}")
-
-        try:
-            session = default_auth_service.login(role=role, pin=pin, user_id=user_id)
-            state["auth"]["current_role"] = role
-            save_state(state)
-            return jsonify({
-                "status": "authenticated",
-                "role": role,
-                "user_id": session["user_id"],
-                "class_code": teacher_class_code if role == "teacher" else pin,
-                "token": session["token"],
-                "expires_at": session["expires_at"]
-            })
-        except AuthenticationError as e:
-            return jsonify({"status": "error", "message": str(e)}), 401
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 400
+            try:
+                session = default_auth_service.login(role="student", pin=None, user_id=actual_student_id)
+                state["auth"]["current_role"] = "student"
+                save_state(state)
+                return jsonify({
+                    "status": "authenticated",
+                    "role": "student",
+                    "user_id": actual_student_id,
+                    "student_name": actual_student_name,
+                    "class_code": student_class,
+                    "token": session["token"],
+                    "expires_at": session["expires_at"]
+                })
+            except Exception as e:
+                return jsonify({"status": "error", "message": str(e)}), 401
 
     @app.route("/api/auth/session", methods=["GET"])
     def api_auth_session():

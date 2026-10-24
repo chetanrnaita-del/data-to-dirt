@@ -126,13 +126,12 @@ class AuthService:
             return hmac.compare_digest(pin, self._teacher_pin)
 
         if role_lower == ROLE_ADMIN:
-            # Primary admin PIN is admin2026; also accept fallback admin123 and common developer shorthand
+            # Primary admin PIN is admin2026; also accept fallback admin123
             pin_clean = pin.strip()
             return (
                 hmac.compare_digest(pin_clean, self._admin_pin)
                 or hmac.compare_digest(pin_clean, "admin123")
                 or hmac.compare_digest(pin_clean.lower(), self._admin_pin.lower())
-                or pin_clean.lower() in {"admin", "2026", "admin123", "1234", "code"}
             )
 
         return False
