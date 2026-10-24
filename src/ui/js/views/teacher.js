@@ -573,17 +573,21 @@ class TeacherConfirmationView {
     if (existingModal) existingModal.remove();
 
     const genId = () => "STU-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    let defaultClassCode = (window.DataToDirt?.classCode || "").toLowerCase();
-    if (!defaultClassCode) {
-      const u = (window.DataToDirt?.userId || "").toLowerCase();
-      for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
-        if (u.includes(c)) {
-          defaultClassCode = c;
-          break;
+    let defaultClassCode = (window.DataToDirt?.classCode || localStorage.getItem("d2d_class_code") || "").toLowerCase();
+    const role = (window.DataToDirt?.authenticatedRole || localStorage.getItem("d2d_role") || "").toLowerCase();
+    if (!defaultClassCode || defaultClassCode.startsWith("admin") || role === "admin") {
+      defaultClassCode = "all";
+      const u = (window.DataToDirt?.userId || localStorage.getItem("d2d_user_id") || "").toLowerCase();
+      if (role === "teacher") {
+        for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
+          if (u.includes(c)) {
+            defaultClassCode = c;
+            break;
+          }
         }
       }
     }
-    if (!defaultClassCode) defaultClassCode = "bio101";
+    if (!defaultClassCode) defaultClassCode = "all";
 
     const modalHtml = `
       <div class="retro-modal-backdrop" id="modal-student-directory" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 6000; padding: 12px; backdrop-filter: blur(2px);">
@@ -615,7 +619,7 @@ class TeacherConfirmationView {
                 </div>
                 <div>
                   <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Class Code *</label>
-                  <input type="text" id="stu-input-class" class="retro-input" value="${defaultClassCode}" placeholder="e.g. bio101" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
+                  <input type="text" id="stu-input-class" class="retro-input" value="${defaultClassCode === 'all' ? 'bio101' : defaultClassCode}" placeholder="e.g. bio101" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
                 </div>
               </div>
 
@@ -646,8 +650,16 @@ class TeacherConfirmationView {
                   <span>📋 Enrolled Students</span>
                   <span class="retro-tag retro-tag-clean" id="stu-count-badge" style="font-size: 10px; padding: 2px 6px;">0 Students</span>
                 </div>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                  <input type="text" id="stu-search-filter" class="retro-input" placeholder="Search by name or ID..." style="font-size: 11px; padding: 4px 8px; width: 180px; border: 1px solid #ccc; border-radius: 4px;" />
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                  <select id="stu-class-filter-select" class="retro-select" style="font-size: 11px; padding: 4px 8px; border: 1.5px solid #8b5a2b; border-radius: 4px; background: #fff; font-weight: bold; color: #4a2e18; cursor: pointer;">
+                    <option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Classes</option>
+                    <option value="bio101" ${defaultClassCode === 'bio101' ? 'selected' : ''}>🌿 Bio 101 (Dr. Reed)</option>
+                    <option value="cs301" ${defaultClassCode === 'cs301' ? 'selected' : ''}>💻 CS 301 (Ms. Patel)</option>
+                    <option value="env201" ${defaultClassCode === 'env201' ? 'selected' : ''}>🌍 Env 201 (Prof. Green)</option>
+                    <option value="chem102" ${defaultClassCode === 'chem102' ? 'selected' : ''}>🧪 Chem 102 (Dr. Thorne)</option>
+                    <option value="earth204" ${defaultClassCode === 'earth204' ? 'selected' : ''}>⛰️ Earth 204 (Mr. Woods)</option>
+                  </select>
+                  <input type="text" id="stu-search-filter" class="retro-input" placeholder="Search by name, ID..." style="font-size: 11px; padding: 4px 8px; width: 140px; border: 1px solid #ccc; border-radius: 4px;" />
                   <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-stu-refresh-list" title="Refresh Directory">🔄</button>
                 </div>
               </div>
@@ -701,6 +713,8 @@ class TeacherConfirmationView {
 
     let currentStudents = [];
 
+    let recentlyEnrolledStudentId = null;
+
     const renderTable = () => {
       const tbody = document.getElementById("stu-table-body");
       const filterInput = document.getElementById("stu-search-filter");
@@ -722,7 +736,7 @@ class TeacherConfirmationView {
         tbody.innerHTML = `
           <tr>
             <td colspan="5" style="text-align: center; padding: 24px; color: #7f8c8d;">
-              ${currentStudents.length === 0 ? "No student records found. Create one above!" : "No students match your search filter."}
+              ${currentStudents.length === 0 ? "No student records found in this view. Create one above!" : "No students match your search filter."}
             </td>
           </tr>
         `;
@@ -734,10 +748,12 @@ class TeacherConfirmationView {
         const name = s.name || sid;
         const classCode = (s.class_code || "—").toUpperCase();
         const points = s.eco_points || 0;
+        const isNew = sid === recentlyEnrolledStudentId;
+        const rowBg = isNew ? "background: #e8f8f5; border: 2px solid #27ae60;" : "border-bottom: 1px solid #f0e6d6;";
         return `
-          <tr style="border-bottom: 1px solid #f0e6d6;">
+          <tr style="${rowBg}">
             <td style="padding: 7px 10px; font-family: monospace; font-weight: bold; color: #2980b9;">
-              ${sid}
+              ${sid} ${isNew ? '<span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">⭐ NEW</span>' : ''}
             </td>
             <td style="padding: 7px 10px; font-weight: 600; color: #2c3e50;">
               ${name}
@@ -775,9 +791,15 @@ class TeacherConfirmationView {
       });
     };
 
-    const loadStudents = async () => {
+    const loadStudents = async (targetClass = null) => {
       try {
-        const res = await fetch(`/api/teacher/students?class_code=${encodeURIComponent(defaultClassCode)}`);
+        const selectEl = document.getElementById("stu-class-filter-select");
+        let activeClass = targetClass !== null ? targetClass : (selectEl?.value || defaultClassCode);
+        if (selectEl && targetClass !== null) {
+          selectEl.value = targetClass;
+        }
+        const queryParam = activeClass && activeClass !== "all" ? `?class_code=${encodeURIComponent(activeClass)}` : "?class_code=all";
+        const res = await fetch(`/api/teacher/students${queryParam}`);
         const data = await res.json();
         currentStudents = data.students || [];
 
@@ -805,6 +827,12 @@ class TeacherConfirmationView {
 
     // Filter input binding
     document.getElementById("stu-search-filter")?.addEventListener("input", renderTable);
+
+    // Class dropdown binding
+    document.getElementById("stu-class-filter-select")?.addEventListener("change", (e) => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      loadStudents(e.target.value);
+    });
 
     // Refresh directory binding
     document.getElementById("btn-stu-refresh-list")?.addEventListener("click", () => {
@@ -874,6 +902,15 @@ class TeacherConfirmationView {
         }
 
         // Success!
+        recentlyEnrolledStudentId = studentId;
+        try {
+          localStorage.setItem("d2d_last_created_student", JSON.stringify({
+            student_id: studentId,
+            name: name,
+            class_code: classCode
+          }));
+        } catch (_) {}
+
         if (this.audioSynth) this.audioSynth.playCoinDing();
         if (this.particleEngine) this.particleEngine.emitConfetti();
 
@@ -881,7 +918,7 @@ class TeacherConfirmationView {
           msgEl.style.display = "block";
           msgEl.style.background = "#e8f8f5";
           msgEl.style.color = "#27ae60";
-          msgEl.textContent = `✓ ${result.message || "Student created successfully!"}`;
+          msgEl.textContent = `✓ Student ${name} (${studentId}) enrolled in ${classCode.toUpperCase()}!`;
         }
 
         this.showToast(result.message || `Student ID ${studentId} saved!`, "success");
@@ -890,8 +927,8 @@ class TeacherConfirmationView {
         if (nameInput) nameInput.value = "";
         if (idInput) idInput.value = genId();
 
-        // Refresh directory
-        await loadStudents();
+        // Refresh directory for this class
+        await loadStudents(classCode);
       } catch (e) {
         if (msgEl) {
           msgEl.style.display = "block";

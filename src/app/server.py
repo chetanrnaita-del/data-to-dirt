@@ -982,10 +982,18 @@ def create_flask_app():
     def api_student_leaderboard():
         state = load_state()
         leaderboard = []
+        student_id = request.args.get("student_id", "").strip()
+        class_code = request.args.get("class_code", "").strip().lower()
+
         if firestore_db.is_connected:
             try:
-                class_code = request.args.get("class_code", "")
-                f_lb = firestore_db.get_class_leaderboard(class_code=class_code, limit=25)
+                # If student_id is provided but no class_code, resolve student's class
+                if not class_code and student_id:
+                    stu_doc = firestore_db.db.collection("users").document(student_id.upper()).get()
+                    if stu_doc.exists:
+                        class_code = stu_doc.to_dict().get("class_code", "")
+
+                f_lb = firestore_db.get_class_leaderboard(class_code=class_code, limit=50)
                 if f_lb:
                     leaderboard = f_lb
             except Exception as e:
@@ -1000,6 +1008,9 @@ def create_flask_app():
             item = dict(entry)
             b_val = item.get("data_cleared_bytes", 0) or item.get("bytes_cleared", 0)
             item["data_cleared_formatted"] = format_bytes(b_val)
+            # Mark isSelf if matching student_id
+            if student_id and (str(item.get("user_id") or item.get("student_id") or "").lower() == student_id.lower()):
+                item["name"] = f"{item.get('name', student_id)} (You)"
             formatted_list.append(item)
         for i, item in enumerate(formatted_list):
             item["rank"] = i + 1
@@ -2539,7 +2550,12 @@ def create_flask_app():
         session = default_auth_service.validate_token(token)
         
         class_filter = request.args.get("class_code", "").lower().strip()
-        if not class_filter and session and session.get("role") == "teacher":
+        is_admin = session and session.get("role") == "admin"
+
+        if class_filter in ["all", "*", "any", "admin2026", "admin"]:
+            class_filter = ""
+
+        if not class_filter and session and session.get("role") == "teacher" and not is_admin:
             tid = session.get("user_id", "").lower()
             for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
                 if c in tid:
@@ -2553,7 +2569,7 @@ def create_flask_app():
         firestore_students = []
         if firestore_db.is_connected:
             try:
-                firestore_students = firestore_db.get_students_list(class_code=class_filter)
+                firestore_students = firestore_db.get_students_list(class_code=class_filter, limit=250)
             except Exception as e:
                 print(f"[!] Firestore get_students error: {e}")
                 
@@ -2571,6 +2587,12 @@ def create_flask_app():
         results = list(merged.values())
         if class_filter:
             results = [s for s in results if s.get("class_code", "").lower() == class_filter]
+
+        # Sort newest students first so new students immediately appear at the top
+        results.sort(
+            key=lambda s: str(s.get("created_at_iso") or s.get("created_at") or ""),
+            reverse=True
+        )
             
         return jsonify({
             "status": "ok",

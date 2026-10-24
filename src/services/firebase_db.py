@@ -217,20 +217,24 @@ class FirestoreDB:
 
         return {"status": "success", "student": record}
 
-    def get_students_list(self, class_code: str = "", limit: int = 100) -> List[Dict[str, Any]]:
+    def get_students_list(self, class_code: str = "", limit: int = 250) -> List[Dict[str, Any]]:
         """Retrieves registered student directory from Cloud Firestore."""
         if not self.is_connected:
             return []
 
         try:
+            clean_class = class_code.lower().strip() if class_code else ""
+            if clean_class in ["all", "*", "any", "admin2026", "admin"]:
+                clean_class = ""
+
             if FieldFilter:
                 query = self.db.collection("users").where(filter=FieldFilter("role", "==", "student"))
-                if class_code:
-                    query = query.where(filter=FieldFilter("class_code", "==", class_code.lower().strip()))
+                if clean_class:
+                    query = query.where(filter=FieldFilter("class_code", "==", clean_class))
             else:
                 query = self.db.collection("users").where("role", "==", "student")
-                if class_code:
-                    query = query.where("class_code", "==", class_code.lower().strip())
+                if clean_class:
+                    query = query.where("class_code", "==", clean_class)
             docs = query.limit(limit).stream()
             students = []
             for d in docs:
@@ -239,7 +243,7 @@ class FirestoreDB:
                 if not created_at and "created_at" in data:
                     created_at = str(data["created_at"])
                 students.append({
-                    "student_id": data.get("student_id") or data.get("user_id"),
+                    "student_id": data.get("student_id") or data.get("user_id") or d.id,
                     "name": data.get("name", ""),
                     "class_code": data.get("class_code", ""),
                     "eco_points": data.get("eco_points", 0),
