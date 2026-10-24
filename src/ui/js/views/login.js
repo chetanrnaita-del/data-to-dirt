@@ -55,17 +55,6 @@ class LoginView {
             <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" style="width: 100%; padding: 14px 16px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
           </div>
 
-          <!-- Quick Select Shortcuts for Student -->
-          <div id="student-quick-select" style="display: block; margin-bottom: 20px;">
-            <div style="font-size: 11px; font-weight: bold; color: #636e72; margin-bottom: 6px;">Select Student Account:</div>
-            <div style="display: flex; flex-direction: column; gap: 5px;" id="student-quick-list">
-              <button type="button" class="s-pill" data-sid="STU-QFRM5L" data-pass="cs301" style="font-size: 11px; padding: 6px 10px; border: 1.5px solid #a29bfe; border-radius: 6px; background: #f8f7ff; cursor: pointer; text-align: left; font-weight: 600; color: #5f27cd;">🧑‍🎓 Chetan Naita — CS 301 (STU-QFRM5L)</button>
-              <button type="button" class="s-pill" data-sid="STU-001" data-pass="bio101" style="font-size: 11px; padding: 6px 10px; border: 1.5px solid #a29bfe; border-radius: 6px; background: #f8f7ff; cursor: pointer; text-align: left; font-weight: 600; color: #5f27cd;">🧑‍🎓 Alex River — Bio 101 (STU-001)</button>
-              <button type="button" class="s-pill" data-sid="STU-8SB8FZ" data-pass="cs301" style="font-size: 11px; padding: 6px 10px; border: 1.5px solid #a29bfe; border-radius: 6px; background: #f8f7ff; cursor: pointer; text-align: left; font-weight: 600; color: #5f27cd;">🧑‍🎓 Aaryan Agarawal — CS 301 (STU-8SB8FZ)</button>
-              <button type="button" class="s-pill" data-sid="STU-BIO-001" data-pass="bio101" style="font-size: 11px; padding: 6px 10px; border: 1.5px solid #a29bfe; border-radius: 6px; background: #f8f7ff; cursor: pointer; text-align: left; font-weight: 600; color: #5f27cd;">🧑‍🎓 Maya Lin — Bio 101 (STU-BIO-001)</button>
-            </div>
-          </div>
-
           <!-- Quick Select Shortcuts for Demo/Evaluation -->
           <div id="teacher-quick-select" style="display: none; margin-bottom: 20px;">
             <div style="font-size: 11px; font-weight: bold; color: #636e72; margin-bottom: 6px;">Select Teacher Account:</div>
@@ -130,7 +119,6 @@ class LoginView {
         
         this.selectedRole = btn.dataset.role;
         
-        const studentPills = container.querySelector('#student-quick-select');
         const teacherPills = container.querySelector('#teacher-quick-select');
         const adminPills = container.querySelector('#admin-quick-select');
 
@@ -141,7 +129,6 @@ class LoginView {
           labelPass.textContent = "Class Code";
           inputPass.placeholder = "Enter class code (e.g., bio101)";
           inputPass.value = "";
-          if (studentPills) studentPills.style.display = 'block';
           if (teacherPills) teacherPills.style.display = 'none';
           if (adminPills) adminPills.style.display = 'none';
         } else if (this.selectedRole === 'teacher') {
@@ -150,7 +137,6 @@ class LoginView {
           labelPass.textContent = "Password";
           inputPass.placeholder = "Enter teacher password (e.g. teacher123)";
           inputPass.value = "";
-          if (studentPills) studentPills.style.display = 'none';
           if (teacherPills) teacherPills.style.display = 'block';
           if (adminPills) adminPills.style.display = 'none';
         } else {
@@ -159,37 +145,9 @@ class LoginView {
           labelPass.textContent = "Administrator Passcode";
           inputPass.placeholder = "Enter passcode (e.g. admin2026)";
           inputPass.value = "";
-          if (studentPills) studentPills.style.display = 'none';
           if (teacherPills) teacherPills.style.display = 'none';
           if (adminPills) adminPills.style.display = 'block';
         }
-      });
-    });
-
-    // Check if a student was recently created in this browser and prepend to student quick list
-    try {
-      const lastStuStr = localStorage.getItem("d2d_last_created_student");
-      if (lastStuStr) {
-        const lastStu = JSON.parse(lastStuStr);
-        const quickList = container.querySelector('#student-quick-list');
-        if (quickList && lastStu && lastStu.student_id) {
-          const newBtn = document.createElement('button');
-          newBtn.type = 'button';
-          newBtn.className = 's-pill';
-          newBtn.dataset.sid = lastStu.student_id;
-          newBtn.dataset.pass = lastStu.class_code;
-          newBtn.style.cssText = 'font-size: 11px; padding: 6px 10px; border: 1.5px solid #00b894; border-radius: 6px; background: #e8f8f5; cursor: pointer; text-align: left; font-weight: bold; color: #00b894;';
-          newBtn.innerHTML = `⭐ Recent: ${lastStu.name} — ${lastStu.class_code.toUpperCase()} (${lastStu.student_id})`;
-          quickList.prepend(newBtn);
-        }
-      }
-    } catch (_) {}
-
-    // Bind student quick-select pills
-    container.querySelectorAll('.s-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        inputUser.value = pill.dataset.sid;
-        inputPass.value = pill.dataset.pass || '';
       });
     });
 
