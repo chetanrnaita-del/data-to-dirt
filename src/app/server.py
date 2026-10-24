@@ -1798,23 +1798,40 @@ def create_flask_app():
                 "eco_points": student["eco_points"]
             }), 400
 
-        # Get current student's user_id from token
+        # Get current student's user_id from token or payload
         auth_header = request.headers.get("Authorization", "")
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
         session = default_auth_service.validate_token(token)
-        actual_student_id = session["user_id"] if session else student["student_id"]
+        actual_student_id = data.get("student_id") or (session["user_id"] if session else student["student_id"])
 
-        # Look up student's real name and class code
+        # Look up student's real name and class code (checking local state and Cloud Firestore)
         actual_student_name = actual_student_id
-        student_class_code = "bio101"
+        student_class_code = data.get("class_code") or ""
         s_match = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == actual_student_id.lower()), None)
+        if not s_match and firestore_db.is_connected and actual_student_id:
+            try:
+                doc = firestore_db.db.collection("users").document(actual_student_id.upper()).get()
+                if doc.exists:
+                    s_match = doc.to_dict()
+                else:
+                    for d in firestore_db.db.collection("users").where("student_id", "==", actual_student_id).limit(1).stream():
+                        s_match = d.to_dict()
+                        break
+            except Exception as fe:
+                print(f"[!] Firestore student lookup notice: {fe}")
+
         if s_match:
             actual_student_name = s_match.get("name", actual_student_id)
-            student_class_code = s_match.get("class_code", "bio101")
+            if not student_class_code:
+                student_class_code = s_match.get("class_code", "bio101")
         elif "_" in actual_student_id:
             parts = actual_student_id.split("_", 1)
-            student_class_code = parts[0]
+            if not student_class_code:
+                student_class_code = parts[0]
             actual_student_name = parts[1]
+
+        if not student_class_code:
+            student_class_code = "bio101"
 
         summary = f"Verified: Legitimate cleanup of dark data ({format_bytes(file_size)}). Reason explains redundancy."
         req_id = f"REQ-{int(time.time() * 1000) % 100000}"
@@ -1986,7 +2003,30 @@ def create_flask_app():
         sort_asc = request.args.get("sort_asc", "true").lower() == "true"
 
         state = load_state()
-        queue = state.get("teacher_queue", [])
+        local_queue = state.get("teacher_queue", [])
+
+        # Merge real-time items from Cloud Firestore deletion_queue
+        firestore_queue = []
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("deletion_queue").stream():
+                    d = doc.to_dict()
+                    d["request_id"] = d.get("request_id") or doc.id
+                    firestore_queue.append(d)
+            except Exception as fe:
+                print(f"[!] Firestore teacher queue fetch notice: {fe}")
+
+        merged = {}
+        for item in local_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+        for item in firestore_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+
+        queue = list(merged.values())
 
         # Sync items to default_teacher_queue if empty
         if len(default_teacher_queue) == 0 and queue:
@@ -2025,8 +2065,17 @@ def create_flask_app():
                 if not item_class:
                     s_id = student_id.lower()
                     s_rec = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == s_id), None)
+                    if not s_rec and firestore_db.is_connected and student_id:
+                        try:
+                            doc = firestore_db.db.collection("users").document(student_id.upper()).get()
+                            if doc.exists:
+                                s_rec = doc.to_dict()
+                        except Exception:
+                            pass
                     if s_rec:
-                        item_class = s_rec.get("class_code", "").lower()
+                        item_class = (s_rec.get("class_code") or "").lower()
+                        if not item.get("student_name") or item.get("student_name") == student_id:
+                            item["student_name"] = s_rec.get("name") or student_id
                     elif f"-{teacher_class_code[:3]}-" in s_id or s_id.startswith(f"{teacher_class_code}_"):
                         item_class = teacher_class_code
                     elif s_id in ["stu-001", "stu-002", "stu-jordan-01"]:
@@ -2071,6 +2120,16 @@ def create_flask_app():
             if item.get("request_id") == req_id or item.get("id") == req_id:
                 target_item = item
                 break
+
+        if not target_item and firestore_db.is_connected:
+            try:
+                doc = firestore_db.db.collection("deletion_queue").document(req_id).get()
+                if doc.exists:
+                    target_item = doc.to_dict()
+                    target_item["request_id"] = req_id
+                    queue.append(target_item)
+            except Exception as fe:
+                print(f"[!] Firestore decide target fetch notice: {fe}")
 
         if not target_item:
             return jsonify({"status": "error", "message": "Request not found"}), 404
@@ -2236,7 +2295,30 @@ def create_flask_app():
         data = request.get_json() or {}
         teacher_id = data.get("teacher_id", "TEACHER-001")
         state = load_state()
-        queue = state.get("teacher_queue", [])
+        local_queue = state.get("teacher_queue", [])
+
+        # Merge real-time items from Cloud Firestore deletion_queue
+        firestore_queue = []
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("deletion_queue").stream():
+                    d = doc.to_dict()
+                    d["request_id"] = d.get("request_id") or doc.id
+                    firestore_queue.append(d)
+            except Exception as fe:
+                print(f"[!] Firestore teacher queue fetch notice: {fe}")
+
+        merged = {}
+        for item in local_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+        for item in firestore_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+
+        queue = list(merged.values())
 
         approved_count = 0
         total_approved_bytes = 0

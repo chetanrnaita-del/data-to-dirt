@@ -1061,7 +1061,9 @@ class StudentDashboardView {
               file_name: file.file_name,
               file_size: file.size_bytes,
               reason: reason,
-              is_drive: file.is_drive || false
+              is_drive: file.is_drive || false,
+              student_id: localStorage.getItem("d2d_user_id") || this.userId || "",
+              class_code: localStorage.getItem("d2d_class_code") || ""
             }),
           });
 
