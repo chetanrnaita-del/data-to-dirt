@@ -94,9 +94,6 @@ class StudentDashboardView {
                 <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Google Drive: Live API & Folder Picker">
                   ☁️ Drive
                 </button>
-                <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-auto-device" title="Auto-scan entire computer: Disk, Downloads, OneDrive, iCloud">
-                  🚀 Auto-Scan System
-                </button>
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
                   <span id="btn-scan-local-text">📱 Device</span>
                 </button>
@@ -197,7 +194,6 @@ class StudentDashboardView {
 
   bindEvents() {
     const btnScanDrive = document.getElementById("btn-scan-gdrive");
-    const btnScanAutoDevice = document.getElementById("btn-scan-auto-device");
     const btnScanLocal = document.getElementById("btn-scan-local");
     const btnRevoke = document.getElementById("btn-revoke-scan");
     const btnCheer = document.getElementById("btn-tree-celebrate");
@@ -239,30 +235,6 @@ class StudentDashboardView {
           return;
         }
         this.showGoogleDriveModal();
-      });
-    }
-
-    if (btnScanAutoDevice) {
-      btnScanAutoDevice.addEventListener("click", async () => {
-        if (window.RetroAudio) window.RetroAudio.playBlip();
-        btnScanAutoDevice.disabled = true;
-        try {
-          const isLocalhost = window.location.hostname === "localhost" || 
-                              window.location.hostname === "127.0.0.1" || 
-                              window.location.hostname === "0.0.0.0";
-          if (isLocalhost) {
-            await this.executeScan(null, true, "auto_device");
-          } else {
-            // On remote web deployment (Render), trigger device folder/file selector directly
-            if (isMobileOrTablet) {
-              document.getElementById("device-file-input")?.click();
-            } else {
-              document.getElementById("device-folder-input")?.click();
-            }
-          }
-        } finally {
-          btnScanAutoDevice.disabled = false;
-        }
       });
     }
 
@@ -570,16 +542,10 @@ class StudentDashboardView {
           Choose how you want to scan files on your device:
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
-          <button class="retro-btn retro-btn-gold" id="btn-device-auto-all" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>${isLocalhost ? "🚀 1-Click System Scan (Downloads, OneDrive, iCloud)" : "📂 Scan Entire Folder (All Files & Subfolders)"}</strong>
-            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              ${isLocalhost ? "Automatically scans connected disk and cloud sync folders on this machine." : "Select Downloads, Desktop, or any folder on your device to scan all files within it."}
-            </div>
-          </button>
           <button class="retro-btn retro-btn-green" id="btn-device-pick-folder" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>📂 Choose Specific Folder</strong>
+            <strong>📂 Scan Entire Folder (All Files & Subfolders)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Choose any folder on your computer to scan.
+              Choose Downloads, Desktop, or any folder on your device.
             </div>
           </button>
           <button class="retro-btn retro-btn-wood" id="btn-device-pick-files" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
@@ -597,21 +563,6 @@ class StudentDashboardView {
     document.body.appendChild(modal);
 
     const dismiss = () => modal.remove();
-
-    modal.querySelector("#btn-device-auto-all")?.addEventListener("click", async () => {
-      if (window.RetroAudio) window.RetroAudio.playBlip();
-      dismiss();
-      if (isLocalhost) {
-        await this.executeScan(null, true, "auto_device");
-      } else {
-        const folderInput = document.getElementById("device-folder-input");
-        if (folderInput) {
-          folderInput.click();
-        } else {
-          document.getElementById("device-file-input")?.click();
-        }
-      }
-    });
 
     modal.querySelector("#btn-device-pick-folder")?.addEventListener("click", () => {
       if (window.RetroAudio) window.RetroAudio.playBlip();
