@@ -6,6 +6,7 @@ Handles 2,000 - 3,000+ users, class codes, teachers, deletion queues & stats.
 """
 
 import os
+import sys
 import time
 import json
 import base64
@@ -33,8 +34,8 @@ class FirestoreDB:
         self._init_firebase()
 
     def _init_firebase(self):
-        if os.environ.get("TEST_MODE") == "1":
-            print("[i] Running in TEST_MODE. Cloud Firestore is isolated in standby mode to protect production data.")
+        if os.environ.get("TEST_MODE") == "1" or "unittest" in sys.modules or "pytest" in sys.modules:
+            print("[i] Running in test environment. Cloud Firestore is isolated in standby mode to protect production data.")
             self.is_connected = False
             return
 

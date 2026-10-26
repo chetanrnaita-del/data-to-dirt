@@ -765,7 +765,7 @@ class TeacherConfirmationView {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                 <div>
                   <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Student Full Name *</label>
-                  <input type="text" id="stu-input-name" class="retro-input" placeholder="e.g. Alex Johnson" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
+                  <input type="text" id="stu-input-name" class="retro-input" placeholder="Enter Student Full Name" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
                 </div>
                 <div>
                   <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Class Code *</label>
@@ -776,7 +776,7 @@ class TeacherConfirmationView {
               <div style="margin-bottom: 12px;">
                 <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Student ID (Login Identifier)</label>
                 <div style="display: flex; gap: 6px;">
-                  <input type="text" id="stu-input-id" class="retro-input" value="${genId()}" placeholder="e.g. STU-001 or STU-A7F9B1" style="flex: 1; font-size: 12px; font-family: monospace; font-weight: bold; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
+                  <input type="text" id="stu-input-id" class="retro-input" value="${genId()}" placeholder="e.g. STU-A7F9B1" style="flex: 1; font-size: 12px; font-family: monospace; font-weight: bold; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
                   <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-stu-autogen" title="Generate New Random ID">🎲 Auto-Gen</button>
                 </div>
                 <div style="font-size: 10px; color: #7f8c8d; margin-top: 4px;">
@@ -1573,17 +1573,11 @@ class TeacherConfirmationView {
           📱 Scan Teacher Device Storage
         </div>
         <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
-          Choose how you want to scan files on your device:
+          Select authentic files or folders to clean on your device:
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
-          <button class="retro-btn retro-btn-blue" id="btn-tch-device-auto-scan" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>⚡ 1-Click Auto-Scan (Downloads, Desktop, Cloud Sync)</strong>
-            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Automatically scan standard folders and local cloud sync caches.
-            </div>
-          </button>
           <button class="retro-btn retro-btn-green" id="btn-tch-device-pick-folder" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>📂 Scan Specific Folder (All Files & Subfolders)</strong>
+            <strong>📂 Scan Entire Folder (All Files & Subfolders)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
               Select Downloads, Desktop, or lesson archive folders.
             </div>
@@ -1603,11 +1597,6 @@ class TeacherConfirmationView {
     document.body.appendChild(modal);
 
     const dismiss = () => modal.remove();
-    modal.querySelector("#btn-tch-device-auto-scan")?.addEventListener("click", async () => {
-      if (this.audioSynth) this.audioSynth.playBlip();
-      dismiss();
-      await this.executeTeacherScan(null, true, "auto_device");
-    });
     modal.querySelector("#btn-tch-device-pick-folder")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       dismiss();

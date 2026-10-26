@@ -153,8 +153,8 @@ def get_default_state() -> Dict[str, Any]:
     """Returns initial genuine application state."""
     return {
         "student": {
-            "student_id": "STU-001",
-            "name": "Alex River",
+            "student_id": "STU-8SB8FZ",
+            "name": "Aaryan Agarawal",
             "bytes_cleared": 0,
             "eco_points": 0,
             "streak_days": 0,

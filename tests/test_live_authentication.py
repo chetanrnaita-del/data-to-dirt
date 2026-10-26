@@ -7,7 +7,7 @@ class TestLiveAuthentication(unittest.TestCase):
     def setUp(self):
         self.app = app
         self.client = self.app.test_client()
-        # Seed test student in local state if not present
+        self.orig_state = load_state()
         state = load_state()
         if not any(s.get("student_id") == "STU-001" for s in state.get("students", [])):
             state.setdefault("students", []).append({
@@ -17,6 +17,9 @@ class TestLiveAuthentication(unittest.TestCase):
                 "role": "student"
             })
             save_state(state)
+
+    def tearDown(self):
+        save_state(self.orig_state)
 
     def test_student_unknown_username_rejected(self):
         """Any random student username is rejected with 401."""

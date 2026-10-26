@@ -480,12 +480,12 @@ class AdminEcoFundView {
               <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-bottom: 8px;">
                 <div>
                   <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Teacher Full Name *</label>
-                  <input type="text" id="input-adm-tch-name" class="retro-input" placeholder="e.g. Dr. Alan Turing" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px;" />
+                  <input type="text" id="input-adm-tch-name" class="retro-input" placeholder="Enter Teacher Full Name" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px;" />
                 </div>
                 <div>
                   <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Teacher ID / Username *</label>
                   <div style="display: flex; gap: 4px;">
-                    <input type="text" id="input-adm-tch-id" class="retro-input" placeholder="e.g. teacher_turing" style="flex: 1; font-size: 12px; padding: 6px 8px;" />
+                    <input type="text" id="input-adm-tch-id" class="retro-input" placeholder="Enter Teacher ID / Username" style="flex: 1; font-size: 12px; padding: 6px 8px;" />
                     <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-tch-gen-id" type="button" title="Generate ID">🎲</button>
                   </div>
                 </div>

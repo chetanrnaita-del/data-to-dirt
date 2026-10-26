@@ -164,6 +164,8 @@ class TestServerRestEndpoints(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from src.app.server import STATE_FILE
+        cls.state_file_backup = STATE_FILE.read_text(encoding="utf-8") if STATE_FILE.exists() else None
         cls.app = create_flask_app()
         cls.client = cls.app.test_client()
         cls.teacher_token = default_auth_service.login(role="teacher", pin="teacher123", user_id="TEACHER-001")["token"]
@@ -172,6 +174,12 @@ class TestServerRestEndpoints(unittest.TestCase):
         cls.admin_headers = {"Authorization": f"Bearer {cls.admin_token}"}
         cls.student_token = default_auth_service.login(role="student", user_id="STU-001")["token"]
         cls.student_headers = {"Authorization": f"Bearer {cls.student_token}"}
+
+    @classmethod
+    def tearDownClass(cls):
+        from src.app.server import STATE_FILE
+        if cls.state_file_backup is not None:
+            STATE_FILE.write_text(cls.state_file_backup, encoding="utf-8")
 
     def test_index_route(self):
         res = self.client.get("/")

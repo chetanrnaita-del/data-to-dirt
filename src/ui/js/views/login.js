@@ -51,9 +51,9 @@ class LoginView {
             <label style="display: block; font-size: 13px; font-weight: 700; color: #2d3436; margin-bottom: 6px;">
               <span id="label-user">Student ID / Name</span> <span style="color: #e74c3c;">*</span>
             </label>
-            <input type="text" id="login-user" placeholder="Enter Student ID (e.g. STU-001) or Name" style="width: 100%; padding: 13px 15px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
+            <input type="text" id="login-user" placeholder="Enter Student ID or Full Name" style="width: 100%; padding: 13px 15px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
             <div id="hint-user" style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
-              💡 Enter your Full Name (e.g. Alex River) or Student ID (e.g. STU-001).
+              💡 Enter your registered Student Full Name or Student ID.
             </div>
           </div>
 
@@ -254,11 +254,11 @@ class LoginView {
         // Update Labels & Hints
         if (this.selectedRole === 'student') {
           labelUser.textContent = "Student ID or Name";
-          inputUser.placeholder = "Enter Student ID (e.g. STU-001) or Full Name";
+          inputUser.placeholder = "Enter Student ID or Full Name";
           labelPass.textContent = "Class Code or Password";
           inputPass.placeholder = "Enter class code (e.g., cs301) or password";
           inputPass.value = "";
-          if (hintUser) hintUser.textContent = "💡 Enter your Full Name (e.g. Alex River) or Student ID (e.g. STU-001).";
+          if (hintUser) hintUser.textContent = "💡 Enter your registered Student Full Name or Student ID.";
           if (hintPass) hintPass.textContent = "💡 Enter your Class Code (e.g. cs301, bio101) or default password student123.";
           if (studentPills) studentPills.style.display = 'block';
           if (teacherPills) teacherPills.style.display = 'none';

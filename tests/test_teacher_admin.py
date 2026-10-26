@@ -582,9 +582,10 @@ class TestConcurrencyAndThreadSafety(unittest.TestCase):
 
 class TestTeacherDeduplicationAndManagement(unittest.TestCase):
     def setUp(self):
-        from src.app.server import app
+        from src.app.server import app, load_state
         self.app = app
         self.client = self.app.test_client()
+        self.orig_state = load_state()
         # Log in as admin to get admin token
         res = self.client.post("/api/auth/login", json={
             "role": "admin",
@@ -592,6 +593,10 @@ class TestTeacherDeduplicationAndManagement(unittest.TestCase):
             "pin": "admin2026"
         })
         self.admin_token = res.get_json().get("token")
+
+    def tearDown(self):
+        from src.app.server import save_state
+        save_state(self.orig_state)
 
     def test_auth_teachers_deduplication_and_filtering(self):
         """Verify /api/auth/teachers filters test accounts and returns strictly unique teachers."""
@@ -651,9 +656,10 @@ class TestTeacherDeduplicationAndManagement(unittest.TestCase):
 
 class TestTeacherDirectDeletionWithAiAnalysis(unittest.TestCase):
     def setUp(self):
-        from src.app.server import app
+        from src.app.server import app, load_state
         self.app = app
         self.client = self.app.test_client()
+        self.orig_state = load_state()
         # Log in as a teacher
         res = self.client.post("/api/auth/login", json={
             "role": "teacher",
@@ -661,6 +667,10 @@ class TestTeacherDirectDeletionWithAiAnalysis(unittest.TestCase):
             "pin": "teacher123"
         })
         self.teacher_token = res.get_json().get("token")
+
+    def tearDown(self):
+        from src.app.server import save_state
+        save_state(self.orig_state)
 
     def test_teacher_direct_deletion_with_explicit_ai_forensic_rationale(self):
         """Teacher direct deletion preserves explicit AI analysis and marks item ALGORITHM_VERIFIED_DIRECT_CLEAN."""
