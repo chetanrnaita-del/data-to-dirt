@@ -14,6 +14,7 @@ import ssl
 import hashlib
 import hmac
 import re
+import difflib
 from datetime import datetime
 import urllib.request
 import urllib.parse
@@ -89,6 +90,43 @@ if os.environ.get("TEST_MODE") == "1":
     STATE_FILE = DATA_DIR / "test_app_state.json"
 else:
     STATE_FILE = DATA_DIR / "app_state.json"
+
+
+def fuzzy_name_match(entered: str, candidate: str) -> bool:
+    """
+    Tolerates minor spelling differences (e.g. agarwal vs agarawal),
+    case differences, single-word or last-name matches, and common typos.
+    """
+    ent = (entered or "").lower().strip()
+    cand = (candidate or "").lower().strip()
+    if not ent or not cand:
+        return False
+    if ent == cand or ent in cand or cand in ent:
+        return True
+    
+    # Overall similarity ratio (handles 1-2 character typos or alternate spellings)
+    if difflib.SequenceMatcher(None, ent, cand).ratio() >= 0.80:
+        return True
+        
+    ent_words = ent.split()
+    cand_words = cand.split()
+    
+    # Word-by-word matching
+    if len(ent_words) == len(cand_words) and len(ent_words) >= 2:
+        if all(difflib.SequenceMatcher(None, w1, w2).ratio() >= 0.75 for w1, w2 in zip(ent_words, cand_words)):
+            return True
+            
+    # First name match + similar last name (e.g. "aaryan agarwal" vs "aaryan agarawal")
+    if len(ent_words) >= 2 and len(cand_words) >= 2:
+        if ent_words[0] == cand_words[0] and difflib.SequenceMatcher(None, ent_words[-1], cand_words[-1]).ratio() >= 0.70:
+            return True
+
+    # Single word entered matches either first or last name closely
+    if len(ent_words) == 1 and len(cand_words) >= 2:
+        if any(difflib.SequenceMatcher(None, ent_words[0], w).ratio() >= 0.80 for w in cand_words):
+            return True
+
+    return False
 
 
 def get_default_state() -> Dict[str, Any]:
@@ -2171,6 +2209,7 @@ def create_flask_app():
                             if (clean_t == t_name or 
                                 clean_t in t_name or 
                                 clean_t == t_id or 
+                                fuzzy_name_match(clean_t, t_name) or
                                 clean_t == t_id.replace("teacher_", "") or
                                 (clean_t_alphanum and clean_t_alphanum == t_alphanum)):
                                 is_valid_teacher = True
@@ -2248,6 +2287,7 @@ def create_flask_app():
                     s_name == clean_ident or 
                     clean_ident in s_name or 
                     s_name.startswith(clean_ident) or 
+                    fuzzy_name_match(clean_ident, s_name) or
                     (clean_ident_alphanum and clean_ident_alphanum == s_alphanum)):
                     matched_student = s
                     break
@@ -2290,6 +2330,7 @@ def create_flask_app():
                             if (s_name == clean_ident or 
                                 clean_ident in s_name or 
                                 s_id == clean_ident or 
+                                fuzzy_name_match(clean_ident, s_name) or
                                 (clean_ident_alphanum and clean_ident_alphanum == s_alphanum) or
                                 (len(clean_ident) >= 3 and clean_ident in s_id)):
                                 matched_student = d
