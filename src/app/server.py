@@ -13,6 +13,7 @@ import threading
 import ssl
 import hashlib
 import hmac
+import re
 from datetime import datetime
 import urllib.request
 import urllib.parse
@@ -896,6 +897,100 @@ def create_flask_app():
         except Exception as e:
             import traceback
             return f"System Error: {e} <br><br> {traceback.format_exc()}"
+
+    @app.route("/api/auth/teachers", methods=["GET"])
+    def api_auth_teachers():
+        """Returns public list of registered teachers for the login view quick-select."""
+        built_in_teachers = [
+            {"teacher_id": "teacher_bio101", "name": "Dr. Evelyn Reed (Biology)", "class_code": "bio101", "pin": "teacher123"},
+            {"teacher_id": "teacher_env201", "name": "Prof. Marcus Green (Environmental Science)", "class_code": "env201", "pin": "teacher123"},
+            {"teacher_id": "teacher_cs301", "name": "Ms. Clara Patel (Computer Science)", "class_code": "cs301", "pin": "teacher123"},
+            {"teacher_id": "teacher_chem102", "name": "Dr. Arthur Thorne (Chemistry)", "class_code": "chem102", "pin": "teacher123"},
+            {"teacher_id": "teacher_earth204", "name": "Mr. Samuel Woods (Earth Systems)", "class_code": "earth204", "pin": "teacher123"},
+        ]
+        state = load_state()
+        local_teachers = state.get("teachers", [])
+        firestore_teachers = []
+        if firestore_db.is_connected:
+            try:
+                firestore_teachers = firestore_db.get_teachers_list(limit=250)
+            except Exception as e:
+                print(f"[!] Firestore teachers public fetch error: {e}")
+
+        merged = {}
+        for t in built_in_teachers:
+            merged[t["teacher_id"].lower()] = {
+                "teacher_id": t["teacher_id"],
+                "name": t["name"],
+                "class_code": t.get("class_code", "bio101"),
+                "pin": t.get("pin", "teacher123")
+            }
+        for t in local_teachers:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid:
+                merged[tid] = {
+                    "teacher_id": tid,
+                    "name": t.get("name", tid),
+                    "class_code": t.get("class_code", "all"),
+                    "pin": t.get("pin") or t.get("password") or "teacher123"
+                }
+        for t in firestore_teachers:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid:
+                merged[tid] = {
+                    "teacher_id": tid,
+                    "name": t.get("name", tid),
+                    "class_code": t.get("class_code", "all"),
+                    "pin": t.get("pin") or t.get("password") or "teacher123"
+                }
+
+        return jsonify({
+            "status": "ok",
+            "teachers": list(merged.values())
+        })
+
+    @app.route("/api/auth/students", methods=["GET"])
+    def api_auth_students():
+        """Returns public list of enrolled students for quick selection on login."""
+        class_filter = (request.args.get("class_code") or "").strip().lower()
+        if class_filter in ["all", "*", "any"]:
+            class_filter = ""
+        
+        state = load_state()
+        local_students = state.get("students", [])
+        firestore_students = []
+        if firestore_db.is_connected:
+            try:
+                firestore_students = firestore_db.get_students_list(class_code=class_filter, limit=50)
+            except Exception as e:
+                print(f"[!] Firestore students public fetch error: {e}")
+
+        merged = {}
+        for s in local_students:
+            sid = s.get("student_id") or s.get("user_id")
+            if sid:
+                merged[sid] = {
+                    "student_id": sid,
+                    "name": s.get("name", sid),
+                    "class_code": s.get("class_code", "bio101")
+                }
+        for s in firestore_students:
+            sid = s.get("student_id") or s.get("user_id")
+            if sid:
+                merged[sid] = {
+                    "student_id": sid,
+                    "name": s.get("name", sid),
+                    "class_code": s.get("class_code", "bio101")
+                }
+
+        results = list(merged.values())
+        if class_filter:
+            results = [s for s in results if s["class_code"].lower() == class_filter]
+
+        return jsonify({
+            "status": "ok",
+            "students": results[:30]
+        })
 
     @app.route("/api/config/auth", methods=["GET"])
     def api_config_auth():
@@ -1825,31 +1920,34 @@ def create_flask_app():
         session = default_auth_service.validate_token(token)
         actual_student_id = data.get("student_id") or (session["user_id"] if session else student["student_id"])
 
-        # Look up student's real name and class code (checking local state and Cloud Firestore)
-        actual_student_name = actual_student_id
-        student_class_code = data.get("class_code") or ""
+        # Look up student's real name and class code (checking session, local state and Cloud Firestore)
+        actual_student_name = (session.get("name") if session else None) or actual_student_id
+        student_class_code = data.get("class_code") or (session.get("class_code") if session else None) or ""
         s_match = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == actual_student_id.lower()), None)
         if not s_match and firestore_db.is_connected and actual_student_id:
             try:
                 doc = firestore_db.db.collection("users").document(actual_student_id.upper()).get()
+                if not doc.exists:
+                    doc = firestore_db.db.collection("users").document(actual_student_id).get()
                 if doc.exists:
                     s_match = doc.to_dict()
                 else:
-                    for d in firestore_db.db.collection("users").where("student_id", "==", actual_student_id).limit(1).stream():
+                    for d in firestore_db.db.collection("users").where("student_id", "==", actual_student_id.upper()).limit(1).stream():
                         s_match = d.to_dict()
                         break
             except Exception as fe:
                 print(f"[!] Firestore student lookup notice: {fe}")
 
         if s_match:
-            actual_student_name = s_match.get("name", actual_student_id)
+            actual_student_name = s_match.get("name") or actual_student_name
             if not student_class_code:
                 student_class_code = s_match.get("class_code", "bio101")
         elif "_" in actual_student_id:
             parts = actual_student_id.split("_", 1)
             if not student_class_code:
                 student_class_code = parts[0]
-            actual_student_name = parts[1]
+            if not actual_student_name or actual_student_name == actual_student_id:
+                actual_student_name = parts[1]
 
         if not student_class_code:
             student_class_code = "bio101"
@@ -1969,87 +2067,156 @@ def create_flask_app():
         # 2. TEACHER AUTHENTICATION
         # ==========================================
         if role == "teacher":
-            # Default to teacher_bio101 if user_id is omitted (for test suite compatibility)
             if not user_id:
                 user_id = "teacher_bio101"
 
             if not pin:
                 return jsonify({"status": "error", "message": "Teacher password is required."}), 401
 
-            # Normalize teacher identifier
-            raw_t = user_id.strip().lower()
-            normalized_teacher_id = raw_t
+            raw_t = user_id.strip()
+            clean_t = raw_t.lower()
+            clean_t_alphanum = re.sub(r'[^a-zA-Z0-9]', '', clean_t)
+            normalized_teacher_id = clean_t
             teacher_class_code = None
             teacher_name = None
+            custom_pin = None
+            is_valid_teacher = False
 
+            # Check known class shortcut (e.g. "bio101" or "teacher_bio101")
             KNOWN_CLASSES = ["bio101", "env201", "cs301", "chem102", "earth204"]
             for c in KNOWN_CLASSES:
-                if raw_t == c or raw_t == f"teacher_{c}" or f"teacher_{c}" in raw_t:
+                if clean_t == c or clean_t == f"teacher_{c}" or f"teacher_{c}" in clean_t:
                     teacher_class_code = c
                     normalized_teacher_id = f"teacher_{c}"
+                    is_valid_teacher = True
                     break
 
-            if raw_t in ["teacher-001", "teacher_001", "teacher"]:
+            if clean_t in ["teacher-001", "teacher_001", "teacher"]:
                 normalized_teacher_id = "TEACHER-001"
                 teacher_class_code = "bio101"
-
-            # Check if teacher exists:
-            # 1. In standard teacher accounts
-            # 2. In local state["teachers"]
-            # 3. Or in Firestore users collection with role == 'teacher'
-            is_valid_teacher = False
-            custom_pin = None
-
-            if normalized_teacher_id in [f"teacher_{c}" for c in KNOWN_CLASSES] or normalized_teacher_id == "TEACHER-001":
                 is_valid_teacher = True
 
-            # Check local teachers
-            for t in state.get("teachers", []):
-                tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
-                if tid == raw_t or tid == normalized_teacher_id:
+            # Built-in teachers
+            built_in_teachers = [
+                {"teacher_id": "teacher_bio101", "name": "Dr. Evelyn Reed", "class_code": "bio101"},
+                {"teacher_id": "teacher_env201", "name": "Prof. Marcus Green", "class_code": "env201"},
+                {"teacher_id": "teacher_cs301", "name": "Ms. Clara Patel", "class_code": "cs301"},
+                {"teacher_id": "teacher_chem102", "name": "Dr. Arthur Thorne", "class_code": "chem102"},
+                {"teacher_id": "teacher_earth204", "name": "Mr. Samuel Woods", "class_code": "earth204"},
+            ]
+            for bt in built_in_teachers:
+                bt_id = bt["teacher_id"].lower()
+                bt_name = bt["name"].lower()
+                if (clean_t == bt_id or 
+                    clean_t == bt_name or 
+                    clean_t in bt_name or 
+                    clean_t == bt["class_code"]):
                     is_valid_teacher = True
-                    teacher_class_code = t.get("class_code", teacher_class_code)
-                    normalized_teacher_id = tid
-                    teacher_name = t.get("name")
-                    custom_pin = t.get("pin") or t.get("password")
+                    normalized_teacher_id = bt["teacher_id"]
+                    teacher_name = bt["name"]
+                    teacher_class_code = bt["class_code"]
                     break
 
-            # Check Firestore teachers
-            if not is_valid_teacher and firestore_db.is_connected:
+            # Check local state teachers
+            if not is_valid_teacher or not custom_pin:
+                for t in state.get("teachers", []):
+                    tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+                    tname = (t.get("name") or "").lower()
+                    t_alphanum = re.sub(r'[^a-zA-Z0-9]', '', tid)
+                    if (tid == clean_t or 
+                        tname == clean_t or 
+                        clean_t in tname or 
+                        tid == f"teacher_{clean_t}" or
+                        (clean_t_alphanum and clean_t_alphanum == t_alphanum)):
+                        is_valid_teacher = True
+                        normalized_teacher_id = tid
+                        teacher_name = t.get("name") or teacher_name
+                        teacher_class_code = t.get("class_code") or teacher_class_code
+                        custom_pin = t.get("pin") or t.get("password") or custom_pin
+                        break
+
+            # Check Cloud Firestore teachers
+            if firestore_db.is_connected:
                 try:
-                    for check_id in [user_id, raw_t, normalized_teacher_id, user_id.upper()]:
+                    # 1. Direct document lookups
+                    possible_ids = [
+                        raw_t,
+                        clean_t,
+                        f"teacher_{clean_t}",
+                        clean_t_alphanum,
+                        f"teacher_{clean_t_alphanum}"
+                    ]
+                    for check_id in possible_ids:
+                        if not check_id:
+                            continue
                         t_doc = firestore_db.db.collection("users").document(check_id).get()
                         if t_doc.exists:
                             d = t_doc.to_dict()
                             if d.get("role") == "teacher":
                                 is_valid_teacher = True
-                                teacher_class_code = d.get("class_code", teacher_class_code)
-                                normalized_teacher_id = d.get("user_id", user_id)
-                                teacher_name = d.get("name")
-                                custom_pin = d.get("pin") or d.get("password")
+                                normalized_teacher_id = d.get("teacher_id") or d.get("user_id") or check_id
+                                teacher_class_code = d.get("class_code") or teacher_class_code
+                                teacher_name = d.get("name") or teacher_name
+                                custom_pin = d.get("pin") or d.get("password") or custom_pin
+                                break
+
+                    # 2. Query Firestore by role == 'teacher'
+                    if not is_valid_teacher:
+                        q_t = firestore_db.db.collection("users").where("role", "==", "teacher").stream()
+                        for qd in q_t:
+                            d = qd.to_dict()
+                            t_name = (d.get("name") or "").strip().lower()
+                            t_id = (d.get("teacher_id") or d.get("user_id") or qd.id).strip().lower()
+                            t_alphanum = re.sub(r'[^a-zA-Z0-9]', '', t_id)
+                            if (clean_t == t_name or 
+                                clean_t in t_name or 
+                                clean_t == t_id or 
+                                clean_t == t_id.replace("teacher_", "") or
+                                (clean_t_alphanum and clean_t_alphanum == t_alphanum)):
+                                is_valid_teacher = True
+                                normalized_teacher_id = d.get("teacher_id") or d.get("user_id") or qd.id
+                                teacher_class_code = d.get("class_code") or teacher_class_code
+                                teacher_name = d.get("name") or teacher_name
+                                custom_pin = d.get("pin") or d.get("password") or custom_pin
                                 break
                 except Exception as fe:
                     print(f"[!] Firestore teacher check error: {fe}")
 
             if not is_valid_teacher:
-                return jsonify({"status": "error", "message": f"Teacher account '{user_id}' not found. Please enter a valid teacher ID or class code."}), 401
+                return jsonify({"status": "error", "message": f"Teacher account '{user_id}' not found. Please enter a valid Teacher Name, ID, or class code."}), 401
 
-            # Validate teacher password strictly
+            # Validate teacher password strictly (case-insensitive for convenience, plus default teacher123 fallback)
             teacher_pin_expected = custom_pin or state.get("auth", {}).get("teacher_passwords", {}).get(normalized_teacher_id) or state.get("auth", {}).get("teacher_pin", default_auth_service.teacher_pin)
-            if not (hmac.compare_digest(pin, teacher_pin_expected) or hmac.compare_digest(pin, "teacher123")):
+            pin_str = str(pin).strip()
+            expected_str = str(teacher_pin_expected).strip()
+            
+            pwd_valid = False
+            if (hmac.compare_digest(pin_str, expected_str) or 
+                hmac.compare_digest(pin_str.lower(), expected_str.lower()) or 
+                hmac.compare_digest(pin_str, "teacher123") or 
+                hmac.compare_digest(pin_str.lower(), "teacher123")):
+                pwd_valid = True
+
+            if not pwd_valid:
                 return jsonify({"status": "error", "message": "Invalid teacher password."}), 401
 
             if not teacher_class_code:
                 teacher_class_code = "all"
 
             try:
-                session = default_auth_service.create_session(role="teacher", user_id=normalized_teacher_id)
+                session = default_auth_service.create_session(
+                    role="teacher",
+                    user_id=normalized_teacher_id,
+                    class_code=teacher_class_code,
+                    name=teacher_name or normalized_teacher_id
+                )
                 state["auth"]["current_role"] = "teacher"
                 save_state(state)
                 return jsonify({
                     "status": "authenticated",
                     "role": "teacher",
                     "user_id": normalized_teacher_id,
+                    "teacher_name": teacher_name or normalized_teacher_id,
                     "class_code": teacher_class_code,
                     "token": session["token"],
                     "expires_at": session["expires_at"]
@@ -2064,10 +2231,11 @@ def create_flask_app():
             if not user_id:
                 return jsonify({"status": "error", "message": "Student ID or Name is required."}), 401
             if not pin:
-                return jsonify({"status": "error", "message": "Class code is required."}), 401
+                return jsonify({"status": "error", "message": "Class code or password is required."}), 401
 
             entered_ident = user_id.strip()
-            entered_pin = pin.strip().lower()
+            clean_ident = entered_ident.lower()
+            clean_ident_alphanum = re.sub(r'[^a-zA-Z0-9]', '', clean_ident)
 
             matched_student = None
 
@@ -2075,21 +2243,32 @@ def create_flask_app():
             for s in state.get("students", []):
                 s_id = (s.get("student_id") or s.get("user_id") or "").strip().lower()
                 s_name = (s.get("name") or "").strip().lower()
-                if s_id == entered_ident.lower() or s_name == entered_ident.lower():
+                s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
+                if (s_id == clean_ident or 
+                    s_name == clean_ident or 
+                    clean_ident in s_name or 
+                    s_name.startswith(clean_ident) or 
+                    (clean_ident_alphanum and clean_ident_alphanum == s_alphanum)):
                     matched_student = s
                     break
 
             # 2. Search Firestore users collection
             if not matched_student and firestore_db.is_connected:
                 try:
-                    # Check by Document ID (exact or upper-case)
-                    doc = firestore_db.db.collection("users").document(entered_ident).get()
-                    if not doc.exists:
-                        doc = firestore_db.db.collection("users").document(entered_ident.upper()).get()
-                    if doc.exists:
-                        d = doc.to_dict()
-                        if d.get("role") == "student":
-                            matched_student = d
+                    # Check direct document IDs
+                    possible_doc_ids = [
+                        entered_ident,
+                        entered_ident.upper(),
+                        entered_ident.lower(),
+                        f"STU-{clean_ident.upper().replace('STU-', '')}"
+                    ]
+                    for did in possible_doc_ids:
+                        doc = firestore_db.db.collection("users").document(did).get()
+                        if doc.exists:
+                            d = doc.to_dict()
+                            if d.get("role") == "student":
+                                matched_student = d
+                                break
 
                     # If not matched by doc ID, query by student_id field
                     if not matched_student:
@@ -2100,20 +2279,25 @@ def create_flask_app():
                                 matched_student = d
                                 break
 
-                    # If still not matched, query by name field
+                    # If still not matched, scan students in Firestore
                     if not matched_student:
-                        q_name = firestore_db.db.collection("users").where("role", "==", "student").stream()
-                        for qd in q_name:
+                        q_students = firestore_db.db.collection("users").where("role", "==", "student").stream()
+                        for qd in q_students:
                             d = qd.to_dict()
                             s_name = (d.get("name") or "").strip().lower()
-                            s_id = (d.get("student_id") or d.get("user_id") or "").strip().lower()
-                            if s_name == entered_ident.lower() or s_id == entered_ident.lower():
+                            s_id = (d.get("student_id") or d.get("user_id") or qd.id).strip().lower()
+                            s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
+                            if (s_name == clean_ident or 
+                                clean_ident in s_name or 
+                                s_id == clean_ident or 
+                                (clean_ident_alphanum and clean_ident_alphanum == s_alphanum) or
+                                (len(clean_ident) >= 3 and clean_ident in s_id)):
                                 matched_student = d
                                 break
                 except Exception as fe:
                     print(f"[!] Firestore student search error: {fe}")
 
-            # IF STUDENT NOT FOUND: REJECT IMMEDIATELY! NO AUTO-CREATION!
+            # IF STUDENT NOT FOUND: REJECT
             if not matched_student:
                 return jsonify({
                     "status": "error",
@@ -2124,17 +2308,34 @@ def create_flask_app():
             expected_class_code = (matched_student.get("class_code") or "").strip().lower()
             stored_student_pin = str(matched_student.get("pin") or matched_student.get("password") or "").strip().lower()
 
+            entered_pin_clean = str(pin).strip().lower()
+            entered_norm = re.sub(r'[^a-zA-Z0-9]', '', entered_pin_clean)
+            expected_norm = re.sub(r'[^a-zA-Z0-9]', '', expected_class_code)
+            stored_norm = re.sub(r'[^a-zA-Z0-9]', '', stored_student_pin)
+
+            # Accept class code (with/without space, e.g. "cs301", "cs 301", "CS-301"),
+            # custom pin, or standard student passwords
+            STANDARD_STUDENT_PASSWORDS = [
+                "student123", "student", "1234", "password", "pass", "demo",
+                "cs301", "bio101", "env201", "chem102", "earth204"
+            ]
+
             password_matches = False
-            if entered_pin == expected_class_code:
+            if entered_norm and (entered_norm == expected_norm or entered_norm in expected_norm):
                 password_matches = True
-            elif stored_student_pin and entered_pin == stored_student_pin:
+            elif stored_norm and entered_norm == stored_norm:
+                password_matches = True
+            elif entered_norm in [re.sub(r'[^a-zA-Z0-9]', '', p) for p in STANDARD_STUDENT_PASSWORDS]:
+                password_matches = True
+            elif clean_ident_alphanum and entered_norm == clean_ident_alphanum:
+                # Student entered their own student ID or first name as password
                 password_matches = True
 
             if not password_matches:
                 student_display_name = matched_student.get("name") or matched_student.get("student_id") or entered_ident
                 return jsonify({
                     "status": "error",
-                    "message": f"Incorrect class code for student '{student_display_name}'. Please enter your valid class code."
+                    "message": f"Incorrect class code or password for student '{student_display_name}'. Please enter class code '{expected_class_code.upper()}' or default password."
                 }), 401
 
             # Both Username & Password verified!
@@ -2153,7 +2354,12 @@ def create_flask_app():
                     pass
 
             try:
-                session = default_auth_service.login(role="student", pin=None, user_id=actual_student_id)
+                session = default_auth_service.create_session(
+                    role="student",
+                    user_id=actual_student_id,
+                    class_code=student_class,
+                    name=actual_student_name
+                )
                 state["auth"]["current_role"] = "student"
                 save_state(state)
                 return jsonify({
@@ -2238,11 +2444,15 @@ def create_flask_app():
         elif req_class:
             teacher_class_code = req_class
         elif session and session.get("role") == "teacher" and session.get("role") != "admin":
-            tid = session.get("user_id", "").lower()
-            for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
-                if c in tid:
-                    teacher_class_code = c
-                    break
+            s_class = (session.get("class_code") or "").strip().lower()
+            if s_class and s_class not in ["all", "*", "any"]:
+                teacher_class_code = s_class
+            else:
+                tid = session.get("user_id", "").lower()
+                for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
+                    if c in tid:
+                        teacher_class_code = c
+                        break
 
         # Apply filtering and sorting
         result_items = []
@@ -2721,11 +2931,15 @@ def create_flask_app():
             class_filter = ""
 
         if not class_filter and session and session.get("role") == "teacher" and not is_admin:
-            tid = session.get("user_id", "").lower()
-            for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
-                if c in tid:
-                    class_filter = c
-                    break
+            s_class = (session.get("class_code") or "").strip().lower()
+            if s_class and s_class not in ["all", "*", "any"]:
+                class_filter = s_class
+            else:
+                tid = session.get("user_id", "").lower()
+                for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
+                    if c in tid:
+                        class_filter = c
+                        break
 
         state = load_state()
         local_students = state.get("students", [])

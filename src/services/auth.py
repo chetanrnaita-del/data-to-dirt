@@ -61,6 +61,8 @@ class AuthSession:
     created_at: float
     expires_at: float
     is_active: bool = True
+    class_code: Optional[str] = None
+    name: Optional[str] = None
 
     @property
     def is_expired(self) -> bool:
@@ -71,6 +73,8 @@ class AuthSession:
             "token": self.token,
             "role": self.role,
             "user_id": self.user_id,
+            "class_code": self.class_code,
+            "name": self.name,
             "created_at": self.created_at,
             "expires_at": self.expires_at,
             "is_active": self.is_active,
@@ -150,6 +154,8 @@ class AuthService:
         self,
         role: str = ROLE_STUDENT,
         user_id: Optional[str] = None,
+        class_code: Optional[str] = None,
+        name: Optional[str] = None,
         ttl_seconds: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Creates an authenticated session without PIN validation (used after external verification)."""
@@ -170,6 +176,8 @@ class AuthService:
             created_at=now,
             expires_at=expires_at,
             is_active=True,
+            class_code=class_code,
+            name=name,
         )
 
         with self._lock:
@@ -182,6 +190,8 @@ class AuthService:
         role: str = ROLE_STUDENT,
         pin: Optional[str] = None,
         user_id: Optional[str] = None,
+        class_code: Optional[str] = None,
+        name: Optional[str] = None,
         ttl_seconds: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -195,7 +205,7 @@ class AuthService:
         if not self.verify_pin(role_lower, pin):
             raise AuthenticationError(f"Authentication failed: Invalid PIN for role '{role_lower}'")
 
-        return self.create_session(role=role_lower, user_id=user_id, ttl_seconds=ttl_seconds)
+        return self.create_session(role=role_lower, user_id=user_id, class_code=class_code, name=name, ttl_seconds=ttl_seconds)
 
     def validate_token(self, token: Optional[str]) -> Optional[Dict[str, Any]]:
         """
