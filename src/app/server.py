@@ -1750,6 +1750,15 @@ def create_flask_app():
     @app.route("/api/deletion/submit", methods=["POST"])
     def api_deletion_submit():
         data = request.get_json() or {}
+        
+        # Check if caller is teacher or admin: bypass student verification & approval queue
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token)
+        user_role = (session.get("role") if session else data.get("role") or "").lower()
+        if user_role in ("teacher", "admin"):
+            return api_teacher_deletion_direct()
+
         file_id = data.get("file_id")
         file_name = data.get("file_name", "unnamed_file")
         file_size = int(data.get("file_size", 1024 * 1024))
@@ -2531,6 +2540,139 @@ def create_flask_app():
             "approved_count": approved_count,
             "total_bytes": total_approved_bytes,
             "message": f"Successfully approved {approved_count} pending deletion requests."
+        })
+
+    @app.route("/api/teacher/deletion/direct", methods=["POST"])
+    @app.route("/api/teacher/deletion/submit", methods=["POST"])
+    @default_auth_service.require_role("teacher")
+    def api_teacher_deletion_direct():
+        """
+        Direct file deletion for teachers.
+        No verification or queue approval needed: executes physical recycling immediately,
+        logs the deletion as APPROVED in the teacher queue / audit ledger, and credits carbon/eco impact.
+        """
+        data = request.get_json() or {}
+        file_id = data.get("file_id")
+        file_name = data.get("file_name", "unnamed_file")
+        file_size = int(data.get("file_size", 1024 * 1024))
+        file_path = data.get("file_path", file_name)
+        is_drive = data.get("is_drive", False)
+        reason = data.get("reason", "Teacher direct file cleanup").strip()
+        teacher_id = data.get("teacher_id", "TEACHER-001")
+        oauth_token = data.get("oauth_token")
+
+        if not file_id:
+            return jsonify({"status": "error", "message": "file_id is required"}), 400
+
+        state = load_state()
+
+        # 1. Physical file recycling (Send2Trash or Google Drive DELETE)
+        recycled_success = False
+        if is_drive:
+            from flask import session
+            access_token = oauth_token or session.get("google_access_token")
+            if access_token:
+                try:
+                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
+                    req = urllib.request.Request(url, method="DELETE")
+                    req.add_header("Authorization", f"Bearer {access_token}")
+                    req.add_header("User-Agent", "DataToDirt/1.1")
+                    urllib.request.urlopen(req, context=get_ssl_context())
+                    recycled_success = True
+                except Exception as e:
+                    print("[!] Teacher Google Drive deletion failed:", e)
+        elif file_path and os.path.exists(file_path):
+            try:
+                if HAS_SEND2TRASH:
+                    send2trash.send2trash(file_path)
+                else:
+                    os.remove(file_path)
+                recycled_success = True
+            except Exception as e:
+                print("[!] Teacher local file deletion failed:", e)
+
+        # 2. Record in teacher queue as already APPROVED
+        req_id = f"REQ-TCH-{int(time.time() * 1000) % 100000}"
+        now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        queue_item = {
+            "request_id": req_id,
+            "student_id": teacher_id,
+            "student_name": f"Teacher ({teacher_id})",
+            "class_code": "all",
+            "file_id": file_id,
+            "file_name": file_name,
+            "file_path": file_path,
+            "file_size_bytes": file_size,
+            "file_age_days": data.get("file_age_days", 0),
+            "reason": reason,
+            "is_drive": is_drive,
+            "ai_evaluation": {
+                "confidence_score": 1.0,
+                "tier": "DIRECT_TEACHER_ACTION",
+                "summary": "Direct deletion executed by authorized teacher.",
+                "is_gaming": False,
+            },
+            "status": "APPROVED",
+            "credited": True,
+            "decided_by": teacher_id,
+            "decided_at": time.time(),
+            "submitted_at": now_str,
+            "recycled_success": recycled_success,
+        }
+
+        # 3. Update ecofund and metrics
+        ecofund = state.setdefault("ecofund", {})
+        ecofund["cumulative_waste_bytes"] = ecofund.get("cumulative_waste_bytes", 0) + file_size
+        thresh = ecofund.get("threshold_bytes", 1024**3)
+        trees_planted = ecofund.get("trees_planted", 0)
+        donation_triggered = False
+        new_tree_info = None
+
+        if ecofund["cumulative_waste_bytes"] >= thresh * (trees_planted + 1):
+            ecofund["trees_planted"] = trees_planted + 1
+            ecofund["balance_usd"] = max(0.0, round(ecofund.get("balance_usd", 100.0) - ecofund.get("cost_per_tree_usd", 1.5), 2))
+            donation_triggered = True
+            new_tree_info = {
+                "tree_id": f"TN-{1000 + ecofund['trees_planted']}",
+                "species": "Mangrove (Rhizophora mucronata)",
+                "co2_offset_kg": 250.0,
+                "certificate_url": f"https://tree-nation.com/trees/view/{1000 + ecofund['trees_planted']}",
+                "planted_at": now_str,
+            }
+            ecofund.setdefault("donations_history", []).append(new_tree_info)
+
+        state.setdefault("teacher_queue", []).append(queue_item)
+        save_state(state)
+
+        # 4. Save to Firestore if connected
+        if firestore_db.is_connected:
+            try:
+                firestore_db.submit_deletion_request(queue_item)
+                firestore_db.update_deletion_status(req_id, "approve", teacher_id)
+            except Exception as fe:
+                print(f"[!] Firestore teacher direct deletion error: {fe}")
+
+        # 5. Telemetry
+        try:
+            record_telemetry_event(
+                action=f"Teacher Cleaned {format_bytes(file_size)} ({file_name})",
+                user_id=teacher_id,
+                role="teacher",
+                bytes_cleaned=file_size
+            )
+        except Exception as te:
+            print(f"[!] Telemetry error: {te}")
+
+        co2_g = calculate_carbon_offset_g(file_size)
+        return jsonify({
+            "status": "success",
+            "message": f"File '{file_name}' ({format_bytes(file_size)}) directly deleted.",
+            "request_id": req_id,
+            "bytes_cleared": file_size,
+            "carbon_offset_g": co2_g,
+            "donation_triggered": donation_triggered,
+            "tree_info": new_tree_info,
+            "recycled_success": recycled_success
         })
 
     @app.route("/api/teacher/analytics", methods=["GET"])

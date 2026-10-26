@@ -16,6 +16,10 @@ class TeacherConfirmationView {
     this.sortAsc = true; // true = lowest confidence first (prioritize suspicious)
     this.audioSynth = window.RetroAudio;
     this.particleEngine = window.ParticleEngine;
+    // Teacher's own file scanner state
+    this.teacherScannedFiles = [];
+    this.teacherLastScanCompleted = false;
+    this.teacherLastScanType = null;
   }
 
   mount(containerId = "view-content") {
@@ -76,32 +80,73 @@ class TeacherConfirmationView {
 
         <!-- Filter & Search Toolbar -->
         <div class="retro-card" style="padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-          <!-- Status Filters -->
-          <div style="display: flex; gap: 6px;" id="filter-buttons-group">
-            <button class="retro-btn retro-btn-sm btn-filter retro-btn-gold" data-filter="pending">Pending</button>
-            <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="all">All</button>
-            <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="approved">Approved</button>
-            <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="rejected">Rejected</button>
-            <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="flagged">Flagged</button>
+          <!-- Tab Switcher: Student Queue vs My Files -->
+          <div style="display: flex; gap: 6px;" id="teacher-tab-group">
+            <button class="retro-btn retro-btn-sm retro-btn-gold teacher-tab-btn" data-tab="queue">📋 Student Queue</button>
+            <button class="retro-btn retro-btn-sm retro-btn-wood teacher-tab-btn" data-tab="myfiles">🗂️ My Files</button>
           </div>
+          <div style="display: flex; gap: 6px; align-items: center;" id="queue-controls">
+            <!-- Status Filters (for queue tab) -->
+            <div style="display: flex; gap: 6px;" id="filter-buttons-group">
+              <button class="retro-btn retro-btn-sm btn-filter retro-btn-gold" data-filter="pending">Pending</button>
+              <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="all">All</button>
+              <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="approved">Approved</button>
+              <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="rejected">Rejected</button>
+              <button class="retro-btn retro-btn-sm btn-filter retro-btn-wood" data-filter="flagged">Flagged</button>
+            </div>
 
-          <!-- Search & Sort -->
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
-              ⚡ Approve All Pending
-            </button>
-            <input type="text" id="t-search-input" class="retro-input" placeholder="Search filename, reason, student..." style="padding: 4px 8px; font-size: 12px; width: 180px;" />
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-sort-confidence" title="Sort by AI Confidence (Low/High)">
-              🤖 AI Score: <span id="sort-order-label">Lowest First</span>
-            </button>
+            <!-- Search & Sort -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
+                ⚡ Approve All Pending
+              </button>
+              <input type="text" id="t-search-input" class="retro-input" placeholder="Search filename, reason, student..." style="padding: 4px 8px; font-size: 12px; width: 180px;" />
+              <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-sort-confidence" title="Sort by AI Confidence (Low/High)">
+                🤖 AI Score: <span id="sort-order-label">Lowest First</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Queue Items Scrollable List Container -->
-        <div class="retro-card" style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 8px;">
+        <div class="retro-card" id="tab-content-queue" style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 8px;">
           <div id="t-queue-scroll-area" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
             <div style="text-align: center; padding: 40px; color: var(--c-ink-light); font-size: 13px;">
               Loading confirmation queue...
+            </div>
+          </div>
+        </div>
+
+        <!-- Teacher's Own Files Panel (hidden by default) -->
+        <div class="retro-card" id="tab-content-myfiles" style="flex: 1; overflow: hidden; display: none; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 8px;">
+            <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border);">
+              🤖 My Data Cleaner — Direct Delete (No Approval Needed)
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-teacher-scan-gdrive" title="Google Drive: Live API">
+                ☁️ Drive
+              </button>
+              <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-teacher-scan-local">
+                <span id="btn-teacher-scan-local-text">📱 Device</span>
+              </button>
+              <input type="file" id="teacher-device-file-input" multiple style="position: fixed; top: -1000px; left: -1000px; opacity: 0; pointer-events: none; width: 1px; height: 1px;" />
+              <input type="file" id="teacher-device-folder-input" webkitdirectory directory multiple style="position: fixed; top: -1000px; left: -1000px; opacity: 0; pointer-events: none; width: 1px; height: 1px;" />
+              <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-teacher-revoke-scan" style="display: none;">
+                🔒 Revoke
+              </button>
+            </div>
+          </div>
+
+          <!-- Scanner Status -->
+          <div id="teacher-scanner-status-banner" class="retro-inset" style="font-size: 12px; color: var(--c-ink-muted); display: flex; align-items: center; gap: 8px;">
+            <span>👁️ <strong>Ready</strong>: Click 'Device' or 'Drive' to scan your own files. Deletions are <strong>instant</strong> — no approval queue.</span>
+          </div>
+
+          <!-- Teacher's Scanned Files List -->
+          <div id="teacher-scanned-files-container" style="display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; padding-right: 4px;">
+            <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px;">
+              Scan your Local Folder or Google Drive to discover duplicate files, unused junk, and more!
             </div>
           </div>
         </div>
@@ -195,6 +240,75 @@ class TeacherConfirmationView {
         this.sortAsc = !this.sortAsc;
         if (sortLabel) sortLabel.textContent = this.sortAsc ? "Lowest First" : "Highest First";
         this.renderQueue();
+      });
+    }
+
+    // Tab switching: Student Queue vs My Files
+    const tabBtns = this.container.querySelectorAll(".teacher-tab-btn");
+    const queueContent = document.getElementById("tab-content-queue");
+    const myFilesContent = document.getElementById("tab-content-myfiles");
+    const queueControls = document.getElementById("queue-controls");
+
+    tabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        tabBtns.forEach((b) => {
+          b.classList.remove("retro-btn-gold");
+          b.classList.add("retro-btn-wood");
+        });
+        btn.classList.remove("retro-btn-wood");
+        btn.classList.add("retro-btn-gold");
+        const tab = btn.getAttribute("data-tab");
+        if (tab === "myfiles") {
+          if (queueContent) queueContent.style.display = "none";
+          if (queueControls) queueControls.style.display = "none";
+          if (myFilesContent) myFilesContent.style.display = "flex";
+        } else {
+          if (queueContent) queueContent.style.display = "flex";
+          if (queueControls) queueControls.style.display = "flex";
+          if (myFilesContent) myFilesContent.style.display = "none";
+        }
+      });
+    });
+
+    // Teacher scan buttons
+    const btnTeacherScanDrive = document.getElementById("btn-teacher-scan-gdrive");
+    const btnTeacherScanLocal = document.getElementById("btn-teacher-scan-local");
+    const btnTeacherRevoke = document.getElementById("btn-teacher-revoke-scan");
+
+    if (btnTeacherScanDrive) {
+      btnTeacherScanDrive.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        this.showTeacherGoogleDriveModal();
+      });
+    }
+
+    if (btnTeacherScanLocal) {
+      const handleTeacherDeviceFiles = async (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          const files = Array.from(e.target.files);
+          const fileList = files.map(f => ({
+            name: f.webkitRelativePath || f.name,
+            size: f.size,
+            lastModified: f.lastModified
+          }));
+          e.target.value = "";
+          await this.executeTeacherScan(null, true, "browser_files", fileList);
+        }
+      };
+
+      document.getElementById("teacher-device-file-input")?.addEventListener("change", handleTeacherDeviceFiles);
+      document.getElementById("teacher-device-folder-input")?.addEventListener("change", handleTeacherDeviceFiles);
+
+      btnTeacherScanLocal.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        this.showTeacherDeviceScanModal();
+      });
+    }
+
+    if (btnTeacherRevoke) {
+      btnTeacherRevoke.addEventListener("click", async () => {
+        await this.revokeTeacherFolderAccess();
       });
     }
   }
@@ -946,6 +1060,437 @@ class TeacherConfirmationView {
 
     // Initial load
     loadStudents();
+  }
+
+  async executeTeacherScan(folderPath, sessionOnly, scanType = "local", fileList = [], oauthToken = null) {
+    const banner = document.getElementById("teacher-scanner-status-banner");
+    const btnRevoke = document.getElementById("btn-teacher-revoke-scan");
+    if (banner) {
+      banner.style.borderColor = "";
+      banner.style.backgroundColor = "";
+      if (scanType === "drive") {
+        banner.innerHTML = `<span>⏳ Scanning your Google Drive for duplicates, junk & unused files...</span>`;
+      } else if (scanType === "browser_files") {
+        banner.innerHTML = `<span>⏳ Analyzing ${fileList.length} files from your device...</span>`;
+      } else {
+        banner.innerHTML = `<span>⏳ Scanning local folder: <strong>${folderPath}</strong>...</span>`;
+      }
+    }
+
+    try {
+      const payload = {
+        scan_type: scanType,
+        folder_path: folderPath,
+        session_only: sessionOnly
+      };
+      if (scanType === "browser_files" || scanType === "picker_files") {
+        payload.files = fileList;
+      }
+      if (scanType === "drive" || scanType === "picker_files") {
+        const effectiveOAuth = oauthToken || localStorage.getItem("d2d_google_access_token");
+        if (effectiveOAuth) {
+          payload.oauth_token = effectiveOAuth;
+        }
+      }
+
+      const response = await fetch("/api/scan/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      let res;
+      try {
+        res = await response.json();
+      } catch {
+        res = {};
+      }
+
+      if (response.status === 401 && res.status === "needs_auth") {
+        if (scanType === "drive" || scanType === "picker_files") {
+          localStorage.removeItem("d2d_google_access_token");
+          window.location.href = "/auth/google/login";
+          return;
+        }
+      }
+
+      if (!response.ok || res.status === "error" || res.error) {
+        const errorMsg = res.error || res.message || (!response.ok ? `HTTP ${response.status}: Scan failed` : "Failed to scan folder");
+        this.teacherScannedFiles = [];
+        if (banner) {
+          banner.style.borderColor = "var(--c-danger-red)";
+          banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
+          banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">❌ Scan Error: ${errorMsg}</span>`;
+        }
+        if (btnRevoke) btnRevoke.style.display = "none";
+        this.renderTeacherScannedFiles(errorMsg);
+        return;
+      }
+
+      this.teacherScannedFiles = res.files || [];
+      this.teacherLastScanCompleted = true;
+      this.teacherLastScanType = scanType;
+      const totalScanned = res.total_scanned || res.files_found || 0;
+      const totalFound = res.files_found || this.teacherScannedFiles.length;
+      const wasteFormatted = res.total_waste_formatted || (this.teacherScannedFiles.reduce((acc, f) => acc + (f.size_bytes || 0), 0) / (1024*1024)).toFixed(1) + " MB";
+
+      if (banner) {
+        banner.style.borderColor = "";
+        banner.style.backgroundColor = "";
+        const scanSourceLabel = scanType === "drive" || scanType === "picker_files" ? "Google Drive" : "Device Storage";
+        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: <strong>${Number(totalScanned).toLocaleString()} files analyzed</strong> — <strong>${Number(totalFound).toLocaleString()} dark data candidates (${wasteFormatted})</strong>. Click <strong>'🗑️ Clean'</strong> on any file to delete it immediately!</span>`;
+      }
+      if (btnRevoke) btnRevoke.style.display = "inline-flex";
+
+      if (this.audioSynth) this.audioSynth.playCoinDing();
+      this.renderTeacherScannedFiles();
+    } catch (e) {
+      const errorMsg = e.message || "Failed to communicate with scanner service";
+      this.teacherScannedFiles = [];
+      if (banner) {
+        banner.style.borderColor = "var(--c-danger-red)";
+        banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
+        banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">❌ Scan Error: ${errorMsg}</span>`;
+      }
+      if (btnRevoke) btnRevoke.style.display = "none";
+      this.renderTeacherScannedFiles(errorMsg);
+    }
+  }
+
+  renderTeacherScannedFiles(errorMessage = null) {
+    const container = document.getElementById("teacher-scanned-files-container");
+    if (!container) return;
+
+    if (errorMessage) {
+      container.innerHTML = `
+        <div class="retro-inset" style="text-align: center; padding: 18px 12px; border-color: var(--c-danger-red); background-color: rgba(168, 36, 36, 0.08);">
+          <div style="font-size: 20px; margin-bottom: 6px;">⚠️</div>
+          <div style="font-weight: bold; font-size: 13px; color: var(--c-danger-bright); margin-bottom: 4px;">Directory Access / Scan Failed</div>
+          <div style="font-size: 11px; color: var(--c-ink-muted); word-break: break-word;">${errorMessage}</div>
+        </div>
+      `;
+      return;
+    }
+
+    if (this.teacherScannedFiles.length === 0) {
+      if (this.teacherLastScanCompleted) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
+            <div style="font-size: 26px; margin-bottom: 8px;">🌱</div>
+            <div style="font-size: 14px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">All Clean!</div>
+            <div>Zero dark data bloat remaining in this source.</div>
+          </div>
+        `;
+        return;
+      }
+      container.innerHTML = `
+        <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
+          <div style="font-size: 13px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">📂 Ready to Clean Teacher Files</div>
+          <div>Click <strong>'📱 Device'</strong> to select files/folders or <strong>'☁️ Drive'</strong> to scan your Google Drive. You can delete items directly without any verification steps!</div>
+        </div>
+      `;
+      return;
+    }
+
+    const headerHtml = `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 8px; font-size: 11px; font-weight: bold; color: var(--c-wood-border); background: rgba(0,0,0,0.04); border-radius: 4px;">
+        <span>🎯 Cleanable Files (${this.teacherScannedFiles.length} items)</span>
+        <span style="font-size: 10px; color: #27ae60; font-weight: 700;">⚡ Direct Deletion Enabled (No Queue)</span>
+      </div>
+    `;
+
+    container.innerHTML = headerHtml + this.teacherScannedFiles.map((file) => {
+      const tagClass = file.category === "heavy_media" ? "retro-tag-heavy" : file.category === "transient_trash" ? "retro-tag-stale" : file.is_confidential ? "retro-tag-confidential" : "retro-tag-duplicate";
+      const icon = file.icon || (file.category === "heavy_media" ? "🎥" : file.category === "duplicate" ? "📄" : "📦");
+      const carbonStr = file.carbon_g != null ? file.carbon_g : ((file.size_bytes / (1024**3)) * 0.28 * 405.7).toFixed(1);
+      const shaShort = file.sha256_short || (file.sha256 ? `${file.sha256.substring(0, 8)}...${file.sha256.substring(file.sha256.length - 6)}` : "Verified");
+
+      return `
+        <div class="retro-inset" style="margin-bottom: 8px; padding: 10px 12px; background: rgba(255, 255, 255, 0.85); border: 1.5px solid var(--c-wood-border);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0;">
+              <span style="font-size: 18px; line-height: 1.2;">${icon}</span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: bold; font-size: 13px; color: var(--c-ink-text); word-break: break-all; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
+                  <span>${file.file_name}</span>
+                  ${file.sha_match ? `<span class="retro-tag retro-tag-duplicate" style="font-size: 9px; background: #e02424; color: #fff; font-weight: bold; padding: 1px 5px; border-radius: 3px;">🎯 CLONE</span>` : ""}
+                </div>
+                <div style="font-size: 10px; color: var(--c-ink-muted); margin-top: 2px; font-family: monospace; word-break: break-all;">
+                  📂 ${file.file_path || file.absolute_path || "Local / Cloud"}
+                </div>
+              </div>
+            </div>
+            <div style="flex-shrink: 0;">
+              <button class="retro-btn retro-btn-danger retro-btn-sm btn-teacher-delete-file" data-id="${file.file_id}" style="padding: 4px 10px; font-weight: bold;">
+                🗑️ Clean
+              </button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin-top: 8px; padding: 6px 8px; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.15); border-radius: 4px; font-size: 10.5px;">
+            <div><span style="color: var(--c-ink-muted);">📊 Size:</span> <strong style="color: var(--c-ink-text);">${file.size_formatted}</strong></div>
+            <div><span style="color: var(--c-ink-muted);">🕒 Modified:</span> <strong style="color: var(--c-ink-text);">${file.modified_date || `${file.age_days}d ago`}</strong></div>
+            <div><span style="color: var(--c-ink-muted);">🌱 Avoided CO₂:</span> <strong style="color: #057a55;">${carbonStr} g/yr</strong></div>
+            <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; font-size: 10px;">
+              <span style="color: var(--c-ink-muted); font-family: monospace;">🔑 SHA-256:</span>
+              <code style="background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; font-size: 9.5px; color: #1e429f;">${shaShort}</code>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll(".btn-teacher-delete-file").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const fileId = e.currentTarget.getAttribute("data-id");
+        const file = this.teacherScannedFiles.find((f) => f.file_id === fileId);
+        if (file) {
+          if (this.audioSynth) this.audioSynth.playBlip();
+          this.openTeacherDirectDeleteModal(file);
+        }
+      });
+    });
+  }
+
+  openTeacherDirectDeleteModal(file) {
+    document.getElementById("modal-teacher-deletion")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-teacher-deletion";
+    modal.style.zIndex = "10000";
+
+    const carbonStr = file.carbon_g != null ? file.carbon_g : ((file.size_bytes / (1024**3)) * 0.28 * 405.7).toFixed(1);
+    const icon = file.icon || "📄";
+
+    modal.innerHTML = `
+      <div class="retro-card retro-modal" style="max-width: 480px;">
+        <div class="retro-modal-header">
+          <span>🗑️ Delete My File (Direct Action)</span>
+          <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-tch-del-close">✕</button>
+        </div>
+        <div class="retro-modal-body">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 6px;">
+            <span style="font-size: 24px;">${icon}</span>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: bold; font-size: 13px; color: var(--c-ink-text); word-break: break-all;">
+                ${file.file_name}
+              </div>
+              <div style="font-size: 11px; color: var(--c-ink-muted); margin-top: 2px;">
+                Size: <strong>${file.size_formatted}</strong> • Avoided CO₂: <strong style="color: #057a55;">${carbonStr} g/yr</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="retro-inset" style="padding: 10px 12px; background: #e8f8f5; border: 1.5px solid #00b894; border-radius: 6px; margin-bottom: 12px;">
+            <div style="font-weight: bold; color: #00b894; font-size: 12px; margin-bottom: 4px;">
+              ⚡ Instant Teacher Clean (No Permission / Queue Needed)
+            </div>
+            <div style="font-size: 11px; color: #2d3436; line-height: 1.4;">
+              As a verified teacher, this file will be deleted immediately and credited toward your eco impact metrics. No approval queue or AI justification required.
+            </div>
+          </div>
+
+          <div id="tch-del-feedback" style="margin-top: 8px; display: none;" class="retro-inset"></div>
+        </div>
+        <div class="retro-modal-actions">
+          <button class="retro-btn retro-btn-wood" id="btn-tch-del-cancel">Keep File</button>
+          <button class="retro-btn retro-btn-danger" id="btn-tch-del-confirm">🗑️ Delete Now</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const dismiss = () => modal.remove();
+    modal.querySelector("#btn-tch-del-close")?.addEventListener("click", dismiss);
+    modal.querySelector("#btn-tch-del-cancel")?.addEventListener("click", dismiss);
+    modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
+
+    const btnConfirm = modal.querySelector("#btn-tch-del-confirm");
+    if (btnConfirm) {
+      btnConfirm.onclick = async () => {
+        btnConfirm.disabled = true;
+        btnConfirm.textContent = "Deleting...";
+        const feedback = modal.querySelector("#tch-del-feedback");
+
+        try {
+          const token = localStorage.getItem("d2d_session_token") || "";
+          const res = await fetch("/api/teacher/deletion/direct", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": token ? `Bearer ${token}` : ""
+            },
+            body: JSON.stringify({
+              file_id: file.file_id,
+              file_name: file.file_name,
+              file_size: file.size_bytes,
+              file_path: file.file_path || file.absolute_path || file.file_name,
+              is_drive: file.is_drive || false,
+              teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001",
+              oauth_token: localStorage.getItem("d2d_google_access_token") || ""
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok || data.status === "error") {
+            feedback.style.display = "block";
+            feedback.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">[-] Error: ${data.message || data.error || "Deletion failed"}</span>`;
+            btnConfirm.disabled = false;
+            btnConfirm.textContent = "Retry Deletion";
+            return;
+          }
+
+          dismiss();
+
+          if (this.audioSynth) this.audioSynth.playDeletionPoof();
+          document.body.classList.add("screen-shake");
+          setTimeout(() => document.body.classList.remove("screen-shake"), 400);
+
+          if (this.particleEngine) {
+            this.particleEngine.emitDeletionPoof(window.innerWidth / 2, window.innerHeight / 2, 35);
+            this.particleEngine.emitFloatingText("Deleted Instantly!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#00b894");
+          }
+
+          this.showToast(`✓ Permanently deleted ${file.file_name}!`, "success");
+
+          // Remove file from local scanned list
+          this.teacherScannedFiles = this.teacherScannedFiles.filter(f => f.file_id !== file.file_id);
+          this.renderTeacherScannedFiles();
+          await this.fetchData();
+        } catch (err) {
+          feedback.style.display = "block";
+          feedback.innerHTML = `<span style="color: var(--c-danger-bright);">[-] Server error: ${err.message}</span>`;
+          btnConfirm.disabled = false;
+          btnConfirm.textContent = "🗑️ Delete Now";
+        }
+      };
+    }
+  }
+
+  showTeacherGoogleDriveModal() {
+    document.getElementById("modal-teacher-gdrive")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-teacher-gdrive";
+    modal.style.zIndex = "10000";
+    modal.innerHTML = `
+      <div class="retro-modal" style="max-width: 420px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
+          ☁️ Teacher Google Drive Cleaner
+        </div>
+        <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
+          Choose how to scan your Google Drive:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>⚡ Live Google Drive Scan</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Instantly scans files in your Google Drive to find duplicate and dormant data.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-wood" id="btn-tch-gdrive-reconnect" style="width: 100%; padding: 10px; font-size: 12px; text-align: left; cursor: pointer;">
+            <strong>🔄 Switch / Connect Google Account</strong>
+            <div style="font-size: 10.5px; opacity: 0.85; margin-top: 2px;">
+              Re-authenticate or connect another Google Drive account.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-tch-gdrive-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
+            ✖ Cancel
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const dismiss = () => modal.remove();
+    modal.querySelector("#btn-tch-gdrive-direct")?.addEventListener("click", async () => {
+      dismiss();
+      await this.executeTeacherScan("__google_drive__", true, "drive");
+    });
+    modal.querySelector("#btn-tch-gdrive-reconnect")?.addEventListener("click", () => {
+      dismiss();
+      localStorage.removeItem("d2d_google_access_token");
+      window.location.href = "/auth/google/login";
+    });
+    modal.querySelector("#btn-tch-gdrive-cancel")?.addEventListener("click", dismiss);
+    modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
+  }
+
+  showTeacherDeviceScanModal() {
+    document.getElementById("modal-teacher-device-scan")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-teacher-device-scan";
+    modal.style.zIndex = "10000";
+    modal.innerHTML = `
+      <div class="retro-modal" style="max-width: 440px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
+          📱 Scan Teacher Device Storage
+        </div>
+        <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
+          Select files or folders to clean on your device:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="retro-btn retro-btn-green" id="btn-tch-device-pick-folder" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>📂 Scan Entire Folder (All Files & Subfolders)</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Select Downloads, Desktop, or lesson archive folders.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-wood" id="btn-tch-device-pick-files" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>📄 Select Individual Files</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Pick specific lesson materials, videos, or documents.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-tch-device-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
+            ✖ Cancel
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const dismiss = () => modal.remove();
+    modal.querySelector("#btn-tch-device-pick-folder")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      dismiss();
+      document.getElementById("teacher-device-folder-input")?.click();
+    });
+    modal.querySelector("#btn-tch-device-pick-files")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      dismiss();
+      document.getElementById("teacher-device-file-input")?.click();
+    });
+    modal.querySelector("#btn-tch-device-cancel")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      dismiss();
+    });
+    modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
+  }
+
+  async revokeTeacherFolderAccess() {
+    const banner = document.getElementById("teacher-scanner-status-banner");
+    const btnRevoke = document.getElementById("btn-teacher-revoke-scan");
+
+    try {
+      await fetch("/api/scan/revoke", { method: "POST" });
+      this.teacherScannedFiles = [];
+      this.teacherLastScanCompleted = false;
+      this.renderTeacherScannedFiles();
+
+      if (banner) {
+        banner.style.borderColor = "";
+        banner.style.backgroundColor = "";
+        banner.innerHTML = `<span>👁️ <strong>Ready</strong>: Access revoked. All in-memory records purged.</span>`;
+      }
+      if (btnRevoke) btnRevoke.style.display = "none";
+      if (this.audioSynth) this.audioSynth.playBlip();
+      this.showToast("Teacher folder access revoked.", "info");
+    } catch (e) {
+      console.warn("Revoke error:", e);
+    }
   }
 }
 
