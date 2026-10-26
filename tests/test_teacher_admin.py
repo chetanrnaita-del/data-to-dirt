@@ -649,5 +649,68 @@ class TestTeacherDeduplicationAndManagement(unittest.TestCase):
         self.assertIn("cannot delete built-in", res.get_json()["message"].lower())
 
 
+class TestTeacherDirectDeletionWithAiAnalysis(unittest.TestCase):
+    def setUp(self):
+        from src.app.server import app
+        self.app = app
+        self.client = self.app.test_client()
+        # Log in as a teacher
+        res = self.client.post("/api/auth/login", json={
+            "role": "teacher",
+            "user_id": "teacher_bio101",
+            "pin": "teacher123"
+        })
+        self.teacher_token = res.get_json().get("token")
+
+    def test_teacher_direct_deletion_with_explicit_ai_forensic_rationale(self):
+        """Teacher direct deletion preserves explicit AI analysis and marks item ALGORITHM_VERIFIED_DIRECT_CLEAN."""
+        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        payload = {
+            "file_id": "file_test_direct_ai_01",
+            "file_name": "lesson_recording_take1.mov",
+            "file_size": 104857600,
+            "file_path": "/tmp/lesson_recording_take1.mov",
+            "is_drive": False,
+            "teacher_id": "teacher_bio101",
+            "ai_confidence_score": "96.8%",
+            "ai_forensic_rationale": "High-Bitrate Media Capture unaccessed for 180 days. 100% safe to clean.",
+            "file_age_days": 180,
+            "accessed_days": 180
+        }
+        res = self.client.post("/api/teacher/deletion/direct", headers=headers, json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "success")
+        item = data.get("queue_item", {})
+        self.assertEqual(item.get("status"), "APPROVED")
+        ai_eval = item.get("ai_evaluation", {})
+        self.assertEqual(ai_eval.get("tier"), "ALGORITHM_VERIFIED_DIRECT_CLEAN")
+        self.assertAlmostEqual(ai_eval.get("confidence_score"), 0.968, places=3)
+        self.assertEqual(ai_eval.get("confidence_score_formatted"), "96.8%")
+        self.assertIn("High-Bitrate Media Capture", ai_eval.get("summary"))
+
+    def test_teacher_direct_deletion_auto_computes_ai_rationale_if_missing(self):
+        """Teacher direct deletion auto-computes forensic rationale if omitted by client."""
+        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        payload = {
+            "file_id": "file_test_direct_ai_02",
+            "file_name": "installer_setup.dmg",
+            "file_size": 52428800,
+            "file_path": "/tmp/installer_setup.dmg",
+            "is_drive": False,
+            "teacher_id": "teacher_bio101"
+        }
+        res = self.client.post("/api/teacher/deletion/direct", headers=headers, json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "success")
+        item = data.get("queue_item", {})
+        self.assertEqual(item.get("status"), "APPROVED")
+        ai_eval = item.get("ai_evaluation", {})
+        self.assertEqual(ai_eval.get("tier"), "ALGORITHM_VERIFIED_DIRECT_CLEAN")
+        self.assertGreater(ai_eval.get("confidence_score"), 0.9)
+        self.assertTrue(len(ai_eval.get("summary", "")) > 10)
+
+
 if __name__ == "__main__":
     unittest.main()

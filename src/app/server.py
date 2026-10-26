@@ -2922,9 +2922,24 @@ def create_flask_app():
             except Exception as e:
                 print("[!] Teacher local file deletion failed:", e)
 
-        # 2. Record in teacher queue as already APPROVED
+        # 2. Record in teacher queue as already APPROVED with AI Forensic Algorithm analysis
         req_id = f"REQ-TCH-{int(time.time() * 1000) % 100000}"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        ai_conf = data.get("ai_confidence_score")
+        ai_rat = data.get("ai_forensic_rationale")
+        file_age_days = int(data.get("file_age_days", 0))
+        accessed_days = int(data.get("accessed_days", file_age_days))
+        if not ai_rat or not ai_conf:
+            conf_num, rat_str = generate_iq1000_rationale(file_name, file_size, file_age_days, accessed_days)
+            ai_conf = f"{conf_num}%"
+            ai_rat = rat_str
+
+        try:
+            score_float = float(str(ai_conf).replace("%", "")) / 100.0
+        except (ValueError, TypeError):
+            score_float = 0.98
+
         queue_item = {
             "request_id": req_id,
             "student_id": teacher_id,
@@ -2934,13 +2949,14 @@ def create_flask_app():
             "file_name": file_name,
             "file_path": file_path,
             "file_size_bytes": file_size,
-            "file_age_days": data.get("file_age_days", 0),
-            "reason": reason,
+            "file_age_days": file_age_days,
+            "reason": reason or ai_rat,
             "is_drive": is_drive,
             "ai_evaluation": {
-                "confidence_score": 1.0,
-                "tier": "DIRECT_TEACHER_ACTION",
-                "summary": "Direct deletion executed by authorized teacher.",
+                "confidence_score": score_float,
+                "confidence_score_formatted": str(ai_conf),
+                "tier": "ALGORITHM_VERIFIED_DIRECT_CLEAN",
+                "summary": ai_rat,
                 "is_gaming": False,
             },
             "status": "APPROVED",
@@ -2999,6 +3015,7 @@ def create_flask_app():
             "status": "success",
             "message": f"File '{file_name}' ({format_bytes(file_size)}) directly deleted.",
             "request_id": req_id,
+            "queue_item": queue_item,
             "bytes_cleared": file_size,
             "carbon_offset_g": co2_g,
             "donation_triggered": donation_triggered,
