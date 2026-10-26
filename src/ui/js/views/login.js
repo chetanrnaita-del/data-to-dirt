@@ -80,26 +80,6 @@ class LoginView {
               <button type="button" class="stu-class-pill" data-class="earth204" style="font-size: 11px; padding: 5px 8px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-weight: 600;">⛰️ Earth 204</button>
             </div>
           </div>
-
-          <!-- Quick Select Shortcuts for Staff/Teachers -->
-          <div id="teacher-quick-select" style="display: none; margin-bottom: 18px;">
-            <div style="font-size: 11px; font-weight: bold; color: #636e72; margin-bottom: 6px;">Select Teacher Account:</div>
-            <div id="teacher-pills-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 160px; overflow-y: auto;">
-              <button type="button" class="t-pill" data-tid="teacher_bio101" data-pass="teacher123" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">🌿 Dr. Evelyn Reed — Bio 101</button>
-              <button type="button" class="t-pill" data-tid="teacher_env201" data-pass="teacher123" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">🌍 Prof. Marcus Green — Env 201</button>
-              <button type="button" class="t-pill" data-tid="teacher_cs301" data-pass="teacher123" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">💻 Ms. Clara Patel — CS 301</button>
-              <button type="button" class="t-pill" data-tid="teacher_chem102" data-pass="teacher123" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">🧪 Dr. Arthur Thorne — Chem 102</button>
-              <button type="button" class="t-pill" data-tid="teacher_earth204" data-pass="teacher123" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">⛰️ Mr. Samuel Woods — Earth 204</button>
-            </div>
-          </div>
-
-          <!-- Quick Select Shortcuts for Admin -->
-          <div id="admin-quick-select" style="display: none; margin-bottom: 18px;">
-            <div style="font-size: 11px; font-weight: bold; color: #636e72; margin-bottom: 6px;">Administrator Credentials:</div>
-            <button type="button" id="btn-admin-pill" style="width: 100%; font-size: 11px; padding: 8px 12px; border: 1.5px solid #fab1a0; border-radius: 8px; background: #fff5f5; cursor: pointer; text-align: left; font-weight: 600; color: #d63031; transition: all 0.2s;">
-              ⚙️ Auto-fill Administrator (admin / admin2026)
-            </button>
-          </div>
           
           <div id="login-error" style="color: #e74c3c; font-size: 13px; margin-bottom: 15px; display: none; font-weight: 600;"></div>
 
@@ -120,7 +100,6 @@ class LoginView {
 
     this.bindEvents(container);
     this.loadRecentAccounts(container);
-    this.fetchTeacherDirectory(container);
   }
 
   loadRecentAccounts(container) {
@@ -145,80 +124,8 @@ class LoginView {
           return;
         }
       } catch (_) {}
-    } else if (this.selectedRole === 'teacher') {
-      try {
-        const lastTchRaw = localStorage.getItem('d2d_last_created_teacher');
-        if (lastTchRaw) {
-          const t = JSON.parse(lastTchRaw);
-          textEl.textContent = `⭐ Newly Created: ${t.name} (${t.teacher_id} / ${t.pin || 'teacher123'})`;
-          banner.style.display = 'block';
-          btnUse.onclick = () => {
-            inputUser.value = t.teacher_id || t.name;
-            inputPass.value = t.pin || 'teacher123';
-          };
-          return;
-        }
-      } catch (_) {}
     }
     banner.style.display = 'none';
-  }
-
-  async fetchTeacherDirectory(container) {
-    const listEl = container.querySelector('#teacher-pills-list');
-    if (!listEl) return;
-    try {
-      const res = await fetch('/api/auth/teachers');
-      const data = await res.json();
-      if (data.status === 'ok' && Array.isArray(data.teachers) && data.teachers.length > 0) {
-        const seenNames = new Set();
-        const seenIds = new Set();
-        const cleanTeachers = [];
-
-        data.teachers.forEach((t) => {
-          const tid = (t.teacher_id || '').toLowerCase().trim();
-          const rawName = (t.name || tid).trim();
-          const cleanName = rawName
-            .replace(/\(.*?\)/g, '')
-            .replace(/^(prof\.|professor|dr\.|doctor|mr\.|ms\.|mrs\.)\s*/i, '')
-            .trim()
-            .toLowerCase();
-
-          if (!tid || tid.startsWith('test_') || tid.startsWith('live_teacher_') || tid === 'teacher-001') {
-            return;
-          }
-          if (seenNames.has(cleanName) || seenIds.has(tid)) {
-            return;
-          }
-          seenNames.add(cleanName);
-          seenIds.add(tid);
-          cleanTeachers.push(t);
-        });
-
-        if (cleanTeachers.length > 0) {
-          listEl.innerHTML = cleanTeachers.map((t) => {
-            const tid = t.teacher_id || 'teacher_bio101';
-            const name = t.name || tid;
-            const classCode = (t.class_code || 'all').toUpperCase();
-            const pass = t.pin || 'teacher123';
-            return `
-              <button type="button" class="t-pill" data-tid="${tid}" data-pass="${pass}" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">
-                👨‍🏫 ${name} — [${classCode}]
-              </button>
-            `;
-          }).join('');
-
-          // Re-bind newly rendered pills
-          listEl.querySelectorAll('.t-pill').forEach(pill => {
-            pill.addEventListener('click', () => {
-              const inputUser = container.querySelector('#login-user');
-              const inputPass = container.querySelector('#login-pass');
-              if (inputUser) inputUser.value = pill.dataset.tid;
-              if (inputPass) inputPass.value = pill.dataset.pass || 'teacher123';
-            });
-          });
-        }
-      }
-    } catch (_) {}
   }
 
   bindEvents(container) {
@@ -248,8 +155,6 @@ class LoginView {
         this.selectedRole = btn.dataset.role;
         
         const studentPills = container.querySelector('#student-quick-select');
-        const teacherPills = container.querySelector('#teacher-quick-select');
-        const adminPills = container.querySelector('#admin-quick-select');
 
         // Update Labels & Hints
         if (this.selectedRole === 'student') {
@@ -261,30 +166,24 @@ class LoginView {
           if (hintUser) hintUser.textContent = "💡 Enter your registered Student Full Name or Student ID.";
           if (hintPass) hintPass.textContent = "💡 Enter your Class Code (e.g. cs301, bio101) or default password student123.";
           if (studentPills) studentPills.style.display = 'block';
-          if (teacherPills) teacherPills.style.display = 'none';
-          if (adminPills) adminPills.style.display = 'none';
         } else if (this.selectedRole === 'teacher') {
           labelUser.textContent = "Teacher Account / Name / ID";
-          inputUser.placeholder = "Enter Teacher Full Name or ID (e.g. teacher_bio101)";
+          inputUser.placeholder = "Enter Teacher Full Name or ID";
           labelPass.textContent = "Teacher Password / PIN";
-          inputPass.placeholder = "Enter teacher password or PIN (e.g. teacher123)";
+          inputPass.placeholder = "Enter teacher password or PIN";
           inputPass.value = "";
           if (hintUser) hintUser.textContent = "💡 Enter your Full Name, Teacher ID, or assigned Class Code.";
-          if (hintPass) hintPass.textContent = "💡 Enter your teacher password or custom PIN (default: teacher123).";
+          if (hintPass) hintPass.textContent = "💡 Enter your teacher password or custom PIN.";
           if (studentPills) studentPills.style.display = 'none';
-          if (teacherPills) teacherPills.style.display = 'block';
-          if (adminPills) adminPills.style.display = 'none';
         } else {
           labelUser.textContent = "Admin ID";
-          inputUser.placeholder = "admin";
+          inputUser.placeholder = "Enter Admin ID";
           labelPass.textContent = "Administrator Passcode";
-          inputPass.placeholder = "Enter passcode (e.g. admin2026)";
+          inputPass.placeholder = "Enter passcode";
           inputPass.value = "";
-          if (hintUser) hintUser.textContent = "💡 Default administrator ID is admin.";
-          if (hintPass) hintPass.textContent = "💡 Passcode is admin2026 or admin123.";
+          if (hintUser) hintUser.textContent = "💡 Enter administrator username.";
+          if (hintPass) hintPass.textContent = "💡 Enter administrator passcode.";
           if (studentPills) studentPills.style.display = 'none';
-          if (teacherPills) teacherPills.style.display = 'none';
-          if (adminPills) adminPills.style.display = 'block';
         }
 
         this.loadRecentAccounts(container);
@@ -297,20 +196,6 @@ class LoginView {
         inputPass.value = pill.dataset.class;
         inputPass.focus();
       });
-    });
-
-    // Bind teacher quick-select pills
-    container.querySelectorAll('.t-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        inputUser.value = pill.dataset.tid;
-        inputPass.value = pill.dataset.pass || 'teacher123';
-      });
-    });
-
-    // Bind admin quick-select pill
-    container.querySelector('#btn-admin-pill')?.addEventListener('click', () => {
-      inputUser.value = 'admin';
-      inputPass.value = 'admin2026';
     });
 
     const btnProceed = container.querySelector('#btn-proceed');
