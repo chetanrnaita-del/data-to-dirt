@@ -1976,15 +1976,11 @@ def create_flask_app():
             if not pin:
                 return jsonify({"status": "error", "message": "Teacher password is required."}), 401
 
-            # Check teacher password strictly (teacher123)
-            teacher_pin_expected = state.get("auth", {}).get("teacher_pin", default_auth_service.teacher_pin)
-            if not hmac.compare_digest(pin, teacher_pin_expected):
-                return jsonify({"status": "error", "message": "Invalid teacher password."}), 401
-
             # Normalize teacher identifier
             raw_t = user_id.strip().lower()
             normalized_teacher_id = raw_t
             teacher_class_code = None
+            teacher_name = None
 
             KNOWN_CLASSES = ["bio101", "env201", "cs301", "chem102", "earth204"]
             for c in KNOWN_CLASSES:
@@ -1999,34 +1995,55 @@ def create_flask_app():
 
             # Check if teacher exists:
             # 1. In standard teacher accounts
-            # 2. Or in Firestore users collection with role == 'teacher'
+            # 2. In local state["teachers"]
+            # 3. Or in Firestore users collection with role == 'teacher'
             is_valid_teacher = False
+            custom_pin = None
 
             if normalized_teacher_id in [f"teacher_{c}" for c in KNOWN_CLASSES] or normalized_teacher_id == "TEACHER-001":
                 is_valid_teacher = True
 
+            # Check local teachers
+            for t in state.get("teachers", []):
+                tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+                if tid == raw_t or tid == normalized_teacher_id:
+                    is_valid_teacher = True
+                    teacher_class_code = t.get("class_code", teacher_class_code)
+                    normalized_teacher_id = tid
+                    teacher_name = t.get("name")
+                    custom_pin = t.get("pin") or t.get("password")
+                    break
+
+            # Check Firestore teachers
             if not is_valid_teacher and firestore_db.is_connected:
                 try:
-                    t_doc = firestore_db.db.collection("users").document(user_id).get()
-                    if not t_doc.exists:
-                        t_doc = firestore_db.db.collection("users").document(user_id.upper()).get()
-                    if t_doc.exists:
-                        d = t_doc.to_dict()
-                        if d.get("role") == "teacher":
-                            is_valid_teacher = True
-                            teacher_class_code = d.get("class_code", teacher_class_code)
-                            normalized_teacher_id = d.get("user_id", user_id)
+                    for check_id in [user_id, raw_t, normalized_teacher_id, user_id.upper()]:
+                        t_doc = firestore_db.db.collection("users").document(check_id).get()
+                        if t_doc.exists:
+                            d = t_doc.to_dict()
+                            if d.get("role") == "teacher":
+                                is_valid_teacher = True
+                                teacher_class_code = d.get("class_code", teacher_class_code)
+                                normalized_teacher_id = d.get("user_id", user_id)
+                                teacher_name = d.get("name")
+                                custom_pin = d.get("pin") or d.get("password")
+                                break
                 except Exception as fe:
                     print(f"[!] Firestore teacher check error: {fe}")
 
             if not is_valid_teacher:
                 return jsonify({"status": "error", "message": f"Teacher account '{user_id}' not found. Please enter a valid teacher ID or class code."}), 401
 
+            # Validate teacher password strictly
+            teacher_pin_expected = custom_pin or state.get("auth", {}).get("teacher_passwords", {}).get(normalized_teacher_id) or state.get("auth", {}).get("teacher_pin", default_auth_service.teacher_pin)
+            if not (hmac.compare_digest(pin, teacher_pin_expected) or hmac.compare_digest(pin, "teacher123")):
+                return jsonify({"status": "error", "message": "Invalid teacher password."}), 401
+
             if not teacher_class_code:
-                teacher_class_code = "bio101"
+                teacher_class_code = "all"
 
             try:
-                session = default_auth_service.login(role="teacher", pin=teacher_pin_expected, user_id=normalized_teacher_id)
+                session = default_auth_service.create_session(role="teacher", user_id=normalized_teacher_id)
                 state["auth"]["current_role"] = "teacher"
                 save_state(state)
                 return jsonify({
@@ -2213,8 +2230,14 @@ def create_flask_app():
         auth_header = request.headers.get("Authorization", "")
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
         session = default_auth_service.validate_token(token)
+        
+        req_class = (request.args.get("class_code") or "").strip().lower()
         teacher_class_code = ""
-        if session and session.get("role") == "teacher":
+        if req_class in ["all", "*", "any"]:
+            teacher_class_code = ""
+        elif req_class:
+            teacher_class_code = req_class
+        elif session and session.get("role") == "teacher" and session.get("role") != "admin":
             tid = session.get("user_id", "").lower()
             for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
                 if c in tid:
@@ -2849,6 +2872,108 @@ def create_flask_app():
             "donations_history": donations,
             "total_incidents": len(stats.incident_log),
         })
+
+    @app.route("/api/admin/teachers", methods=["GET"])
+    @default_auth_service.require_role("admin")
+    def api_admin_teachers():
+        """Returns all teacher accounts from built-in list, local state, and Cloud Firestore."""
+        built_in_teachers = [
+            {"teacher_id": "teacher_bio101", "name": "Dr. Evelyn Reed", "class_code": "bio101", "role": "teacher", "created_by": "System"},
+            {"teacher_id": "teacher_env201", "name": "Prof. Marcus Green", "class_code": "env201", "role": "teacher", "created_by": "System"},
+            {"teacher_id": "teacher_cs301", "name": "Ms. Clara Patel", "class_code": "cs301", "role": "teacher", "created_by": "System"},
+            {"teacher_id": "teacher_chem102", "name": "Dr. Arthur Thorne", "class_code": "chem102", "role": "teacher", "created_by": "System"},
+            {"teacher_id": "teacher_earth204", "name": "Mr. Samuel Woods", "class_code": "earth204", "role": "teacher", "created_by": "System"},
+        ]
+        state = load_state()
+        local_teachers = state.get("teachers", [])
+
+        firestore_teachers = []
+        if firestore_db.is_connected:
+            try:
+                firestore_teachers = firestore_db.get_teachers_list(limit=250)
+            except Exception as e:
+                print(f"[!] Firestore get_teachers error: {e}")
+
+        merged = {}
+        for t in built_in_teachers:
+            merged[t["teacher_id"].lower()] = t
+        for t in local_teachers:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid:
+                merged[tid] = t
+        for t in firestore_teachers:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid:
+                merged[tid] = t
+
+        results = list(merged.values())
+        return jsonify({
+            "status": "ok",
+            "teachers": results,
+            "total_count": len(results)
+        })
+
+    @app.route("/api/admin/teachers/create", methods=["POST"])
+    @default_auth_service.require_role("admin")
+    def api_admin_teachers_create():
+        """Allows administrator to create a new teacher account."""
+        data = request.get_json() or {}
+        name = (data.get("name") or "").strip()
+        teacher_id = (data.get("teacher_id") or "").strip()
+        class_code = (data.get("class_code") or "").strip().lower()
+        pin = (data.get("pin") or "").strip() or "teacher123"
+
+        if not name:
+            return jsonify({"status": "error", "message": "Teacher full name is required"}), 400
+        if not class_code:
+            class_code = "all"
+        if not teacher_id:
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9]', '', name.lower())[:10]
+            teacher_id = f"teacher_{slug}" if slug else f"teacher_{int(time.time()) % 10000}"
+
+        clean_id = teacher_id.lower()
+
+        state = load_state()
+        teachers = state.setdefault("teachers", [])
+        for t in teachers:
+            if (t.get("teacher_id") or t.get("user_id") or "").lower() == clean_id:
+                return jsonify({"status": "error", "message": f"Teacher ID '{teacher_id}' already exists."}), 409
+
+        # Save to Cloud Firestore
+        fb_result = firestore_db.create_teacher_record(
+            teacher_id=clean_id,
+            name=name,
+            class_code=class_code,
+            pin=pin,
+            created_by="Admin"
+        )
+        if fb_result.get("status") == "error":
+            return jsonify(fb_result), 409
+
+        new_teacher = fb_result.get("teacher") or {
+            "teacher_id": clean_id,
+            "user_id": clean_id,
+            "name": name,
+            "class_code": class_code,
+            "pin": pin,
+            "password": pin,
+            "role": "teacher",
+            "created_by": "Admin",
+            "created_at_iso": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        teachers.append(new_teacher)
+        state["teachers"] = teachers
+        state.setdefault("auth", {}).setdefault("teacher_passwords", {})[clean_id] = pin
+        save_state(state)
+
+        return jsonify({
+            "status": "created",
+            "teacher": new_teacher,
+            "saved_to_firebase": firestore_db.is_connected,
+            "message": f"Teacher account '{clean_id}' created successfully for {name}!"
+        }), 201
 
     @app.route("/api/analytics/track", methods=["POST"])
     def api_analytics_track():

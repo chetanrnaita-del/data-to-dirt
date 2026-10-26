@@ -38,6 +38,9 @@ class AdminEcoFundView {
             </div>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-adm-manage-teachers" title="Create & Manage Teacher Accounts">
+              👨‍🏫 Manage Teachers
+            </button>
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-refresh">
               🔄 Refresh
             </button>
@@ -208,6 +211,11 @@ class AdminEcoFundView {
 
   bindEvents() {
     // Navigation
+    document.getElementById("btn-adm-manage-teachers")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      this.openTeacherDirectoryModal();
+    });
+
     document.getElementById("btn-adm-teacher-queue")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       if (window.DataToDirt) {
@@ -438,6 +446,306 @@ class AdminEcoFundView {
     link.click();
     link.remove();
     this.showToast("📄 Audit CSV Report downloaded successfully!", "success");
+  }
+
+  openTeacherDirectoryModal() {
+    const existingModal = document.getElementById("modal-teacher-directory");
+    if (existingModal) existingModal.remove();
+
+    const genId = () => "teacher_" + Math.random().toString(36).substring(2, 7);
+
+    const modalHtml = `
+      <div class="retro-modal-backdrop" id="modal-teacher-directory" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 6000; padding: 12px; backdrop-filter: blur(2px);">
+        <div class="retro-card retro-modal" style="max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 3px solid var(--c-wood-border, #4a2e18); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          
+          <!-- Modal Header -->
+          <div class="retro-modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #3e2714; color: #f5eedc; border-bottom: 2px solid #231308;">
+            <div style="font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 10px;">
+              <span>👨‍🏫 Teacher Account Manager & Directory</span>
+              <span class="retro-tag retro-tag-clean" style="font-size: 10px; padding: 2px 6px;">ADMINISTRATOR CONSOLE</span>
+            </div>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-tch-close" style="padding: 2px 8px; font-weight: bold; cursor: pointer;">✕</button>
+          </div>
+
+          <!-- Scrollable Content -->
+          <div class="retro-modal-body" style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px; background: #fbf8f0;">
+            
+            <!-- Section 1: Create Teacher Form -->
+            <div class="retro-card" style="padding: 14px; background: #fff9ed; border: 2px solid #b8860b;">
+              <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; color: #5c381e; display: flex; justify-content: space-between; align-items: center;">
+                <span>➕ Create & Enroll New Teacher Account</span>
+                <span style="font-size: 11px; font-weight: normal; color: #7f5539;">Allows teacher to review student deletions and direct-clean files</span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Teacher Full Name *</label>
+                  <input type="text" id="input-adm-tch-name" class="retro-input" placeholder="e.g. Dr. Alan Turing" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px;" />
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Teacher ID / Username *</label>
+                  <div style="display: flex; gap: 4px;">
+                    <input type="text" id="input-adm-tch-id" class="retro-input" placeholder="e.g. teacher_turing" style="flex: 1; font-size: 12px; padding: 6px 8px;" />
+                    <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-tch-gen-id" type="button" title="Generate ID">🎲</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Assigned Class Code *</label>
+                  <select id="select-adm-tch-class" class="retro-input" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; cursor: pointer;">
+                    <option value="all">🌐 All Classes (School-Wide)</option>
+                    <option value="bio101">🌿 Bio 101</option>
+                    <option value="cs301">💻 CS 301</option>
+                    <option value="env201">🌍 Env 201</option>
+                    <option value="chem102">🧪 Chem 102</option>
+                    <option value="earth204">⛰️ Earth 204</option>
+                    <option value="custom">✏️ Other / Custom Class Code...</option>
+                  </select>
+                  <input type="text" id="input-adm-tch-custom-class" class="retro-input" placeholder="Enter custom class code (e.g. phys201)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; margin-top: 4px; display: none;" />
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Password / PIN *</label>
+                  <input type="text" id="input-adm-tch-pin" class="retro-input" value="teacher123" placeholder="Default: teacher123" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px;" />
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div id="adm-tch-feedback" style="font-size: 11px; font-weight: bold; display: none; padding: 4px 8px; border-radius: 4px;"></div>
+                <button class="retro-btn retro-btn-green" id="btn-adm-save-teacher" style="padding: 6px 14px; font-weight: bold; cursor: pointer; margin-left: auto;">
+                  💾 Save & Enroll Teacher
+                </button>
+              </div>
+            </div>
+
+            <!-- Section 2: Teacher Directory List -->
+            <div class="retro-card" style="padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #dcdde1; padding-bottom: 6px;">
+                <div style="font-weight: bold; font-size: 13px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
+                  <span>📋 Registered Teacher Directory</span>
+                  <span id="adm-tch-count-badge" class="retro-tag retro-tag-clean" style="font-size: 10px;">0 Teachers</span>
+                </div>
+                <input type="text" id="input-adm-tch-search" class="retro-input" placeholder="Search teacher or class..." style="font-size: 11px; padding: 3px 6px; width: 170px;" />
+              </div>
+
+              <!-- Directory Table -->
+              <div class="retro-inset" style="max-height: 240px; overflow-y: auto; padding: 4px; background: #fff;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #dfe6e9; text-align: left; color: #636e72;">
+                      <th style="padding: 6px 8px;">Teacher Name</th>
+                      <th style="padding: 6px 8px;">Username / ID</th>
+                      <th style="padding: 6px 8px;">Class</th>
+                      <th style="padding: 6px 8px;">Password</th>
+                      <th style="padding: 6px 8px;">Enrolled</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adm-tch-table-body">
+                    <tr><td colspan="5" style="text-align: center; padding: 16px; color: #b2bec3;">Loading teacher directory...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+          
+          <div class="retro-modal-actions" style="padding: 10px 18px; background: #ede3d1; border-top: 2px solid #d4c2a5; display: flex; justify-content: flex-end;">
+            <button class="retro-btn retro-btn-wood" id="btn-adm-tch-close-footer" style="padding: 6px 16px; cursor: pointer;">Close Directory</button>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    const modal = document.getElementById("modal-teacher-directory");
+
+    let allTeachers = [];
+
+    const loadTeachers = async () => {
+      const tbody = document.getElementById("adm-tch-table-body");
+      const badge = document.getElementById("adm-tch-count-badge");
+      try {
+        const token = localStorage.getItem("d2d_session_token") || "";
+        const res = await fetch("/api/admin/teachers", {
+          headers: token ? { "Authorization": `Bearer ${token}` } : {}
+        });
+        const data = await res.json();
+        allTeachers = data.teachers || [];
+        renderTable(allTeachers);
+        if (badge) badge.textContent = `${allTeachers.length} Teachers`;
+      } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:#e74c3c;">Failed to load teachers: ${e.message}</td></tr>`;
+      }
+    };
+
+    const renderTable = (list) => {
+      const tbody = document.getElementById("adm-tch-table-body");
+      if (!tbody) return;
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 16px; color: #636e72;">No teacher accounts found matching filter.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map((t) => {
+        const cCode = (t.class_code || "all").toUpperCase();
+        return `
+          <tr style="border-bottom: 1px solid #f1f2f6;">
+            <td style="padding: 6px 8px; font-weight: bold; color: #2d3436;">🧑‍🏫 ${t.name || t.teacher_id}</td>
+            <td style="padding: 6px 8px; font-family: monospace; color: #5f27cd;"><code>${t.teacher_id || t.user_id}</code></td>
+            <td style="padding: 6px 8px;"><span class="retro-tag retro-tag-clean" style="font-size: 9.5px; padding: 1px 5px;">${cCode}</span></td>
+            <td style="padding: 6px 8px; font-family: monospace; color: #636e72;">${t.pin || "teacher123"}</td>
+            <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${t.created_at_iso || "Pre-installed"}</td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    // Auto-generate ID when name is typed
+    const nameInput = document.getElementById("input-adm-tch-name");
+    const idInput = document.getElementById("input-adm-tch-id");
+    const classSelect = document.getElementById("select-adm-tch-class");
+    const customClassInput = document.getElementById("input-adm-tch-custom-class");
+
+    nameInput?.addEventListener("input", () => {
+      if (!idInput.dataset.manual) {
+        const slug = nameInput.value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+        idInput.value = slug ? `teacher_${slug}` : "";
+      }
+    });
+
+    idInput?.addEventListener("input", () => {
+      idInput.dataset.manual = "true";
+    });
+
+    document.getElementById("btn-adm-tch-gen-id")?.addEventListener("click", () => {
+      idInput.value = genId();
+      idInput.dataset.manual = "true";
+    });
+
+    classSelect?.addEventListener("change", () => {
+      if (classSelect.value === "custom") {
+        customClassInput.style.display = "block";
+        customClassInput.focus();
+      } else {
+        customClassInput.style.display = "none";
+      }
+    });
+
+    // Search filter
+    document.getElementById("input-adm-tch-search")?.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        renderTable(allTeachers);
+        return;
+      }
+      const filtered = allTeachers.filter(t => 
+        (t.name || "").toLowerCase().includes(q) ||
+        (t.teacher_id || "").toLowerCase().includes(q) ||
+        (t.class_code || "").toLowerCase().includes(q)
+      );
+      renderTable(filtered);
+    });
+
+    // Save Teacher
+    const saveBtn = document.getElementById("btn-adm-save-teacher");
+    saveBtn?.addEventListener("click", async () => {
+      const name = nameInput?.value.trim();
+      let teacherId = idInput?.value.trim();
+      let classCode = classSelect?.value;
+      if (classCode === "custom") {
+        classCode = customClassInput?.value.trim().toLowerCase();
+      }
+      const pin = document.getElementById("input-adm-tch-pin")?.value.trim() || "teacher123";
+      const feedback = document.getElementById("adm-tch-feedback");
+
+      if (!name) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#ffeaa7";
+          feedback.style.color = "#d63031";
+          feedback.textContent = "[-] Please enter the teacher's full name.";
+        }
+        nameInput?.focus();
+        return;
+      }
+
+      if (!teacherId) {
+        teacherId = genId();
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Creating...";
+
+      try {
+        const token = localStorage.getItem("d2d_session_token") || "";
+        const res = await fetch("/api/admin/teachers/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ""
+          },
+          body: JSON.stringify({
+            name: name,
+            teacher_id: teacherId,
+            class_code: classCode || "all",
+            pin: pin
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.status === "error") {
+          if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "#ffeaa7";
+            feedback.style.color = "#d63031";
+            feedback.textContent = `[-] ${data.message || data.error || "Failed to create teacher"}`;
+          }
+          if (this.audioSynth) this.audioSynth.playGamingBuzzer();
+          return;
+        }
+
+        // Success!
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#e8f8f5";
+          feedback.style.color = "#27ae60";
+          feedback.textContent = `✓ Teacher '${name}' (${data.teacher.teacher_id}) created successfully!`;
+        }
+        if (this.audioSynth) this.audioSynth.playCoinDing();
+        this.showToast(`Teacher '${name}' enrolled!`, "success");
+
+        // Reset form
+        nameInput.value = "";
+        idInput.value = "";
+        delete idInput.dataset.manual;
+        if (customClassInput) customClassInput.value = "";
+
+        // Reload table
+        await loadTeachers();
+      } catch (err) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#ffeaa7";
+          feedback.style.color = "#d63031";
+          feedback.textContent = `[-] Network error: ${err.message}`;
+        }
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "💾 Save & Enroll Teacher";
+      }
+    });
+
+    // Dismiss modal
+    const dismiss = () => modal.remove();
+    document.getElementById("btn-adm-tch-close")?.addEventListener("click", dismiss);
+    document.getElementById("btn-adm-tch-close-footer")?.addEventListener("click", dismiss);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) dismiss();
+    });
+
+    // Initial load
+    loadTeachers();
   }
 
   showToast(message, type = "info") {

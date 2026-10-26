@@ -146,23 +146,16 @@ class AuthService:
         signature = hmac.new(self._secret_key, payload.encode("utf-8"), hashlib.sha256).hexdigest()
         return f"{random_entropy}_{int(expires_at)}_{signature[:24]}"
 
-    def login(
+    def create_session(
         self,
         role: str = ROLE_STUDENT,
-        pin: Optional[str] = None,
         user_id: Optional[str] = None,
         ttl_seconds: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """
-        Authenticates a user and creates a new session.
-        Raises AuthenticationError if PIN is invalid.
-        """
+        """Creates an authenticated session without PIN validation (used after external verification)."""
         role_lower = (role or "").strip().lower()
         if role_lower not in VALID_ROLES:
             raise AuthenticationError(f"Invalid role '{role}'. Must be one of {sorted(VALID_ROLES)}")
-
-        if not self.verify_pin(role_lower, pin):
-            raise AuthenticationError(f"Authentication failed: Invalid PIN for role '{role_lower}'")
 
         ttl = ttl_seconds if ttl_seconds is not None else self._session_ttl
         now = time.time()
@@ -183,6 +176,26 @@ class AuthService:
             self._sessions[token] = session
 
         return session.to_dict()
+
+    def login(
+        self,
+        role: str = ROLE_STUDENT,
+        pin: Optional[str] = None,
+        user_id: Optional[str] = None,
+        ttl_seconds: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Authenticates a user and creates a new session.
+        Raises AuthenticationError if PIN is invalid.
+        """
+        role_lower = (role or "").strip().lower()
+        if role_lower not in VALID_ROLES:
+            raise AuthenticationError(f"Invalid role '{role}'. Must be one of {sorted(VALID_ROLES)}")
+
+        if not self.verify_pin(role_lower, pin):
+            raise AuthenticationError(f"Authentication failed: Invalid PIN for role '{role_lower}'")
+
+        return self.create_session(role=role_lower, user_id=user_id, ttl_seconds=ttl_seconds)
 
     def validate_token(self, token: Optional[str]) -> Optional[Dict[str, Any]]:
         """

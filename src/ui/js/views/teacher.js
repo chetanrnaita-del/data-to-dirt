@@ -97,6 +97,14 @@ class TeacherConfirmationView {
 
             <!-- Search & Sort -->
             <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="t-class-filter-select" class="retro-input" style="padding: 4px 6px; font-size: 11px; cursor: pointer;">
+                <option value="all">🌐 All Classes</option>
+                <option value="bio101">🌿 Bio 101</option>
+                <option value="cs301">💻 CS 301</option>
+                <option value="env201">🌍 Env 201</option>
+                <option value="chem102">🧪 Chem 102</option>
+                <option value="earth204">⛰️ Earth 204</option>
+              </select>
               <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
                 ⚡ Approve All Pending
               </button>
@@ -231,6 +239,13 @@ class TeacherConfirmationView {
       });
     }
 
+    // Class filter dropdown
+    document.getElementById("t-class-filter-select")?.addEventListener("change", (e) => {
+      this.selectedClassCode = e.target.value;
+      if (this.audioSynth) this.audioSynth.playBlip();
+      this.fetchData();
+    });
+
     // Sort toggle
     const sortBtn = document.getElementById("btn-sort-confidence");
     const sortLabel = document.getElementById("sort-order-label");
@@ -315,13 +330,34 @@ class TeacherConfirmationView {
 
   async fetchData() {
     try {
+      const sel = document.getElementById("t-class-filter-select");
+      const cCode = sel ? sel.value : (this.selectedClassCode || "all");
+      const qUrl = cCode && cCode !== "all" ? `/api/teacher/queue?class_code=${encodeURIComponent(cCode)}` : `/api/teacher/queue?class_code=all`;
+
       const [queueRes, analyticsRes] = await Promise.all([
-        fetch("/api/teacher/queue").then((r) => r.json()),
+        fetch(qUrl).then((r) => r.json()),
         fetch("/api/teacher/analytics").then((r) => r.json()),
       ]);
 
       this.queue = queueRes.queue || [];
       this.analytics = analyticsRes || {};
+
+      // If pending count is 0, but queue has items and current filter is pending,
+      // default to "all" so the queue never looks empty/vanished!
+      const pendingCount = this.queue.filter((r) => (r.status || "").toLowerCase() === "pending").length;
+      if (pendingCount === 0 && this.queue.length > 0 && this.currentFilter === "pending") {
+        this.currentFilter = "all";
+        const filterBtns = this.container?.querySelectorAll(".btn-filter");
+        filterBtns?.forEach((b) => {
+          if (b.getAttribute("data-filter") === "all") {
+            b.classList.remove("retro-btn-wood");
+            b.classList.add("retro-btn-gold");
+          } else {
+            b.classList.remove("retro-btn-gold");
+            b.classList.add("retro-btn-wood");
+          }
+        });
+      }
 
       this.updateStatsBar();
       this.renderQueue();

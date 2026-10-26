@@ -20,6 +20,24 @@ class StudentDashboardView {
     if (!this.container) return;
     this.renderLayout();
     this.fetchData();
+
+    // Restore cached scanned files if available so files don't vanish upon login/page reload
+    try {
+      const cached = sessionStorage.getItem("d2d_scanned_files_cache");
+      if (cached && this.scannedFiles.length === 0) {
+        this.scannedFiles = JSON.parse(cached);
+        if (this.scannedFiles.length > 0) {
+          this.lastScanCompleted = true;
+          this.renderScannedFiles();
+          const btnRevoke = document.getElementById("btn-revoke-scan");
+          if (btnRevoke) btnRevoke.style.display = "inline-flex";
+          const banner = document.getElementById("scanner-status-banner");
+          if (banner) {
+            banner.innerHTML = `<span>✅ <strong>Active Review</strong>: ${this.scannedFiles.length} cleanable dark data candidates restored from session.</span>`;
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   renderLayout() {
@@ -746,6 +764,9 @@ class StudentDashboardView {
       }
 
       this.scannedFiles = res.files || [];
+      try {
+        sessionStorage.setItem("d2d_scanned_files_cache", JSON.stringify(this.scannedFiles));
+      } catch (_) {}
       this.lastScanCompleted = true;
       this.lastScanType = scanType;
       const totalScanned = res.total_scanned || res.files_found || 0;
@@ -793,6 +814,9 @@ class StudentDashboardView {
     try {
       await fetch("/api/scan/revoke", { method: "POST" });
       this.scannedFiles = [];
+      try {
+        sessionStorage.removeItem("d2d_scanned_files_cache");
+      } catch (_) {}
       this.lastScanCompleted = false;
       this.renderScannedFiles();
 
@@ -1109,6 +1133,9 @@ class StudentDashboardView {
 
           // Remove file from local list
           this.scannedFiles = this.scannedFiles.filter((f) => f.file_id !== file.file_id);
+          try {
+            sessionStorage.setItem("d2d_scanned_files_cache", JSON.stringify(this.scannedFiles));
+          } catch (_) {}
           this.renderScannedFiles();
           await this.fetchData();
         } catch (err) {

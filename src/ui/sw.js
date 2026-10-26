@@ -1,4 +1,4 @@
-const CACHE_NAME = 'data-to-dirt-v58';
+const CACHE_NAME = 'data-to-dirt-v59';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,18 +6,18 @@ const ASSETS = [
   '/logo.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  '/css/retro_base.css?v=1.2.9',
-  '/css/stardew.css?v=1.2.9',
-  '/css/animations.css?v=1.2.9',
-  '/js/app.js?v=1.2.9',
-  '/js/audio.js?v=1.2.9',
-  '/js/particles.js?v=1.2.9',
-  '/js/tree.js?v=1.2.9',
-  '/js/views/login.js?v=1.2.9',
-  '/js/views/student.js?v=1.2.9',
-  '/js/views/teacher.js?v=1.2.9',
-  '/js/views/admin.js?v=1.2.9',
-  '/js/views/analytics.js?v=1.2.9'
+  '/css/retro_base.css?v=1.3.0',
+  '/css/stardew.css?v=1.3.0',
+  '/css/animations.css?v=1.3.0',
+  '/js/app.js?v=1.3.0',
+  '/js/audio.js?v=1.3.0',
+  '/js/particles.js?v=1.3.0',
+  '/js/tree.js?v=1.3.0',
+  '/js/views/login.js?v=1.3.0',
+  '/js/views/student.js?v=1.3.0',
+  '/js/views/teacher.js?v=1.3.0',
+  '/js/views/admin.js?v=1.3.0',
+  '/js/views/analytics.js?v=1.3.0'
 ];
 
 self.addEventListener('install', event => {

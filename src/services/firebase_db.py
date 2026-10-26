@@ -217,6 +217,76 @@ class FirestoreDB:
 
         return {"status": "success", "student": record}
 
+    def create_teacher_record(self, teacher_id: str, name: str, class_code: str, pin: str = "teacher123", created_by: str = "Admin") -> Dict[str, Any]:
+        """Creates and stores a new teacher record in Firebase Firestore."""
+        clean_id = (teacher_id or "").strip()
+        clean_name = (name or "").strip() or clean_id
+        clean_class = (class_code or "").strip().lower() or "all"
+        clean_pin = (pin or "").strip() or "teacher123"
+
+        if not clean_id:
+            import uuid
+            clean_id = f"TCH-{uuid.uuid4().hex[:6].upper()}"
+
+        record = {
+            "user_id": clean_id,
+            "teacher_id": clean_id,
+            "name": clean_name,
+            "role": "teacher",
+            "class_code": clean_class,
+            "pin": clean_pin,
+            "password": clean_pin,
+            "created_by": created_by,
+            "created_at_iso": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        if self.is_connected:
+            try:
+                doc_ref = self.db.collection("users").document(clean_id)
+                existing = doc_ref.get()
+                if existing.exists:
+                    return {"status": "error", "message": f"Teacher ID '{clean_id}' already exists."}
+
+                db_payload = dict(record)
+                db_payload["created_at"] = firestore.SERVER_TIMESTAMP
+                db_payload["last_active"] = firestore.SERVER_TIMESTAMP
+                doc_ref.set(db_payload)
+            except Exception as e:
+                print(f"[!] Firestore create_teacher_record error: {e}")
+
+        return {"status": "success", "teacher": record}
+
+    def get_teachers_list(self, limit: int = 250) -> List[Dict[str, Any]]:
+        """Retrieves registered teacher directory from Cloud Firestore."""
+        if not self.is_connected:
+            return []
+
+        try:
+            if FieldFilter:
+                query = self.db.collection("users").where(filter=FieldFilter("role", "==", "teacher"))
+            else:
+                query = self.db.collection("users").where("role", "==", "teacher")
+            docs = query.limit(limit).stream()
+            teachers = []
+            for d in docs:
+                data = d.to_dict()
+                created_at = data.get("created_at_iso")
+                if not created_at and "created_at" in data:
+                    created_at = str(data["created_at"])
+                teachers.append({
+                    "teacher_id": data.get("teacher_id") or data.get("user_id") or d.id,
+                    "name": data.get("name", ""),
+                    "class_code": data.get("class_code", ""),
+                    "role": "teacher",
+                    "pin": data.get("pin", "teacher123"),
+                    "created_at_iso": created_at or "",
+                    "created_by": data.get("created_by", "Admin")
+                })
+            return teachers
+        except Exception as e:
+            print(f"[!] Firestore get_teachers error: {e}")
+            return []
+
     def get_students_list(self, class_code: str = "", limit: int = 250) -> List[Dict[str, Any]]:
         """Retrieves registered student directory from Cloud Firestore."""
         if not self.is_connected:
