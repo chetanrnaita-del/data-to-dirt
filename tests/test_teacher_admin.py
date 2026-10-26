@@ -580,5 +580,74 @@ class TestConcurrencyAndThreadSafety(unittest.TestCase):
         self.assertEqual(len(all_ids), len(set(all_ids)), "All generated request IDs must be strictly unique")
 
 
+class TestTeacherDeduplicationAndManagement(unittest.TestCase):
+    def setUp(self):
+        from src.app.server import app
+        self.app = app
+        self.client = self.app.test_client()
+        # Log in as admin to get admin token
+        res = self.client.post("/api/auth/login", json={
+            "role": "admin",
+            "user_id": "admin",
+            "pin": "admin2026"
+        })
+        self.admin_token = res.get_json().get("token")
+
+    def test_auth_teachers_deduplication_and_filtering(self):
+        """Verify /api/auth/teachers filters test accounts and returns strictly unique teachers."""
+        res = self.client.get("/api/auth/teachers")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "ok")
+        teachers = data["teachers"]
+
+        # Check no test accounts present
+        for t in teachers:
+            self.assertFalse(t["teacher_id"].startswith("test_"), f"Test teacher found: {t['teacher_id']}")
+            self.assertFalse(t["teacher_id"].startswith("live_teacher_"), f"Live test teacher found: {t['teacher_id']}")
+            self.assertNotEqual(t["teacher_id"].lower(), "teacher-001")
+
+        # Check all names are unique
+        names = [t["name"] for t in teachers]
+        self.assertEqual(len(names), len(set(names)), f"Duplicate teacher names found: {names}")
+
+    def test_admin_teacher_duplicate_rejection(self):
+        """Admin attempting to create a teacher with an existing name is rejected with 409."""
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        # First creation attempt
+        res1 = self.client.post("/api/admin/teachers/create", headers=headers, json={
+            "name": "Prof. Charles Babbage",
+            "teacher_id": "teacher_babbage",
+            "class_code": "cs301",
+            "pin": "babbage123"
+        })
+        self.assertIn(res1.status_code, [201, 409])
+
+        # Second creation attempt with same name
+        res2 = self.client.post("/api/admin/teachers/create", headers=headers, json={
+            "name": "Prof. Charles Babbage",
+            "teacher_id": "teacher_babbage_2",
+            "class_code": "cs301",
+            "pin": "babbage123"
+        })
+        self.assertEqual(res2.status_code, 409)
+        self.assertIn("already exists", res2.get_json()["message"].lower())
+
+        # Cleanup: delete created teacher
+        del_res = self.client.post("/api/admin/teachers/delete", headers=headers, json={
+            "teacher_id": "teacher_babbage"
+        })
+        self.assertEqual(del_res.status_code, 200)
+
+    def test_admin_delete_protected_system_teachers(self):
+        """Admin attempting to delete a built-in system teacher is rejected."""
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        res = self.client.post("/api/admin/teachers/delete", headers=headers, json={
+            "teacher_id": "teacher_bio101"
+        })
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("cannot delete built-in", res.get_json()["message"].lower())
+
+
 if __name__ == "__main__":
     unittest.main()

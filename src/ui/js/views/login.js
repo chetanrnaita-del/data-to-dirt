@@ -170,27 +170,53 @@ class LoginView {
       const res = await fetch('/api/auth/teachers');
       const data = await res.json();
       if (data.status === 'ok' && Array.isArray(data.teachers) && data.teachers.length > 0) {
-        listEl.innerHTML = data.teachers.map((t) => {
-          const tid = t.teacher_id || 'teacher_bio101';
-          const name = t.name || tid;
-          const classCode = (t.class_code || 'all').toUpperCase();
-          const pass = t.pin || 'teacher123';
-          return `
-            <button type="button" class="t-pill" data-tid="${tid}" data-pass="${pass}" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">
-              👨‍🏫 ${name} — [${classCode}]
-            </button>
-          `;
-        }).join('');
+        const seenNames = new Set();
+        const seenIds = new Set();
+        const cleanTeachers = [];
 
-        // Re-bind newly rendered pills
-        listEl.querySelectorAll('.t-pill').forEach(pill => {
-          pill.addEventListener('click', () => {
-            const inputUser = container.querySelector('#login-user');
-            const inputPass = container.querySelector('#login-pass');
-            if (inputUser) inputUser.value = pill.dataset.tid;
-            if (inputPass) inputPass.value = pill.dataset.pass || 'teacher123';
-          });
+        data.teachers.forEach((t) => {
+          const tid = (t.teacher_id || '').toLowerCase().trim();
+          const rawName = (t.name || tid).trim();
+          const cleanName = rawName
+            .replace(/\(.*?\)/g, '')
+            .replace(/^(prof\.|professor|dr\.|doctor|mr\.|ms\.|mrs\.)\s*/i, '')
+            .trim()
+            .toLowerCase();
+
+          if (!tid || tid.startsWith('test_') || tid.startsWith('live_teacher_') || tid === 'teacher-001') {
+            return;
+          }
+          if (seenNames.has(cleanName) || seenIds.has(tid)) {
+            return;
+          }
+          seenNames.add(cleanName);
+          seenIds.add(tid);
+          cleanTeachers.push(t);
         });
+
+        if (cleanTeachers.length > 0) {
+          listEl.innerHTML = cleanTeachers.map((t) => {
+            const tid = t.teacher_id || 'teacher_bio101';
+            const name = t.name || tid;
+            const classCode = (t.class_code || 'all').toUpperCase();
+            const pass = t.pin || 'teacher123';
+            return `
+              <button type="button" class="t-pill" data-tid="${tid}" data-pass="${pass}" style="font-size: 11px; padding: 6px 10px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; text-align: left; font-weight: 600;">
+                👨‍🏫 ${name} — [${classCode}]
+              </button>
+            `;
+          }).join('');
+
+          // Re-bind newly rendered pills
+          listEl.querySelectorAll('.t-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+              const inputUser = container.querySelector('#login-user');
+              const inputPass = container.querySelector('#login-pass');
+              if (inputUser) inputUser.value = pill.dataset.tid;
+              if (inputPass) inputPass.value = pill.dataset.pass || 'teacher123';
+            });
+          });
+        }
       }
     } catch (_) {}
   }

@@ -539,10 +539,11 @@ class AdminEcoFundView {
                       <th style="padding: 6px 8px;">Class</th>
                       <th style="padding: 6px 8px;">Password</th>
                       <th style="padding: 6px 8px;">Enrolled</th>
+                      <th style="padding: 6px 8px; text-align: right;">Action</th>
                     </tr>
                   </thead>
                   <tbody id="adm-tch-table-body">
-                    <tr><td colspan="5" style="text-align: center; padding: 16px; color: #b2bec3;">Loading teacher directory...</td></tr>
+                    <tr><td colspan="6" style="text-align: center; padding: 16px; color: #b2bec3;">Loading teacher directory...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -576,7 +577,7 @@ class AdminEcoFundView {
         renderTable(allTeachers);
         if (badge) badge.textContent = `${allTeachers.length} Teachers`;
       } catch (e) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:#e74c3c;">Failed to load teachers: ${e.message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:#e74c3c;">Failed to load teachers: ${e.message}</td></tr>`;
       }
     };
 
@@ -584,21 +585,61 @@ class AdminEcoFundView {
       const tbody = document.getElementById("adm-tch-table-body");
       if (!tbody) return;
       if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 16px; color: #636e72;">No teacher accounts found matching filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 16px; color: #636e72;">No teacher accounts found matching filter.</td></tr>`;
         return;
       }
       tbody.innerHTML = list.map((t) => {
         const cCode = (t.class_code || "all").toUpperCase();
+        const tid = t.teacher_id || t.user_id || "";
+        const isBuiltIn = ["teacher_bio101", "teacher_env201", "teacher_cs301", "teacher_chem102", "teacher_earth204"].includes(tid.toLowerCase());
+        const actionHtml = isBuiltIn ? `<span style="font-size: 10px; color: #b2bec3;">System</span>` : `
+          <button type="button" class="btn-delete-teacher" data-tid="${tid}" style="background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
+            🗑️ Delete
+          </button>
+        `;
         return `
           <tr style="border-bottom: 1px solid #f1f2f6;">
             <td style="padding: 6px 8px; font-weight: bold; color: #2d3436;">🧑‍🏫 ${t.name || t.teacher_id}</td>
-            <td style="padding: 6px 8px; font-family: monospace; color: #5f27cd;"><code>${t.teacher_id || t.user_id}</code></td>
+            <td style="padding: 6px 8px; font-family: monospace; color: #5f27cd;"><code>${tid}</code></td>
             <td style="padding: 6px 8px;"><span class="retro-tag retro-tag-clean" style="font-size: 9.5px; padding: 1px 5px;">${cCode}</span></td>
             <td style="padding: 6px 8px; font-family: monospace; color: #636e72;">${t.pin || "teacher123"}</td>
             <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${t.created_at_iso || "Pre-installed"}</td>
+            <td style="padding: 6px 8px; text-align: right;">${actionHtml}</td>
           </tr>
         `;
       }).join("");
+
+      tbody.querySelectorAll('.btn-delete-teacher').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const tid = btn.dataset.tid;
+          if (!confirm(`Are you sure you want to delete teacher account '${tid}'?`)) return;
+          try {
+            btn.disabled = true;
+            btn.textContent = '...';
+            const token = localStorage.getItem('d2d_session_token') || '';
+            const res = await fetch('/api/admin/teachers/delete', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+              },
+              body: JSON.stringify({ teacher_id: tid })
+            });
+            const d = await res.json();
+            if (d.status === 'deleted') {
+              loadTeachers();
+            } else {
+              alert(d.message || 'Failed to delete teacher.');
+              btn.disabled = false;
+              btn.textContent = '🗑️ Delete';
+            }
+          } catch (err) {
+            alert('Network error while deleting teacher: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = '🗑️ Delete';
+          }
+        });
+      });
     };
 
     // Auto-generate ID when name is typed

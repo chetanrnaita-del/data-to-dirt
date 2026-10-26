@@ -129,6 +129,26 @@ def fuzzy_name_match(entered: str, candidate: str) -> bool:
     return False
 
 
+def is_test_teacher_account(teacher_id: str, name: str) -> bool:
+    """Detects test teacher records or placeholder accounts to prevent UI clutter."""
+    low_id = (teacher_id or "").lower().strip()
+    low_name = (name or "").lower().strip()
+    if low_id.startswith("test_") or low_id.startswith("live_teacher_"):
+        return True
+    if low_id in ("teacher-001", "teacher_001"):
+        return True
+    if low_name in ("teacher-001", "teacher_001", "test teacher", "test_teacher"):
+        return True
+    return False
+
+
+def normalize_teacher_name_key(name: str) -> str:
+    """Normalizes teacher names by removing honorifics and parenthetical subjects for deduplication."""
+    s = re.sub(r'\(.*?\)', '', name or '').strip().lower()
+    s = re.sub(r'^(prof\.|professor|dr\.|doctor|mr\.|ms\.|mrs\.)\s*', '', s)
+    return re.sub(r'\s+', ' ', s).strip()
+
+
 def get_default_state() -> Dict[str, Any]:
     """Returns initial genuine application state."""
     return {
@@ -955,36 +975,68 @@ def create_flask_app():
             except Exception as e:
                 print(f"[!] Firestore teachers public fetch error: {e}")
 
-        merged = {}
+        def _is_test_teacher(tid: str, name: str) -> bool:
+            low_id = (tid or "").lower()
+            low_name = (name or "").lower()
+            if low_id.startswith("test_") or low_id.startswith("live_teacher_"):
+                return True
+            if low_id in ("teacher-001", "teacher_001"):
+                return True
+            if low_name in ("teacher-001", "teacher_001", "test teacher"):
+                return True
+            return False
+
+        def _normalize_name_key(n: str) -> str:
+            s = re.sub(r'\(.*?\)', '', n or '').strip().lower()
+            s = re.sub(r'^(prof\.|dr\.|mr\.|ms\.|mrs\.)\s*', '', s)
+            return re.sub(r'\s+', ' ', s).strip()
+
+        all_candidates = []
         for t in built_in_teachers:
-            merged[t["teacher_id"].lower()] = {
+            all_candidates.append({
                 "teacher_id": t["teacher_id"],
                 "name": t["name"],
                 "class_code": t.get("class_code", "bio101"),
                 "pin": t.get("pin", "teacher123")
-            }
+            })
         for t in local_teachers:
             tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
             if tid:
-                merged[tid] = {
+                all_candidates.append({
                     "teacher_id": tid,
                     "name": t.get("name", tid),
                     "class_code": t.get("class_code", "all"),
                     "pin": t.get("pin") or t.get("password") or "teacher123"
-                }
+                })
         for t in firestore_teachers:
             tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
             if tid:
-                merged[tid] = {
+                all_candidates.append({
                     "teacher_id": tid,
                     "name": t.get("name", tid),
                     "class_code": t.get("class_code", "all"),
                     "pin": t.get("pin") or t.get("password") or "teacher123"
-                }
+                })
+
+        seen_keys = set()
+        seen_tids = set()
+        deduped = []
+        for t in all_candidates:
+            tid = t["teacher_id"].lower()
+            name = t["name"]
+            if _is_test_teacher(tid, name):
+                continue
+            key = _normalize_name_key(name)
+            if tid in seen_tids or (key and key in seen_keys):
+                continue
+            seen_tids.add(tid)
+            if key:
+                seen_keys.add(key)
+            deduped.append(t)
 
         return jsonify({
             "status": "ok",
-            "teachers": list(merged.values())
+            "teachers": deduped
         })
 
     @app.route("/api/auth/students", methods=["GET"])
@@ -1005,19 +1057,25 @@ def create_flask_app():
 
         merged = {}
         for s in local_students:
-            sid = s.get("student_id") or s.get("user_id")
+            sid = str(s.get("student_id") or s.get("user_id") or "").strip()
+            name = str(s.get("name") or sid).strip()
+            if sid.startswith("STU-TEST-") or "AutoGen" in name or name in ("Alice Student", "Bob AutoGen", "New Student", "Hacker"):
+                continue
             if sid:
-                merged[sid] = {
+                merged[sid.lower()] = {
                     "student_id": sid,
-                    "name": s.get("name", sid),
+                    "name": name,
                     "class_code": s.get("class_code", "bio101")
                 }
         for s in firestore_students:
-            sid = s.get("student_id") or s.get("user_id")
+            sid = str(s.get("student_id") or s.get("user_id") or "").strip()
+            name = str(s.get("name") or sid).strip()
+            if sid.startswith("STU-TEST-") or "AutoGen" in name or name in ("Alice Student", "Bob AutoGen", "New Student", "Hacker"):
+                continue
             if sid:
-                merged[sid] = {
+                merged[sid.lower()] = {
                     "student_id": sid,
-                    "name": s.get("name", sid),
+                    "name": name,
                     "class_code": s.get("class_code", "bio101")
                 }
 
@@ -2357,8 +2415,7 @@ def create_flask_app():
             # Accept class code (with/without space, e.g. "cs301", "cs 301", "CS-301"),
             # custom pin, or standard student passwords
             STANDARD_STUDENT_PASSWORDS = [
-                "student123", "student", "1234", "password", "pass", "demo",
-                "cs301", "bio101", "env201", "chem102", "earth204"
+                "student123", "student", "1234", "password", "pass", "demo"
             ]
 
             password_matches = False
@@ -3149,19 +3206,30 @@ def create_flask_app():
             except Exception as e:
                 print(f"[!] Firestore get_teachers error: {e}")
 
-        merged = {}
+        all_candidates = []
         for t in built_in_teachers:
-            merged[t["teacher_id"].lower()] = t
+            all_candidates.append(t)
         for t in local_teachers:
-            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
-            if tid:
-                merged[tid] = t
+            all_candidates.append(t)
         for t in firestore_teachers:
-            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
-            if tid:
-                merged[tid] = t
+            all_candidates.append(t)
 
-        results = list(merged.values())
+        seen_keys = set()
+        seen_tids = set()
+        results = []
+        for t in all_candidates:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            name = t.get("name") or tid
+            if is_test_teacher_account(tid, name):
+                continue
+            key = normalize_teacher_name_key(name)
+            if tid in seen_tids or (key and key in seen_keys):
+                continue
+            seen_tids.add(tid)
+            if key:
+                seen_keys.add(key)
+            results.append(t)
+
         return jsonify({
             "status": "ok",
             "teachers": results,
@@ -3183,7 +3251,6 @@ def create_flask_app():
         if not class_code:
             class_code = "all"
         if not teacher_id:
-            import re
             slug = re.sub(r'[^a-zA-Z0-9]', '', name.lower())[:10]
             teacher_id = f"teacher_{slug}" if slug else f"teacher_{int(time.time()) % 10000}"
 
@@ -3191,9 +3258,18 @@ def create_flask_app():
 
         state = load_state()
         teachers = state.setdefault("teachers", [])
-        for t in teachers:
-            if (t.get("teacher_id") or t.get("user_id") or "").lower() == clean_id:
+        norm_key = normalize_teacher_name_key(name)
+
+        # Check for duplicates across state and firestore
+        existing_teachers = firestore_db.get_teachers_list(limit=250) if firestore_db.is_connected else []
+        existing_teachers.extend(teachers)
+        for ext in existing_teachers:
+            ext_name = ext.get("name") or ""
+            ext_tid = (ext.get("teacher_id") or ext.get("user_id") or "").lower()
+            if ext_tid == clean_id:
                 return jsonify({"status": "error", "message": f"Teacher ID '{teacher_id}' already exists."}), 409
+            if norm_key and normalize_teacher_name_key(ext_name) == norm_key:
+                return jsonify({"status": "error", "message": f"A teacher with the name '{name}' already exists ({ext_tid})."}), 409
 
         # Save to Cloud Firestore
         fb_result = firestore_db.create_teacher_record(
@@ -3229,6 +3305,44 @@ def create_flask_app():
             "saved_to_firebase": firestore_db.is_connected,
             "message": f"Teacher account '{clean_id}' created successfully for {name}!"
         }), 201
+
+    @app.route("/api/admin/teachers/delete", methods=["POST"])
+    @default_auth_service.require_role("admin")
+    def api_admin_teachers_delete():
+        """Allows administrator to delete a custom teacher account."""
+        data = request.get_json() or {}
+        teacher_id = (data.get("teacher_id") or "").strip().lower()
+        if not teacher_id:
+            return jsonify({"status": "error", "message": "Teacher ID is required"}), 400
+
+        # Protect built-in system teachers from deletion
+        system_tids = {"teacher_bio101", "teacher_env201", "teacher_cs301", "teacher_chem102", "teacher_earth204"}
+        if teacher_id in system_tids:
+            return jsonify({"status": "error", "message": "Cannot delete built-in system teacher accounts."}), 400
+
+        state = load_state()
+        teachers = state.get("teachers", [])
+        state["teachers"] = [t for t in teachers if (t.get("teacher_id") or t.get("user_id") or "").lower() != teacher_id]
+        if "auth" in state and "teacher_passwords" in state["auth"]:
+            state["auth"]["teacher_passwords"].pop(teacher_id, None)
+        save_state(state)
+
+        deleted_fb = False
+        if firestore_db.is_connected:
+            try:
+                doc = firestore_db.db.collection("users").document(teacher_id)
+                if doc.get().exists:
+                    doc.delete()
+                    deleted_fb = True
+            except Exception as e:
+                print(f"[!] Error deleting teacher from Firestore: {e}")
+
+        return jsonify({
+            "status": "deleted",
+            "teacher_id": teacher_id,
+            "deleted_from_firebase": deleted_fb,
+            "message": f"Teacher account '{teacher_id}' deleted successfully."
+        })
 
     @app.route("/api/analytics/track", methods=["POST"])
     def api_analytics_track():
