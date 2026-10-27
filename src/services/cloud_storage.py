@@ -378,11 +378,11 @@ class GoogleDriveProvider(ICloudStorageProvider):
         if not self._auth_token:
             return self._fallback_mock.list_directory(folder_id=folder_id, recursive=recursive)
 
-        query = f"'{folder_id}' in parents and trashed = false" if not recursive else "trashed = false"
+        query = f"'{folder_id}' in parents and 'me' in owners and trashed = false" if not recursive else "'me' in owners and trashed = false"
         url = (
             f"{self.DRIVE_API_BASE}/files?"
             f"q={urllib.parse.quote(query)}&"
-            f"fields=files(id,name,mimeType,size,modifiedTime,parents,webViewLink)&"
+            f"fields=files(id,name,mimeType,size,quotaBytesUsed,modifiedTime,parents,webViewLink,shared,sharedWithMe,owners(me))&"
             f"pageSize=100"
         )
         req = urllib.request.Request(
@@ -395,12 +395,18 @@ class GoogleDriveProvider(ICloudStorageProvider):
                 data = json.loads(resp.read().decode("utf-8"))
                 items: List[CloudFileItem] = []
                 for f in data.get("files", []):
+                    # Exclude files shared with the user (shared files do not consume personal quota)
+                    if f.get("sharedWithMe") is True or f.get("is_shared_with_me") is True:
+                        continue
+                    owners = f.get("owners") or []
+                    if owners and not any(o.get("me") is True for o in owners):
+                        continue
                     items.append(
                         CloudFileItem(
                             id=f.get("id", ""),
                             name=f.get("name", ""),
                             parent_id=folder_id,
-                            size_bytes=int(f.get("size", 0)),
+                            size_bytes=int(f.get("size") or f.get("quotaBytesUsed") or 0),
                             mime_type=f.get("mimeType", "application/octet-stream"),
                             modified_epoch_s=time.time(),
                             accessed_epoch_s=time.time(),

@@ -1440,21 +1440,27 @@ def create_flask_app():
             if oauth_token:
                 session["google_access_token"] = oauth_token
 
-            # If user selected folders in Google Picker, expand files inside them
+            # If user selected folders in Google Picker, expand files inside them (excluding shared files)
             expanded_files = []
             if oauth_token and any(f.get("mimeType") == "application/vnd.google-apps.folder" for f in raw_files):
                 for f in raw_files:
                     if f.get("mimeType") == "application/vnd.google-apps.folder":
                         folder_id = f.get("id")
                         try:
-                            q_folder = urllib.parse.quote(f"'{folder_id}' in parents and trashed=false")
-                            f_url = f"https://www.googleapis.com/drive/v3/files?q={q_folder}&fields=files(id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum)&pageSize=100"
+                            # Only expand files owned by user; exclude files shared by others
+                            q_folder = urllib.parse.quote(f"'{folder_id}' in parents and 'me' in owners and trashed=false")
+                            f_url = f"https://www.googleapis.com/drive/v3/files?q={q_folder}&fields=files(id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum,shared,sharedWithMe,owners(me,displayName,emailAddress))&pageSize=100"
                             req = urllib.request.Request(f_url)
                             req.add_header("Authorization", f"Bearer {oauth_token}")
                             req.add_header("User-Agent", "DataToDirt/1.1")
                             with urllib.request.urlopen(req, timeout=5, context=get_ssl_context()) as resp:
                                 f_data = json.loads(resp.read().decode())
                                 for item in f_data.get("files", []):
+                                    if item.get("sharedWithMe") is True or item.get("is_shared_with_me") is True:
+                                        continue
+                                    owners = item.get("owners") or []
+                                    if owners and not any(o.get("me") is True for o in owners):
+                                        continue
                                     sz_val = item.get("size") or item.get("quotaBytesUsed")
                                     try:
                                         sz_num = int(sz_val) if sz_val is not None else estimate_file_size_by_name(item.get("name", ""))
@@ -1466,17 +1472,21 @@ def create_flask_app():
                                         "sizeBytes": sz_num,
                                         "mimeType": item.get("mimeType", "application/octet-stream"),
                                         "lastEditedUtc": item.get("modifiedTime"),
-                                        "md5Checksum": item.get("md5Checksum")
+                                        "md5Checksum": item.get("md5Checksum"),
+                                        "shared": item.get("shared", False),
+                                        "sharedWithMe": item.get("sharedWithMe", False),
+                                        "owners": owners
                                     })
                         except Exception as fe:
                             print(f"[!] Folder expansion notice: {fe}")
-                            expanded_files.append(f)
+                            if not f.get("sharedWithMe") and (not f.get("owners") or any(o.get("me") is True for o in f.get("owners", []))):
+                                expanded_files.append(f)
                     else:
                         expanded_files.append(f)
                 if expanded_files:
                     raw_files = expanded_files
 
-            # Query real metadata (size, md5, mtime) from Google Drive API for all picked files
+            # Query real metadata (size, md5, mtime, ownership) from Google Drive API for all picked files
             if oauth_token and raw_files:
                 import concurrent.futures
 
@@ -1485,17 +1495,14 @@ def create_flask_app():
                     if not fid or str(fid).startswith("picker_file_"):
                         return item
                     cur_sz = item.get("sizeBytes") or item.get("size_bytes") or item.get("size")
-                    # If size is missing, 0, or legacy 25MB artifact, query Drive API
+                    # If size and ownership are already known and valid, can skip query
                     needs_query = True
-                    try:
-                        if cur_sz and int(cur_sz) > 0 and int(cur_sz) != (25 * 1024 * 1024):
-                            needs_query = False
-                    except (ValueError, TypeError):
-                        pass
+                    if "sharedWithMe" in item and "owners" in item and cur_sz and int(cur_sz or 0) > 0 and int(cur_sz or 0) != (25 * 1024 * 1024):
+                        needs_query = False
 
                     if needs_query:
                         try:
-                            meta_url = f"https://www.googleapis.com/drive/v3/files/{fid}?fields=id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum"
+                            meta_url = f"https://www.googleapis.com/drive/v3/files/{fid}?fields=id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum,shared,sharedWithMe,owners(me,displayName,emailAddress)"
                             m_req = urllib.request.Request(meta_url)
                             m_req.add_header("Authorization", f"Bearer {oauth_token}")
                             m_req.add_header("User-Agent", "DataToDirt/1.1")
@@ -1513,6 +1520,11 @@ def create_flask_app():
                                     item["lastEditedUtc"] = meta.get("modifiedTime")
                                 if meta.get("name") and not item.get("name"):
                                     item["name"] = meta.get("name")
+                                item["sharedWithMe"] = meta.get("sharedWithMe", False)
+                                item["shared"] = meta.get("shared", False)
+                                item["owners"] = meta.get("owners", [])
+                                if meta.get("quotaBytesUsed") is not None:
+                                    item["quotaBytesUsed"] = meta.get("quotaBytesUsed")
                         except Exception as meta_err:
                             pass
                     return item
@@ -1526,8 +1538,21 @@ def create_flask_app():
             now_epoch = time.time()
             all_files = []
             picker_sha_tracker = {}
+            excluded_shared_count = 0
             
             for i, f in enumerate(raw_files):
+                # Exclude files shared with the user (shared files do not consume personal Google Drive quota)
+                if f.get("sharedWithMe") is True or f.get("is_shared_with_me") is True:
+                    excluded_shared_count += 1
+                    continue
+                owners = f.get("owners") or []
+                if owners and not any(o.get("me") is True for o in owners):
+                    excluded_shared_count += 1
+                    continue
+                if f.get("isOwner") is False:
+                    excluded_shared_count += 1
+                    continue
+
                 file_id = f.get("id") or f.get("file_id") or f"picker_file_{i}"
                 file_name = f.get("name") or f.get("file_name") or f"Drive_File_{i}"
                 size_raw = f.get("sizeBytes") or f.get("size_bytes") or f.get("size", 0)
@@ -1573,7 +1598,8 @@ def create_flask_app():
                     "dark_data_reason": reason_str,
                     "category": "dark_data",
                     "dark_data_tag": reason_str,
-                    "is_drive": True
+                    "is_drive": True,
+                    "shared_with_me": False
                 }
                 all_files.append(enrich_file_iq1000(f_obj, now_epoch, picker_sha_tracker))
                 
@@ -1583,11 +1609,17 @@ def create_flask_app():
             state["scanner"]["error"] = None
             save_state(state)
             
+            note_msg = None
+            if excluded_shared_count > 0:
+                note_msg = f"Excluded {excluded_shared_count} shared file(s) owned by other accounts (0 personal quota used)."
+
             return jsonify({
                 "status": "completed",
                 "folder": "Google Drive (Picker Selected)",
                 "files_found": len(all_files),
                 "total_scanned": len(all_files),
+                "excluded_shared_files": excluded_shared_count,
+                "note": note_msg,
                 "files": all_files,
                 "session_only": True
             })
@@ -1716,17 +1748,19 @@ def create_flask_app():
             live_success = False
             scanned_items = []
             now = time.time()
+            excluded_shared_count = 0
 
             # 1. Attempt live Google Drive API if OAuth token is active in session
             if access_token:
                 try:
+                    # Query only files owned by the authenticated user to reclaim actual personal quota
                     query = urllib.parse.quote("'me' in owners and trashed=false")
                     page_token = None
                     drive_items = []
                     drive_by_md5 = {}
                     
                     while True:
-                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime)&pageSize=100"
+                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime,shared,sharedWithMe,owners(me,displayName,emailAddress))&pageSize=100"
                         if page_token:
                             url += f"&pageToken={page_token}"
                         req = urllib.request.Request(url)
@@ -1740,6 +1774,15 @@ def create_flask_app():
                                 if mime == "application/vnd.google-apps.folder":
                                     continue
                                 
+                                # Strictly exclude shared files that do not consume personal Google Drive quota
+                                if f.get("sharedWithMe") is True or f.get("is_shared_with_me") is True:
+                                    excluded_shared_count += 1
+                                    continue
+                                owners = f.get("owners") or []
+                                if owners and not any(o.get("me") is True for o in owners):
+                                    excluded_shared_count += 1
+                                    continue
+
                                 # Size calculation: size -> quotaBytesUsed -> estimate_file_size_by_name
                                 sz_raw = f.get("size") or f.get("quotaBytesUsed") or 0
                                 try:
@@ -1777,7 +1820,8 @@ def create_flask_app():
                                     "mime_category": mime,
                                     "is_confidential": False,
                                     "md5": md5,
-                                    "is_drive": True
+                                    "is_drive": True,
+                                    "shared_with_me": False
                                 }
                                 drive_items.append(item)
                                 if md5:
@@ -1787,62 +1831,6 @@ def create_flask_app():
                         if not page_token or len(drive_items) >= 500:
                             break
 
-                    # If 'me' in owners returned 0 files, execute fallback search for school classroom files
-                    if len(drive_items) == 0:
-                        try:
-                            f_q = urllib.parse.quote("trashed=false")
-                            f_url = f"https://www.googleapis.com/drive/v3/files?q={f_q}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime)&pageSize=100"
-                            f_req = urllib.request.Request(f_url)
-                            f_req.add_header("Authorization", f"Bearer {access_token}")
-                            f_req.add_header("User-Agent", "DataToDirt/1.1")
-                            with urllib.request.urlopen(f_req, timeout=8, context=get_ssl_context()) as f_resp:
-                                f_data = json.loads(f_resp.read().decode())
-                                for f in f_data.get("files", []):
-                                    mime = f.get("mimeType", "")
-                                    if mime == "application/vnd.google-apps.folder":
-                                        continue
-                                    sz_raw = f.get("size") or f.get("quotaBytesUsed") or 0
-                                    try:
-                                        sz = int(sz_raw)
-                                    except (ValueError, TypeError):
-                                        sz = 0
-                                    if sz <= 0:
-                                        sz = estimate_file_size_by_name(f.get("name", "Document"), mime)
-                                    md5 = f.get("md5Checksum", "")
-                                    mtime_str = f.get("modifiedTime")
-                                    mtime = now
-                                    if mtime_str:
-                                        try:
-                                            dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                                            mtime = dt.replace(tzinfo=timezone.utc).timestamp()
-                                        except Exception:
-                                            try:
-                                                dt = datetime.strptime(mtime_str, "%Y-%m-%dT%H:%M:%SZ")
-                                                mtime = dt.replace(tzinfo=timezone.utc).timestamp()
-                                            except Exception:
-                                                mtime = now
-                                    item = {
-                                        "file_id": f["id"],
-                                        "file_name": f["name"],
-                                        "raw_file_name": f["name"],
-                                        "file_path": f"Google Drive/{f['name']}",
-                                        "absolute_path": f"Google Drive/{f['name']}",
-                                        "size_bytes": sz,
-                                        "size_formatted": format_bytes(sz),
-                                        "last_modified_epoch_s": mtime,
-                                        "last_accessed_epoch_s": mtime,
-                                        "created_epoch_s": mtime,
-                                        "mime_category": mime,
-                                        "is_confidential": False,
-                                        "md5": md5,
-                                        "is_drive": True
-                                    }
-                                    drive_items.append(item)
-                                    if md5:
-                                        drive_by_md5.setdefault(md5, []).append(item)
-                        except Exception as fb_err:
-                            print(f"[!] Fallback Drive query notice: {fb_err}")
-                            
                     for item in drive_items:
                         age_seconds = now - item["last_modified_epoch_s"]
                         age_days = max(0, int(age_seconds / 86400))
@@ -1913,11 +1901,17 @@ def create_flask_app():
             state["scanner"]["error"] = None
             save_state(state)
             
+            note_msg = None
+            if excluded_shared_count > 0:
+                note_msg = f"Excluded {excluded_shared_count} shared file(s) owned by other accounts (0 personal quota used)."
+
             return jsonify({
                 "status": "completed",
                 "folder": "Google Drive",
                 "total_scanned": len(scanned_items),
                 "files_found": len(scanned_items),
+                "excluded_shared_files": excluded_shared_count,
+                "note": note_msg,
                 "files": scanned_items,
                 "session_only": True
             })

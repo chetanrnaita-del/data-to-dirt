@@ -403,9 +403,12 @@ class StudentDashboardView {
     modal.id = "modal-gdrive-options";
     modal.style.zIndex = "10000";
     modal.innerHTML = `
-      <div class="retro-modal" style="max-width: 420px;">
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
+      <div class="retro-modal" style="max-width: 440px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--c-wood-border);">
           ☁️ Google Drive Cleaner
+        </div>
+        <div style="background: rgba(45, 106, 54, 0.08); border-left: 3px solid var(--c-pine); padding: 8px 12px; border-radius: 4px; font-size: 11.5px; color: var(--c-ink); margin-bottom: 14px; line-height: 1.4;">
+          🍃 <strong>Personal Quota Protected</strong>: Files shared with you by teachers or classmates are automatically excluded because they consume the sender's storage quota, not yours.
         </div>
         <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
           Choose how to scan your Google Drive:
@@ -414,13 +417,13 @@ class StudentDashboardView {
           <button class="retro-btn retro-btn-gold" id="btn-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
             <strong>⚡ Live Google Drive Scan (Recommended)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Instantly scans all files in your Google Drive and identifies duplicate, stale, and heavy waste.
+              Instantly scans your owned files in Google Drive and identifies duplicate, stale, and heavy waste.
             </div>
           </button>
           <button class="retro-btn retro-btn-green" id="btn-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
             <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Opens Google selection window. Best for desktop browsers.
+              Opens Google selection dialog. Automatically filters to your owned files.
             </div>
           </button>
           <button class="retro-btn retro-btn-wood" id="btn-gdrive-reconnect" style="width: 100%; padding: 10px; font-size: 12px; text-align: left; cursor: pointer;">
@@ -474,10 +477,12 @@ class StudentDashboardView {
 
         const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
           .setIncludeFolders(true)
-          .setSelectFolderEnabled(true);
+          .setSelectFolderEnabled(true)
+          .setOwnedByMe(true);
 
         const folderView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-          .setSelectFolderEnabled(true);
+          .setSelectFolderEnabled(true)
+          .setOwnedByMe(true);
 
         const builder = new google.picker.PickerBuilder()
           .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
@@ -502,7 +507,8 @@ class StudentDashboardView {
                   name: d[google.picker.Document.NAME],
                   sizeBytes: Number(d[google.picker.Document.SIZE_BYTES] || d.sizeBytes || d.fileSize || 0),
                   mimeType: d[google.picker.Document.MIME_TYPE],
-                  lastEditedUtc: d[google.picker.Document.LAST_EDITED_UTC] || Date.now()
+                  lastEditedUtc: d[google.picker.Document.LAST_EDITED_UTC] || Date.now(),
+                  isOwner: d.isOwner !== false
                 }));
                 await this.executeScan(null, true, "picker_files", pickedFiles, oauthToken);
               }
@@ -784,7 +790,11 @@ class StudentDashboardView {
         banner.style.borderColor = "";
         banner.style.backgroundColor = "";
         const scanSourceLabel = scanType === "drive" || scanType === "picker_files" ? "Google Drive" : "Device Storage";
-        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: <strong>${Number(totalScanned).toLocaleString()} files analyzed</strong> across entire system — <strong>${Number(totalFound).toLocaleString()} dark data candidates identified (${wasteFormatted} cleanable bloat)</strong>! Showing top storage hogs:</span>`;
+        let excludedNote = "";
+        if (res.excluded_shared_files && res.excluded_shared_files > 0) {
+          excludedNote = ` <span style="font-size:11px; opacity:0.9; margin-left:6px;">(Excluded ${res.excluded_shared_files} shared file${res.excluded_shared_files > 1 ? 's' : ''} owned by others)</span>`;
+        }
+        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: <strong>${Number(totalScanned).toLocaleString()} files analyzed</strong> across entire system — <strong>${Number(totalFound).toLocaleString()} dark data candidates identified (${wasteFormatted} cleanable bloat)</strong>! Showing top storage hogs:${excludedNote}</span>`;
       }
       if (btnRevoke) btnRevoke.style.display = "inline-flex";
 
@@ -864,6 +874,9 @@ class StudentDashboardView {
             <div style="font-size: 14px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">Zero Waste Identified</div>
             <div>Your ${scanSourceLabel} was analyzed by AI and currently has zero dark data bloat. You are operating 100% lean and green!</div>
             ${isDrive ? `
+              <div style="margin-top: 8px; font-size: 11px; color: var(--c-pine); font-style: italic;">
+                Note: Files shared with you by others are excluded because they do not consume your personal storage quota.
+              </div>
               <div style="margin-top: 14px;">
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-reconnect-gdrive" style="font-size: 11px; padding: 6px 12px; cursor: pointer;">
                   🔄 Connect Different Google Account

@@ -1176,7 +1176,11 @@ class TeacherConfirmationView {
         banner.style.borderColor = "";
         banner.style.backgroundColor = "";
         const scanSourceLabel = scanType === "drive" || scanType === "picker_files" ? "Google Drive" : "Device Storage";
-        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: <strong>${Number(totalScanned).toLocaleString()} files analyzed</strong> — <strong>${Number(totalFound).toLocaleString()} dark data candidates (${wasteFormatted})</strong>. Click <strong>'🗑️ Clean'</strong> on any file to delete it immediately!</span>`;
+        let excludedNote = "";
+        if (res.excluded_shared_files && res.excluded_shared_files > 0) {
+          excludedNote = ` <span style="font-size:11px; opacity:0.9; margin-left:6px;">(Excluded ${res.excluded_shared_files} shared file${res.excluded_shared_files > 1 ? 's' : ''} owned by others)</span>`;
+        }
+        banner.innerHTML = `<span>✅ <strong>${scanSourceLabel} Scanned</strong>: <strong>${Number(totalScanned).toLocaleString()} files analyzed</strong> — <strong>${Number(totalFound).toLocaleString()} dark data candidates (${wasteFormatted})</strong>. Click <strong>'🗑️ Clean'</strong> on any file to delete it immediately!${excludedNote}</span>`;
       }
       if (btnRevoke) btnRevoke.style.display = "inline-flex";
 
@@ -1262,11 +1266,18 @@ class TeacherConfirmationView {
 
     if (this.teacherScannedFiles.length === 0) {
       if (this.teacherLastScanCompleted) {
+        const isDrive = this.teacherLastScanType === "drive" || this.teacherLastScanType === "picker_files";
+        const scanSourceLabel = isDrive ? "Google Drive" : "Device Storage";
         container.innerHTML = `
           <div style="text-align: center; padding: 24px; color: var(--c-ink-light); font-size: 12px; line-height: 1.6;">
             <div style="font-size: 26px; margin-bottom: 8px;">🌱</div>
-            <div style="font-size: 14px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">All Clean!</div>
-            <div>Zero dark data bloat remaining in this source.</div>
+            <div style="font-size: 14px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">Zero Waste Identified</div>
+            <div>Your ${scanSourceLabel} currently has zero dark data bloat. You are operating 100% lean and green!</div>
+            ${isDrive ? `
+              <div style="margin-top: 8px; font-size: 11px; color: var(--c-pine); font-style: italic;">
+                Note: Files shared with you by others are excluded because they do not consume your personal storage quota.
+              </div>
+            ` : ""}
           </div>
         `;
         return;
@@ -1519,18 +1530,27 @@ class TeacherConfirmationView {
     modal.id = "modal-teacher-gdrive";
     modal.style.zIndex = "10000";
     modal.innerHTML = `
-      <div class="retro-modal" style="max-width: 420px;">
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: var(--c-wood-border);">
+      <div class="retro-modal" style="max-width: 440px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--c-wood-border);">
           ☁️ Teacher Google Drive Cleaner
+        </div>
+        <div style="background: rgba(45, 106, 54, 0.08); border-left: 3px solid var(--c-pine); padding: 8px 12px; border-radius: 4px; font-size: 11.5px; color: var(--c-ink); margin-bottom: 14px; line-height: 1.4;">
+          🍃 <strong>Personal Quota Protected</strong>: Files shared with you by colleagues or students are automatically excluded because they do not consume your Google Drive storage quota.
         </div>
         <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
           Choose how to scan your Google Drive:
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>⚡ Live Google Drive Scan</strong>
+            <strong>⚡ Live Google Drive Scan (Recommended)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Instantly scans files in your Google Drive to find duplicate and dormant data.
+              Instantly scans your owned files in Google Drive to find duplicate and dormant data.
+            </div>
+          </button>
+          <button class="retro-btn retro-btn-green" id="btn-tch-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+            <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              Opens Google selection dialog. Automatically filters to your owned files.
             </div>
           </button>
           <button class="retro-btn retro-btn-wood" id="btn-tch-gdrive-reconnect" style="width: 100%; padding: 10px; font-size: 12px; text-align: left; cursor: pointer;">
@@ -1552,6 +1572,10 @@ class TeacherConfirmationView {
       dismiss();
       await this.executeTeacherScan("__google_drive__", true, "drive");
     });
+    modal.querySelector("#btn-tch-gdrive-picker")?.addEventListener("click", () => {
+      dismiss();
+      this.openTeacherGooglePicker();
+    });
     modal.querySelector("#btn-tch-gdrive-reconnect")?.addEventListener("click", () => {
       dismiss();
       localStorage.removeItem("d2d_google_access_token");
@@ -1559,6 +1583,92 @@ class TeacherConfirmationView {
     });
     modal.querySelector("#btn-tch-gdrive-cancel")?.addEventListener("click", dismiss);
     modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
+  }
+
+  async openTeacherGooglePicker() {
+    try {
+      const cfgRes = await fetch("/api/config/auth");
+      const cfg = await cfgRes.json();
+      const clientId = cfg.google_client_id;
+      const appId = cfg.google_app_id || (clientId ? clientId.split("-")[0] : "");
+
+      const buildPicker = (oauthToken) => {
+        if (!window.google || !window.google.picker) {
+          this.executeTeacherScan("__google_drive__", true, "drive");
+          return;
+        }
+
+        const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(true)
+          .setOwnedByMe(true);
+
+        const folderView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+          .setSelectFolderEnabled(true)
+          .setOwnedByMe(true);
+
+        const builder = new google.picker.PickerBuilder()
+          .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+          .setOAuthToken(oauthToken)
+          .setAppId(appId)
+          .addView(docsView)
+          .addView(folderView)
+          .addView(new google.picker.DocsUploadView())
+          .setTitle("Select Teacher Google Drive Files or Folder to Clean");
+
+        if (cfg.google_api_key) {
+          builder.setDeveloperKey(cfg.google_api_key);
+        }
+
+        const picker = builder
+          .setCallback(async (data) => {
+            if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+              const docs = data[google.picker.Response.DOCUMENTS] || [];
+              if (docs.length > 0) {
+                const pickedFiles = docs.map((d) => ({
+                  id: d[google.picker.Document.ID],
+                  name: d[google.picker.Document.NAME],
+                  sizeBytes: Number(d[google.picker.Document.SIZE_BYTES] || d.sizeBytes || d.fileSize || 0),
+                  mimeType: d[google.picker.Document.MIME_TYPE],
+                  lastEditedUtc: d[google.picker.Document.LAST_EDITED_UTC] || Date.now(),
+                  isOwner: d.isOwner !== false
+                }));
+                await this.executeTeacherScan(null, true, "picker_files", pickedFiles, oauthToken);
+              }
+            }
+          })
+          .build();
+        picker.setVisible(true);
+      };
+
+      const loadGapiAndPicker = (token) => {
+        if (window.gapi) {
+          window.gapi.load("picker", () => buildPicker(token));
+        } else {
+          this.executeTeacherScan("__google_drive__", true, "drive");
+        }
+      };
+
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file",
+          callback: (resp) => {
+            if (resp && resp.access_token) {
+              loadGapiAndPicker(resp.access_token);
+            } else {
+              this.executeTeacherScan("__google_drive__", true, "drive");
+            }
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: "" });
+      } else {
+        this.executeTeacherScan("__google_drive__", true, "drive");
+      }
+    } catch (err) {
+      console.warn("Teacher picker error, falling back to direct drive scan:", err);
+      this.executeTeacherScan("__google_drive__", true, "drive");
+    }
   }
 
   showTeacherDeviceScanModal() {
