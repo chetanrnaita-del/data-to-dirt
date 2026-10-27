@@ -1421,8 +1421,8 @@ class TeacherConfirmationView {
           </div>
 
           <!-- Instant Teacher Clean Notice -->
-          <div class="retro-inset" style="padding: 10px 12px; background: #e8f8f5; border: 1.5px solid #00b894; border-radius: 6px; margin-bottom: 12px;">
-            <div style="font-weight: bold; color: #00b894; font-size: 12px; margin-bottom: 4px;">
+          <div class="retro-inset" style="padding: 10px 12px; background: #eef6ef; border: 1.5px solid #2d6a36; border-radius: 6px; margin-bottom: 12px;">
+            <div style="font-weight: bold; color: #2d6a36; font-size: 12px; margin-bottom: 4px;">
               ⚡ Instant Teacher Clean (No Permission / Queue Needed)
             </div>
             <div style="font-size: 11px; color: #2d3436; line-height: 1.4;">
@@ -1493,7 +1493,7 @@ class TeacherConfirmationView {
 
           if (this.particleEngine) {
             this.particleEngine.emitDeletionPoof(window.innerWidth / 2, window.innerHeight / 2, 35);
-            this.particleEngine.emitFloatingText("Deleted Instantly!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#00b894");
+            this.particleEngine.emitFloatingText("Deleted Instantly!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#5cb339");
           }
 
           this.showToast(`✓ Permanently deleted ${f.file_name}!`, "success");

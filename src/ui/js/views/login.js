@@ -6,90 +6,94 @@ class LoginView {
 
   async render(container) {
     container.innerHTML = `
-      <div style="display: flex; height: 100%; background-color: #f4f6fb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <div style="display: flex; height: 100%; background-color: #f5efe6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         
-        <!-- Left Pane (Illustration) -->
-        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #e0e8ff 0%, #f4f6fb 100%); position: relative; overflow: hidden;">
-          <div style="z-index: 10; text-align: center;">
-            <div style="width: 130px; height: 130px; background: #fff; border-radius: 24px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; border: 3px solid #e2b77a; box-shadow: 0 12px 32px rgba(0,0,0,0.12); overflow: hidden;">
+        <!-- Left Pane (Botanical Forest Environment) -->
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(165deg, #132a17 0%, #1c3d22 55%, #0f1d11 100%); position: relative; overflow: hidden; padding: 30px;">
+          <div style="z-index: 10; text-align: center; max-width: 420px;">
+            <div style="width: 120px; height: 120px; background: #fdfbf7; border-radius: 20px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; border: 3px solid #b07542; box-shadow: 0 10px 25px rgba(0,0,0,0.35); overflow: hidden;">
               <img src="/logo.png" alt="Data-to-Dirt Logo" style="width: 100%; height: 100%; object-fit: cover;" />
             </div>
-            <h1 style="color: #2c3e50; font-size: 28px; margin: 0; font-weight: 800;">DATA-TO-DIRT</h1>
-            <p style="color: #7f8c8d; font-size: 14px; margin-top: 5px;">Powered by Retro Engine</p>
+            <h1 style="color: #f7eedb; font-size: 28px; margin: 0; font-weight: 800; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.4);">DATA-TO-DIRT</h1>
+            <p style="color: #9be05c; font-size: 14px; margin-top: 8px; font-weight: 600;">🌱 Transforming Digital Waste into Living Forests</p>
+            <div style="margin-top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(155, 224, 92, 0.3); border-radius: 20px; color: #d6f2c4; font-size: 12px; font-weight: 500;">
+              <span>🌲</span> Authentic Carbon Reduction Platform
+            </div>
           </div>
           
-          <!-- Abstract shapes for illustration -->
-          <div style="position: absolute; bottom: -50px; left: -10%; right: -10%; height: 180px; background: rgba(255, 154, 158, 0.4); border-radius: 50%; z-index: 1;"></div>
-          <div style="position: absolute; bottom: -80px; left: 10%; right: -20%; height: 200px; background: rgba(254, 207, 239, 0.5); border-radius: 50%; z-index: 2;"></div>
+          <!-- Earthen Topography Accent Contours (Organic Nature Shapes) -->
+          <div style="position: absolute; bottom: -60px; left: -10%; right: -10%; height: 220px; background: radial-gradient(ellipse at center, rgba(82, 148, 92, 0.28) 0%, rgba(45, 106, 54, 0.05) 70%, transparent 100%); border-radius: 50%; z-index: 1;"></div>
+          <div style="position: absolute; bottom: -90px; left: 15%; right: -25%; height: 220px; background: radial-gradient(ellipse at center, rgba(176, 117, 66, 0.22) 0%, rgba(120, 72, 36, 0.05) 70%, transparent 100%); border-radius: 50%; z-index: 2;"></div>
         </div>
 
-        <!-- Right Pane (Login Form) -->
-        <div style="width: 480px; background: #fff; border-radius: 30px 0 0 30px; box-shadow: -10px 0 30px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: center; padding: 40px; z-index: 10; box-sizing: border-box; overflow-y: auto;">
-          <h2 style="color: #34495e; font-size: 18px; font-weight: 600; margin-bottom: 20px;">Please select your role</h2>
+        <!-- Right Pane (Warm Earthen Paper Login Form) -->
+        <div style="width: 480px; background: #fdfbf7; border-left: 1.5px solid #e2d7c5; border-radius: 24px 0 0 24px; box-shadow: -10px 0 30px rgba(44, 30, 17, 0.06); display: flex; flex-direction: column; justify-content: center; padding: 40px; z-index: 10; box-sizing: border-box; overflow-y: auto;">
+          <h2 style="color: #2b1f14; font-size: 20px; font-weight: 700; margin-bottom: 6px;">Sign In to Account</h2>
+          <div style="color: #6d5b4a; font-size: 13px; margin-bottom: 22px;">Choose your role to access your eco dashboard</div>
           
           <div style="display: flex; gap: 10px; margin-bottom: 24px;">
-            <button class="role-btn active" data-role="student" style="flex: 1; padding: 12px 10px; border: 2px solid #6c5ce7; border-radius: 12px; background: #f0edff; color: #6c5ce7; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+            <button class="role-btn active" data-role="student" style="flex: 1; padding: 12px 10px; border: 2px solid #2d6a36; border-radius: 10px; background: #eef6ef; color: #1e4a23; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
               <span style="font-size: 20px;">🧑‍🎓</span> Student
             </button>
-            <button class="role-btn" data-role="teacher" style="flex: 1; padding: 12px 10px; border: 1px solid #dfe6e9; border-radius: 12px; background: #fff; color: #636e72; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+            <button class="role-btn" data-role="teacher" style="flex: 1; padding: 12px 10px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
               <span style="font-size: 20px;">👨‍🏫</span> Staff
             </button>
-            <button class="role-btn" data-role="admin" style="flex: 1; padding: 12px 10px; border: 1px solid #dfe6e9; border-radius: 12px; background: #fff; color: #636e72; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+            <button class="role-btn" data-role="admin" style="flex: 1; padding: 12px 10px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
               <span style="font-size: 20px;">⚙️</span> Admin
             </button>
           </div>
 
           <!-- Recently Created Banner (if available) -->
-          <div id="recent-account-banner" style="display: none; margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; background: #e8f8f5; border: 1.5px solid #27ae60; font-size: 12px; color: #1e824c;">
+          <div id="recent-account-banner" style="display: none; margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; background: #eef6ef; border: 1.5px solid #2d6a36; font-size: 12px; color: #1e4a23;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span id="recent-account-text" style="font-weight: 600;">⭐ Recent Account</span>
-              <button type="button" id="btn-use-recent" style="background: #27ae60; color: #fff; border: none; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; cursor: pointer;">⚡ Auto-Fill</button>
+              <button type="button" id="btn-use-recent" style="background: #2d6a36; color: #fff; border: none; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; cursor: pointer;">⚡ Auto-Fill</button>
             </div>
           </div>
 
           <div style="margin-bottom: 18px;">
-            <label style="display: block; font-size: 13px; font-weight: 700; color: #2d3436; margin-bottom: 6px;">
-              <span id="label-user">Student ID / Name</span> <span style="color: #e74c3c;">*</span>
+            <label style="display: block; font-size: 13px; font-weight: 700; color: #2b1f14; margin-bottom: 6px;">
+              <span id="label-user">Student ID / Name</span> <span style="color: #c0392b;">*</span>
             </label>
-            <input type="text" id="login-user" placeholder="Enter Student ID or Full Name" style="width: 100%; padding: 13px 15px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
-            <div id="hint-user" style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
+            <input type="text" id="login-user" placeholder="Enter Student ID or Full Name" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
+            <div id="hint-user" style="font-size: 11px; color: #6d5b4a; margin-top: 4px;">
               💡 Enter your registered Student Full Name or Student ID.
             </div>
           </div>
 
           <div style="margin-bottom: 18px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="font-size: 13px; font-weight: 700; color: #2d3436;">
-                <span id="label-pass">Class Code or Password</span> <span style="color: #e74c3c;">*</span>
+              <label style="font-size: 13px; font-weight: 700; color: #2b1f14;">
+                <span id="label-pass">Class Code or Password</span> <span style="color: #c0392b;">*</span>
               </label>
             </div>
-            <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" style="width: 100%; padding: 13px 15px; border: 1px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border 0.2s; box-sizing: border-box;" />
-            <div id="hint-pass" style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
+            <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
+            <div id="hint-pass" style="font-size: 11px; color: #6d5b4a; margin-top: 4px;">
               💡 Enter class code (e.g. bio101, cs301) or student123.
             </div>
           </div>
 
           <!-- Quick Select Shortcuts for Students -->
           <div id="student-quick-select" style="display: block; margin-bottom: 18px;">
-            <div style="font-size: 11px; font-weight: bold; color: #636e72; margin-bottom: 6px;">Quick Class Presets:</div>
+            <div style="font-size: 11px; font-weight: bold; color: #5c4e3f; margin-bottom: 6px;">Quick Class Presets:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              <button type="button" class="stu-class-pill" data-class="bio101" style="font-size: 11px; padding: 5px 8px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-weight: 600;">🌿 Bio 101</button>
-              <button type="button" class="stu-class-pill" data-class="cs301" style="font-size: 11px; padding: 5px 8px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-weight: 600;">💻 CS 301</button>
-              <button type="button" class="stu-class-pill" data-class="env201" style="font-size: 11px; padding: 5px 8px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-weight: 600;">🌍 Env 201</button>
-              <button type="button" class="stu-class-pill" data-class="chem102" style="font-size: 11px; padding: 5px 8px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-weight: 600;">🧪 Chem 102</button>
-              <button type="button" class="stu-class-pill" data-class="earth204" style="font-size: 11px; padding: 5px 8px; border: 1px solid #c8d6e5; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-weight: 600;">⛰️ Earth 204</button>
+              <button type="button" class="stu-class-pill" data-class="bio101" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🌿 Bio 101</button>
+              <button type="button" class="stu-class-pill" data-class="cs301" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">💻 CS 301</button>
+              <button type="button" class="stu-class-pill" data-class="env201" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🌍 Env 201</button>
+              <button type="button" class="stu-class-pill" data-class="chem102" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🧪 Chem 102</button>
+              <button type="button" class="stu-class-pill" data-class="earth204" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">⛰️ Earth 204</button>
             </div>
           </div>
           
-          <div id="login-error" style="color: #e74c3c; font-size: 13px; margin-bottom: 15px; display: none; font-weight: 600;"></div>
+          <div id="login-error" style="color: #c0392b; font-size: 13px; margin-bottom: 15px; display: none; font-weight: 600;"></div>
 
-          <button id="btn-proceed" style="width: 100%; padding: 15px; background: #5f27cd; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; transition: background 0.2s; box-shadow: 0 4px 15px rgba(95, 39, 205, 0.3);">
+          <button id="btn-proceed" style="width: 100%; padding: 14px; background: #2d6a36; color: #ffffff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: background 0.2s, transform 0.1s; box-shadow: 0 4px 12px rgba(45, 106, 54, 0.28);">
             Proceed →
           </button>
 
           <!-- PWA Install Option on Login -->
           <div style="margin-top: 16px; text-align: center; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-            <button id="btn-login-install" type="button" style="background: #f8f9fa; border: 1.5px solid #dcdde1; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #2f3640; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
+            <button id="btn-login-install" type="button" style="background: #f7f3ec; border: 1.5px solid #cfc2af; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: #3d3328; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;">
               <span>📲</span> Install App
             </button>
           </div>
@@ -142,15 +146,17 @@ class LoginView {
         // Update UI styles
         roleBtns.forEach(b => {
           b.classList.remove('active');
-          b.style.border = '1px solid #dfe6e9';
-          b.style.background = '#fff';
-          b.style.color = '#636e72';
+          b.style.border = '1.5px solid #ded4c5';
+          b.style.background = '#ffffff';
+          b.style.color = '#6d5b4a';
+          b.style.fontWeight = '600';
         });
         
         btn.classList.add('active');
-        btn.style.border = '2px solid #6c5ce7';
-        btn.style.background = '#f0edff';
-        btn.style.color = '#6c5ce7';
+        btn.style.border = '2px solid #2d6a36';
+        btn.style.background = '#eef6ef';
+        btn.style.color = '#1e4a23';
+        btn.style.fontWeight = '700';
         
         this.selectedRole = btn.dataset.role;
         

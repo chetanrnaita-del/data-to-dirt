@@ -119,7 +119,7 @@ class AnalyticsDashboardView {
           </div>
           <div class="retro-card" style="padding: 8px 12px;">
             <div style="font-size: 10px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold;">🔍 Scans Executed</div>
-            <div id="an-kpi-scans" style="font-size: 19px; font-weight: bold; color: #8e44ad; margin-top: 2px;">--</div>
+            <div id="an-kpi-scans" style="font-size: 19px; font-weight: bold; color: #b87714; margin-top: 2px;">--</div>
             <div id="an-kpi-scans-sub" style="font-size: 10px; color: var(--c-ink-light); margin-top: 2px;">Device & Cloud</div>
           </div>
           <div class="retro-card" style="padding: 8px 12px;">

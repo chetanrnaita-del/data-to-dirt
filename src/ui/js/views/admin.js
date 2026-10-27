@@ -600,7 +600,7 @@ class AdminEcoFundView {
         return `
           <tr style="border-bottom: 1px solid #f1f2f6;">
             <td style="padding: 6px 8px; font-weight: bold; color: #2d3436;">🧑‍🏫 ${t.name || t.teacher_id}</td>
-            <td style="padding: 6px 8px; font-family: monospace; color: #5f27cd;"><code>${tid}</code></td>
+            <td style="padding: 6px 8px; font-family: monospace; color: #2d6a36;"><code>${tid}</code></td>
             <td style="padding: 6px 8px;"><span class="retro-tag retro-tag-clean" style="font-size: 9.5px; padding: 1px 5px;">${cCode}</span></td>
             <td style="padding: 6px 8px; font-family: monospace; color: #636e72;">${t.pin || "teacher123"}</td>
             <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${t.created_at_iso || "Pre-installed"}</td>

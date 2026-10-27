@@ -312,7 +312,7 @@ class DataToDirtApp {
       if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
         userRoleBadge.textContent = "🎒 STUDENT";
-        userRoleBadge.style.background = "linear-gradient(135deg, #6c5ce7, #a29bfe)";
+        userRoleBadge.style.background = "linear-gradient(135deg, #2d6a36, #439352)";
       }
     } else if (this.authenticatedRole === "teacher") {
       // Teacher: Only Teacher View. Analytics is strictly restricted to Admin.
@@ -320,7 +320,7 @@ class DataToDirtApp {
       if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
         userRoleBadge.textContent = "📋 TEACHER";
-        userRoleBadge.style.background = "linear-gradient(135deg, #00b894, #55efc4)";
+        userRoleBadge.style.background = "linear-gradient(135deg, #7c481e, #9e5f2a)";
       }
     } else if (this.authenticatedRole === "admin") {
       // Admin: Admin Console, Teacher Queue, and Analytics View ONLY for Admin!
@@ -329,7 +329,7 @@ class DataToDirtApp {
       if (btnAnalytics) btnAnalytics.style.display = "inline-block";
       if (userRoleBadge) {
         userRoleBadge.textContent = "⚙️ ADMIN";
-        userRoleBadge.style.background = "linear-gradient(135deg, #e17055, #fab1a0)";
+        userRoleBadge.style.background = "linear-gradient(135deg, #8a2a1a, #b3422d)";
       }
     }
 
@@ -806,7 +806,7 @@ class DataToDirtApp {
       `;
     } else {
       instructionsHtml = `
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 14px; margin-bottom: 15px; border-left: 4px solid #6c5ce7;">
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 14px; margin-bottom: 15px; border-left: 4px solid #2d6a36;">
           <div style="font-weight: 700; color: #2d3436; margin-bottom: 8px; font-size: 14px;">💻 Install on Desktop (Chrome / Edge / Safari)</div>
           <ol style="margin: 0; padding-left: 20px; line-height: 1.6; font-size: 13px; color: #636e72;">
             <li>Look for the <strong>Install App</strong> icon (🖥️ / ⬇️) in your browser address bar.</li>
@@ -837,7 +837,7 @@ class DataToDirtApp {
         ${instructionsHtml}
 
         <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px;">
-          <button id="btn-download-app-file" style="padding: 12px; background: #00b894; color: #fff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);">
+          <button id="btn-download-app-file" style="padding: 12px; background: #2d6a36; color: #fff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; box-shadow: 0 4px 10px rgba(45, 106, 54, 0.3);">
             <span>⬇️</span> Download App Desktop Launcher
           </button>
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px;">
