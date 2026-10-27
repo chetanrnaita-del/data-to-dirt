@@ -278,12 +278,22 @@ class AdminEcoFundView {
     });
   }
 
+  getAuthHeaders(extra = {}) {
+    const token = localStorage.getItem("d2d_session_token") || "";
+    const headers = { ...extra };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
   async fetchData() {
     try {
+      const headers = this.getAuthHeaders();
       const [ecoRes, analyticsRes, auditRes] = await Promise.all([
-        fetch("/api/admin/ecofund").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
-        fetch("/api/teacher/analytics").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
-        fetch("/api/admin/audit").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch("/api/admin/ecofund", { headers }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch("/api/teacher/analytics", { headers }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch("/api/admin/audit", { headers }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
       ]);
 
       this.ecofund = ecoRes && Object.keys(ecoRes).length > 0
@@ -407,7 +417,7 @@ class AdminEcoFundView {
     try {
       const res = await fetch("/api/admin/ecofund", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       }).then((r) => r.json());
 

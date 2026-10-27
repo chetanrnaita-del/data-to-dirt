@@ -69,7 +69,9 @@ class DataToDirtApp {
 
     if (existingToken && savedRole) {
       try {
-        const res = await fetch("/api/auth/session");
+        const res = await fetch("/api/auth/session", {
+          headers: existingToken ? { "Authorization": `Bearer ${existingToken}` } : {}
+        });
         const data = await res.json();
         if (res.ok && data.status === "authenticated" && data.session) {
           console.log("[+] Restoring active session:", data.session.role);

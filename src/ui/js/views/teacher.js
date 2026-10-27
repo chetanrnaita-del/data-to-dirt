@@ -179,7 +179,7 @@ class TeacherConfirmationView {
       try {
         const res = await fetch("/api/teacher/decide_all", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001" })
         }).then(r => r.json());
         if (this.audioSynth) this.audioSynth.playVictoryFanfare();
@@ -328,15 +328,25 @@ class TeacherConfirmationView {
     }
   }
 
+  getAuthHeaders(extra = {}) {
+    const token = localStorage.getItem("d2d_session_token") || "";
+    const headers = { ...extra };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
   async fetchData() {
     try {
       const sel = document.getElementById("t-class-filter-select");
       const cCode = sel ? sel.value : (this.selectedClassCode || "all");
       const qUrl = cCode && cCode !== "all" ? `/api/teacher/queue?class_code=${encodeURIComponent(cCode)}` : `/api/teacher/queue?class_code=all`;
 
+      const authHeaders = this.getAuthHeaders();
       const [queueRes, analyticsRes] = await Promise.all([
-        fetch(qUrl).then((r) => r.json()),
-        fetch("/api/teacher/analytics").then((r) => r.json()),
+        fetch(qUrl, { headers: authHeaders }).then((r) => r.json()),
+        fetch("/api/teacher/analytics", { headers: authHeaders }).then((r) => r.json()),
       ]);
 
       this.queue = queueRes.queue || [];
@@ -538,7 +548,7 @@ class TeacherConfirmationView {
     try {
       const res = await fetch("/api/teacher/decide", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ request_id: requestId, action: "approve" }),
       }).then((r) => r.json());
 
@@ -596,7 +606,7 @@ class TeacherConfirmationView {
       try {
         await fetch("/api/teacher/decide", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ request_id: requestId, action: "reject", feedback: feedback }),
         });
         if (this.audioSynth) this.audioSynth.playBlip();
@@ -649,7 +659,7 @@ class TeacherConfirmationView {
       try {
         await fetch("/api/teacher/decide", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ request_id: requestId, action: "flag", feedback: reason }),
         });
         if (this.audioSynth) this.audioSynth.playGamingBuzzer();
@@ -1030,7 +1040,7 @@ class TeacherConfirmationView {
       try {
         const resp = await fetch("/api/teacher/students/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             name: name,
             class_code: classCode,

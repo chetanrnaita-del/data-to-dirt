@@ -308,16 +308,28 @@ class AuthService:
 
                 if in_flask:
                     try:
-                        # Extract token from Authorization header or args/body
+                        # Extract token from Authorization header or headers/cookies/args/body
                         auth_header = request.headers.get("Authorization", "")
                         if auth_header.startswith("Bearer "):
                             token = auth_header[7:].strip()
                         elif "X-Auth-Token" in request.headers:
                             token = request.headers["X-Auth-Token"].strip()
+                        elif "X-Session-Token" in request.headers:
+                            token = request.headers["X-Session-Token"].strip()
                         elif "token" in request.args:
                             token = request.args.get("token")
                         elif request.is_json and request.json and "token" in request.json:
                             token = request.json.get("token")
+                        elif "d2d_session_token" in request.cookies:
+                            token = request.cookies.get("d2d_session_token")
+                        elif "token" in request.cookies:
+                            token = request.cookies.get("token")
+                        else:
+                            try:
+                                from flask import session as flask_session
+                                token = flask_session.get("session_token") or flask_session.get("token")
+                            except Exception:
+                                pass
                     except RuntimeError:
                         # Outside active HTTP request context
                         pass

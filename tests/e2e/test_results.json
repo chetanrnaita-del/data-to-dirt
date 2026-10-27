@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-09-05T18:18:46Z",
+  "timestamp": "2026-10-27T18:27:49Z",
   "total_tests": 345,
   "total_passed": 345,
   "total_failed": 0,
   "total_errors": 0,
   "total_skipped": 0,
   "overall_status": "PASSED",
-  "duration_seconds": 5.754,
+  "duration_seconds": 28.023,
   "tiers": [
     {
       "tier_name": "Tier 1: Feature Coverage (F-01..F-30)",
@@ -15,7 +15,7 @@
       "failed": 0,
       "errors": 0,
       "skipped": 0,
-      "elapsed_seconds": 0.041,
+      "elapsed_seconds": 0.135,
       "records": [
         {
           "test_id": "tests.e2e.test_tier1_features.TestTier1FeatureCoverage.test_T1_F01_01_kwh_calculation",
@@ -1076,7 +1076,7 @@
       "failed": 0,
       "errors": 0,
       "skipped": 0,
-      "elapsed_seconds": 0.075,
+      "elapsed_seconds": 0.217,
       "records": [
         {
           "test_id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_T2_F01_01_zero_bytes_carbon",
@@ -2137,7 +2137,7 @@
       "failed": 0,
       "errors": 0,
       "skipped": 0,
-      "elapsed_seconds": 3.222,
+      "elapsed_seconds": 16.292,
       "records": [
         {
           "test_id": "tests.e2e.test_tier3_pairwise.TestTier3PairwiseInteractions.test_T3_01_confidential_marked_file_cannot_enter_queue",
@@ -2358,7 +2358,7 @@
       "failed": 0,
       "errors": 0,
       "skipped": 0,
-      "elapsed_seconds": 2.415,
+      "elapsed_seconds": 11.372,
       "records": [
         {
           "test_id": "tests.e2e.test_tier4_scenarios.TestTier4Scenarios.test_T4_01_student_semester_cleanup_workflow",

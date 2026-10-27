@@ -44,9 +44,19 @@ class AnalyticsDashboardView {
     }
   }
 
+  getAuthHeaders(extra = {}) {
+    const token = localStorage.getItem("d2d_session_token") || "";
+    const headers = { ...extra };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
   async fetchData(silent = false) {
     try {
-      const res = await fetch("/api/analytics/dashboard");
+      const headers = this.getAuthHeaders();
+      const res = await fetch("/api/analytics/dashboard", { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load analytics dashboard`);
       this.data = await res.json();
       this.updateView();

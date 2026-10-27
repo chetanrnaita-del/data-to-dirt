@@ -2469,7 +2469,23 @@ def create_flask_app():
     @app.route("/api/auth/session", methods=["GET"])
     def api_auth_session():
         auth_header = request.headers.get("Authorization", "")
-        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        token = None
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+        elif "X-Auth-Token" in request.headers:
+            token = request.headers["X-Auth-Token"].strip()
+        elif "X-Session-Token" in request.headers:
+            token = request.headers["X-Session-Token"].strip()
+        elif "token" in request.args:
+            token = request.args.get("token")
+        elif "d2d_session_token" in request.cookies:
+            token = request.cookies.get("d2d_session_token")
+        elif "token" in request.cookies:
+            token = request.cookies.get("token")
+        else:
+            from flask import session as flask_session
+            token = flask_session.get("session_token") or flask_session.get("token")
+
         session = default_auth_service.validate_token(token)
         if not session:
             return jsonify({"status": "unauthenticated", "role": "student"}), 200
@@ -3021,7 +3037,30 @@ def create_flask_app():
     @default_auth_service.require_role("teacher")
     def api_teacher_analytics():
         state = load_state()
-        items = state.get("teacher_queue", [])
+        local_queue = state.get("teacher_queue", [])
+
+        # Merge real-time items from Cloud Firestore deletion_queue
+        firestore_queue = []
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("deletion_queue").stream():
+                    d = doc.to_dict()
+                    d["request_id"] = d.get("request_id") or doc.id
+                    firestore_queue.append(d)
+            except Exception as fe:
+                print(f"[!] Firestore teacher analytics fetch notice: {fe}")
+
+        merged = {}
+        for item in local_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+        for item in firestore_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+
+        items = list(merged.values())
         trees = state.get("ecofund", {}).get("trees_planted", 0)
         stats = AnalyticsService.calculate_analytics(items, trees_funded=trees)
         return jsonify(stats.to_dict())
