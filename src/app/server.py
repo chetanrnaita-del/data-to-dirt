@@ -64,10 +64,14 @@ def _load_env_file():
 
 _load_env_file()
 
-def get_google_client_id() -> str:
+def get_google_client_id(provider: str = "school") -> str:
+    if str(provider).lower().strip() == "personal":
+        return os.environ.get("GOOGLE_CLIENT_ID_PERSONAL", "")
     return os.environ.get("GOOGLE_CLIENT_ID", "")
 
-def get_google_client_secret() -> str:
+def get_google_client_secret(provider: str = "school") -> str:
+    if str(provider).lower().strip() == "personal":
+        return os.environ.get("GOOGLE_CLIENT_SECRET_PERSONAL", "")
     return os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
 from src.app.config import (
@@ -876,18 +880,25 @@ def create_flask_app():
     def google_login():
         from flask import session, redirect, request
         import base64
-        client_id = get_google_client_id()
+        provider = request.args.get("provider", "school").lower().strip()
+        if provider not in ("school", "personal"):
+            provider = "school"
+
+        client_id = get_google_client_id(provider)
         if not client_id:
-            print("[OAUTH ERROR] GOOGLE_CLIENT_ID is not configured on the server.")
-            return redirect("/?oauth=error&msg=" + urllib.parse.quote("GOOGLE_CLIENT_ID is not configured on the server. Please verify environment settings."))
+            env_var = "GOOGLE_CLIENT_ID_PERSONAL" if provider == "personal" else "GOOGLE_CLIENT_ID"
+            print(f"[OAUTH ERROR] {env_var} is not configured on the server.")
+            return redirect("/?oauth=error&msg=" + urllib.parse.quote(f"{env_var} is not configured on the server. Please verify environment settings."))
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
-        print(f"[OAUTH DEBUG] Initiating login with redirect_uri = {redirect_uri}")
+        session["oauth_provider"] = provider
+        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}")
 
-        # Pack redirect_uri and timestamp into signed state parameter
-        # This guarantees the callback gets the exact matching redirect_uri even if cookies are dropped
+        # Pack redirect_uri, provider, and timestamp into signed state parameter
+        # This guarantees the callback gets the exact matching redirect_uri and provider even if cookies are dropped
         state_payload = {
             "redirect_uri": redirect_uri,
+            "provider": provider,
             "ts": time.time()
         }
         state_str = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
@@ -916,11 +927,27 @@ def create_flask_app():
             print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
 
-        client_id = get_google_client_id()
-        client_secret = get_google_client_secret()
+        # 1. Extract verified redirect_uri and provider from state parameter first, falling back to session or host
+        redirect_uri = None
+        provider = "school"
+        if state_param:
+            try:
+                decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
+                redirect_uri = decoded_json.get("redirect_uri")
+                provider = decoded_json.get("provider", "school")
+                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}")
+            except Exception as ex:
+                print(f"[OAUTH WARN] Could not decode state param: {ex}")
+
+        if not provider or provider not in ("school", "personal"):
+            provider = session.get("oauth_provider", "school")
+
+        client_id = get_google_client_id(provider)
+        client_secret = get_google_client_secret(provider)
 
         if not client_id or not client_secret:
-            err_msg = "Google OAuth credentials not configured on server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET). Use Google Picker or Local Device cleaner."
+            prov_label = "Personal / Outside Google" if provider == "personal" else "School Google"
+            err_msg = f"{prov_label} OAuth credentials not configured on server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET). Use Google Picker or Local Device cleaner."
             print(f"[OAUTH ERROR] {err_msg}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(err_msg)}")
 
@@ -937,22 +964,13 @@ def create_flask_app():
             if cached_token:
                 print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
                 session["google_access_token"] = cached_token
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}")
-
-        # 2. Extract verified redirect_uri from state parameter first, falling back to session or host
-        redirect_uri = None
-        if state_param:
-            try:
-                decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
-                redirect_uri = decoded_json.get("redirect_uri")
-                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}")
-            except Exception as ex:
-                print(f"[OAUTH WARN] Could not decode state param: {ex}")
+                session["oauth_provider"] = provider
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}")
 
         if not redirect_uri:
             redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
 
-        print(f"[OAUTH DEBUG] Exchanging code with redirect_uri = {redirect_uri}")
+        print(f"[OAUTH DEBUG] Exchanging code with provider = {provider}, redirect_uri = {redirect_uri}")
 
         data = urllib.parse.urlencode({
             "client_id": client_id,
@@ -969,9 +987,10 @@ def create_flask_app():
                 token_info = json.loads(resp.read().decode())
                 tok = token_info.get("access_token", "")
                 session["google_access_token"] = tok
+                session["oauth_provider"] = provider
                 if code:
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}")
         except urllib.error.HTTPError as e:
             error_body = ""
             try:
@@ -1126,14 +1145,19 @@ def create_flask_app():
     @app.route("/api/config/auth", methods=["GET"])
     def api_config_auth():
         from flask import session
-        cid = get_google_client_id()
+        cid = get_google_client_id("school")
         app_id = cid.split("-")[0] if "-" in cid else ""
+        cid_personal = get_google_client_id("personal")
+        app_id_personal = cid_personal.split("-")[0] if "-" in cid_personal else ""
         return jsonify({
             "google_client_id": cid,
             "google_app_id": app_id,
+            "google_client_id_personal": cid_personal,
+            "google_app_id_personal": app_id_personal,
             "google_api_key": os.environ.get("GOOGLE_API_KEY", ""),
             "redirect_uri": _get_oauth_redirect_uri(),
-            "has_token": bool(session.get("google_access_token"))
+            "has_token": bool(session.get("google_access_token")),
+            "active_provider": session.get("oauth_provider", "school")
         })
 
     @app.route("/api/config/analytics", methods=["GET"])

@@ -54,6 +54,10 @@ class DataToDirtApp {
     if (tokenFromUrl) {
       localStorage.setItem("d2d_google_access_token", tokenFromUrl);
     }
+    const providerFromUrl = urlParams.get("provider");
+    if (providerFromUrl) {
+      localStorage.setItem("d2d_google_provider", providerFromUrl);
+    }
 
     // Check if user is already logged in
     const existingToken = localStorage.getItem("d2d_session_token");

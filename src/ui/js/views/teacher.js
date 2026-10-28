@@ -1166,11 +1166,14 @@ class TeacherConfirmationView {
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
               <span style="color: var(--c-amber-dark, #b45309); font-weight: bold;">⚠️ ${errorMsg}</span>
               <div style="display: flex; gap: 6px;">
-                <a href="/auth/google/login" class="retro-btn retro-btn-sm retro-btn-gold" style="text-decoration: none; padding: 4px 10px; font-size: 11px;">🔑 Connect Google Drive</a>
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-gold" id="btn-tch-banner-connect-drive" style="padding: 4px 10px; font-size: 11px;">🔑 Connect Google Drive</button>
                 <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-tch-banner-picker" style="padding: 4px 10px; font-size: 11px;">📁 Google Picker</button>
               </div>
             </div>
           `;
+          banner.querySelector("#btn-tch-banner-connect-drive")?.addEventListener("click", () => {
+            this.showTeacherGoogleDriveModal();
+          });
           banner.querySelector("#btn-tch-banner-picker")?.addEventListener("click", () => {
             this.openTeacherGooglePicker();
           });
@@ -1552,40 +1555,65 @@ class TeacherConfirmationView {
 
   showTeacherGoogleDriveModal() {
     document.getElementById("modal-teacher-gdrive")?.remove();
+    const existingToken = localStorage.getItem("d2d_google_access_token");
+    const activeProvider = localStorage.getItem("d2d_google_provider") || "school";
+    const providerLabel = activeProvider === "personal" ? "Personal / Outside Account" : "School Account (@bh05.billabonghighschool.com)";
+
     const modal = document.createElement("div");
     modal.className = "retro-modal-backdrop";
     modal.id = "modal-teacher-gdrive";
     modal.style.zIndex = "10000";
     modal.innerHTML = `
-      <div class="retro-modal" style="max-width: 440px;">
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--c-wood-border);">
-          ☁️ Teacher Google Drive Cleaner
+      <div class="retro-modal" style="max-width: 480px;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--c-wood-border); display: flex; align-items: center; justify-content: space-between;">
+          <span>☁️ Teacher Google Drive Cleaner</span>
+          <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: normal; background: ${existingToken ? 'rgba(45, 106, 54, 0.15); color: var(--c-pine);' : 'rgba(180, 83, 9, 0.15); color: var(--c-amber-dark);'}">
+            ${existingToken ? '● Connected' : '○ Not Connected'}
+          </span>
         </div>
-        <div style="background: rgba(45, 106, 54, 0.08); border-left: 3px solid var(--c-pine); padding: 8px 12px; border-radius: 4px; font-size: 11.5px; color: var(--c-ink); margin-bottom: 14px; line-height: 1.4;">
+
+        <div style="background: rgba(45, 106, 54, 0.08); border-left: 3px solid var(--c-pine); padding: 8px 12px; border-radius: 4px; font-size: 11.5px; color: var(--c-ink); margin-bottom: 12px; line-height: 1.4;">
           🍃 <strong>Personal Quota Protected</strong>: Files shared with you by colleagues or students are automatically excluded because they do not consume your Google Drive storage quota.
         </div>
-        <div style="font-size: 13px; color: var(--c-ink-muted); margin-bottom: 16px;">
-          Choose how to scan your Google Drive:
+
+        ${existingToken ? `
+          <div style="background: rgba(0,0,0,0.04); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 11.5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--c-parchment-border);">
+            <div>
+              <div style="color: var(--c-ink-muted); font-size: 10px; text-transform: uppercase; font-weight: bold;">Active Google Drive:</div>
+              <div style="font-weight: bold; color: var(--c-pine);">${providerLabel}</div>
+            </div>
+            <button class="retro-btn retro-btn-sm retro-btn-gold" id="btn-tch-gdrive-direct" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">
+              ⚡ Scan Connected Drive
+            </button>
+          </div>
+        ` : ''}
+
+        <div style="font-size: 12px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 8px;">
+          ${existingToken ? 'Switch or Connect Another Account:' : 'Choose Your Google Account Type:'}
         </div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-direct" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
-            <strong>⚡ Live Google Drive Scan (Recommended)</strong>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+            <strong>🏫 Connect School Drive (@billabonghighschool.com)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Instantly scans your owned files in Google Drive to find duplicate and dormant data.
+              For official Billabong High School teacher and faculty accounts.
             </div>
           </button>
-          <button class="retro-btn retro-btn-green" id="btn-tch-gdrive-picker" style="width: 100%; padding: 12px; font-size: 13px; text-align: left; cursor: pointer;">
+
+          <button class="retro-btn retro-btn-wood" id="btn-tch-gdrive-personal" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+            <strong>🌐 Connect Personal / Outside Google Account (@gmail.com)</strong>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
+              For personal Gmail accounts and external educational accounts.
+            </div>
+          </button>
+
+          <button class="retro-btn retro-btn-green" id="btn-tch-gdrive-picker" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
             <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Opens Google selection dialog. Automatically filters to your owned files.
+              Opens Google selection dialog to browse and handpick files to clean.
             </div>
           </button>
-          <button class="retro-btn retro-btn-wood" id="btn-tch-gdrive-reconnect" style="width: 100%; padding: 10px; font-size: 12px; text-align: left; cursor: pointer;">
-            <strong>🔄 Switch / Connect Google Account</strong>
-            <div style="font-size: 10.5px; opacity: 0.85; margin-top: 2px;">
-              Re-authenticate or connect another Google Drive account.
-            </div>
-          </button>
+
           <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-tch-gdrive-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
             ✖ Cancel
           </button>
@@ -1595,24 +1623,34 @@ class TeacherConfirmationView {
     document.body.appendChild(modal);
 
     const dismiss = () => modal.remove();
+
     modal.querySelector("#btn-tch-gdrive-direct")?.addEventListener("click", async () => {
       dismiss();
-      const existingToken = localStorage.getItem("d2d_google_access_token");
-      if (!existingToken) {
-        window.location.href = "/auth/google/login";
-        return;
+      const token = localStorage.getItem("d2d_google_access_token");
+      if (token) {
+        await this.executeTeacherScan("__google_drive__", true, "drive", [], token);
       }
-      await this.executeTeacherScan("__google_drive__", true, "drive", [], existingToken);
     });
+
+    modal.querySelector("#btn-tch-gdrive-school")?.addEventListener("click", () => {
+      dismiss();
+      localStorage.removeItem("d2d_google_access_token");
+      localStorage.setItem("d2d_google_provider", "school");
+      window.location.href = "/auth/google/login?provider=school";
+    });
+
+    modal.querySelector("#btn-tch-gdrive-personal")?.addEventListener("click", () => {
+      dismiss();
+      localStorage.removeItem("d2d_google_access_token");
+      localStorage.setItem("d2d_google_provider", "personal");
+      window.location.href = "/auth/google/login?provider=personal";
+    });
+
     modal.querySelector("#btn-tch-gdrive-picker")?.addEventListener("click", () => {
       dismiss();
       this.openTeacherGooglePicker();
     });
-    modal.querySelector("#btn-tch-gdrive-reconnect")?.addEventListener("click", () => {
-      dismiss();
-      localStorage.removeItem("d2d_google_access_token");
-      window.location.href = "/auth/google/login";
-    });
+
     modal.querySelector("#btn-tch-gdrive-cancel")?.addEventListener("click", dismiss);
     modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
   }
@@ -1621,8 +1659,13 @@ class TeacherConfirmationView {
     try {
       const cfgRes = await fetch("/api/config/auth");
       const cfg = await cfgRes.json();
-      const clientId = cfg.google_client_id;
-      const appId = cfg.google_app_id || (clientId ? clientId.split("-")[0] : "");
+      const currentProvider = localStorage.getItem("d2d_google_provider") || "school";
+      const clientId = (currentProvider === "personal" && cfg.google_client_id_personal)
+        ? cfg.google_client_id_personal
+        : cfg.google_client_id;
+      const appId = (currentProvider === "personal" && cfg.google_app_id_personal)
+        ? cfg.google_app_id_personal
+        : (cfg.google_app_id || (clientId ? clientId.split("-")[0] : ""));
 
       const buildPicker = (oauthToken) => {
         if (!window.google || !window.google.picker) {
