@@ -382,7 +382,7 @@ class GoogleDriveProvider(ICloudStorageProvider):
         url = (
             f"{self.DRIVE_API_BASE}/files?"
             f"q={urllib.parse.quote(query)}&"
-            f"fields=files(id,name,mimeType,size,quotaBytesUsed,modifiedTime,parents,webViewLink,shared,sharedWithMe,owners(me))&"
+            f"fields=files(id,name,mimeType,size,quotaBytesUsed,modifiedTime,parents,webViewLink,shared,ownedByMe,owners(me))&"
             f"pageSize=100"
         )
         req = urllib.request.Request(
@@ -396,7 +396,7 @@ class GoogleDriveProvider(ICloudStorageProvider):
                 items: List[CloudFileItem] = []
                 for f in data.get("files", []):
                     # Exclude files shared with the user (shared files do not consume personal quota)
-                    if f.get("sharedWithMe") is True or f.get("is_shared_with_me") is True:
+                    if f.get("sharedWithMe") is True or f.get("ownedByMe") is False or f.get("is_shared_with_me") is True:
                         continue
                     owners = f.get("owners") or []
                     if owners and not any(o.get("me") is True for o in owners):

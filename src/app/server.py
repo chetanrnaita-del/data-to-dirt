@@ -1530,14 +1530,14 @@ def create_flask_app():
                         try:
                             # Only expand files owned by user; exclude files shared by others
                             q_folder = urllib.parse.quote(f"'{folder_id}' in parents and 'me' in owners and trashed=false")
-                            f_url = f"https://www.googleapis.com/drive/v3/files?q={q_folder}&fields=files(id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum,shared,sharedWithMe,owners(me,displayName,emailAddress))&pageSize=100"
+                            f_url = f"https://www.googleapis.com/drive/v3/files?q={q_folder}&fields=files(id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum,shared,ownedByMe,owners(me,displayName,emailAddress))&pageSize=100"
                             req = urllib.request.Request(f_url)
                             req.add_header("Authorization", f"Bearer {oauth_token}")
                             req.add_header("User-Agent", "DataToDirt/1.1")
                             with urllib.request.urlopen(req, timeout=5, context=get_ssl_context()) as resp:
                                 f_data = json.loads(resp.read().decode())
                                 for item in f_data.get("files", []):
-                                    if item.get("sharedWithMe") is True or item.get("is_shared_with_me") is True:
+                                    if item.get("ownedByMe") is False or item.get("is_shared_with_me") is True:
                                         continue
                                     owners = item.get("owners") or []
                                     if owners and not any(o.get("me") is True for o in owners):
@@ -1555,12 +1555,12 @@ def create_flask_app():
                                         "lastEditedUtc": item.get("modifiedTime"),
                                         "md5Checksum": item.get("md5Checksum"),
                                         "shared": item.get("shared", False),
-                                        "sharedWithMe": item.get("sharedWithMe", False),
+                                        "ownedByMe": item.get("ownedByMe", True),
                                         "owners": owners
                                     })
                         except Exception as fe:
                             print(f"[!] Folder expansion notice: {fe}")
-                            if not f.get("sharedWithMe") and (not f.get("owners") or any(o.get("me") is True for o in f.get("owners", []))):
+                            if f.get("ownedByMe") is not False and (not f.get("owners") or any(o.get("me") is True for o in f.get("owners", []))):
                                 expanded_files.append(f)
                     else:
                         expanded_files.append(f)
@@ -1578,12 +1578,12 @@ def create_flask_app():
                     cur_sz = item.get("sizeBytes") or item.get("size_bytes") or item.get("size")
                     # If size and ownership are already known and valid, can skip query
                     needs_query = True
-                    if "sharedWithMe" in item and "owners" in item and cur_sz and int(cur_sz or 0) > 0 and int(cur_sz or 0) != (25 * 1024 * 1024):
+                    if "ownedByMe" in item and "owners" in item and cur_sz and int(cur_sz or 0) > 0 and int(cur_sz or 0) != (25 * 1024 * 1024):
                         needs_query = False
 
                     if needs_query:
                         try:
-                            meta_url = f"https://www.googleapis.com/drive/v3/files/{fid}?fields=id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum,shared,sharedWithMe,owners(me,displayName,emailAddress)"
+                            meta_url = f"https://www.googleapis.com/drive/v3/files/{fid}?fields=id,name,size,quotaBytesUsed,mimeType,modifiedTime,md5Checksum,shared,ownedByMe,owners(me,displayName,emailAddress)"
                             m_req = urllib.request.Request(meta_url)
                             m_req.add_header("Authorization", f"Bearer {oauth_token}")
                             m_req.add_header("User-Agent", "DataToDirt/1.1")
@@ -1601,7 +1601,7 @@ def create_flask_app():
                                     item["lastEditedUtc"] = meta.get("modifiedTime")
                                 if meta.get("name") and not item.get("name"):
                                     item["name"] = meta.get("name")
-                                item["sharedWithMe"] = meta.get("sharedWithMe", False)
+                                item["ownedByMe"] = meta.get("ownedByMe", True)
                                 item["shared"] = meta.get("shared", False)
                                 item["owners"] = meta.get("owners", [])
                                 if meta.get("quotaBytesUsed") is not None:
@@ -1623,7 +1623,7 @@ def create_flask_app():
             
             for i, f in enumerate(raw_files):
                 # Exclude files shared with the user (shared files do not consume personal Google Drive quota)
-                if f.get("sharedWithMe") is True or f.get("is_shared_with_me") is True:
+                if f.get("sharedWithMe") is True or f.get("ownedByMe") is False or f.get("is_shared_with_me") is True:
                     excluded_shared_count += 1
                     continue
                 owners = f.get("owners") or []
@@ -1843,7 +1843,7 @@ def create_flask_app():
                     drive_by_md5 = {}
                     
                     while True:
-                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime,shared,sharedWithMe,owners(me,displayName,emailAddress))&pageSize=100"
+                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime,shared,ownedByMe,owners(me,displayName,emailAddress))&pageSize=100"
                         if page_token:
                             url += f"&pageToken={page_token}"
                         req = urllib.request.Request(url)
@@ -1858,7 +1858,7 @@ def create_flask_app():
                                     continue
                                 
                                 # Strictly exclude shared files that do not consume personal Google Drive quota
-                                if f.get("sharedWithMe") is True or f.get("is_shared_with_me") is True:
+                                if f.get("sharedWithMe") is True or f.get("ownedByMe") is False or f.get("is_shared_with_me") is True:
                                     excluded_shared_count += 1
                                     continue
                                 owners = f.get("owners") or []
