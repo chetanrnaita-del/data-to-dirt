@@ -236,6 +236,15 @@ class StudentDashboardView {
       setTimeout(() => {
         this.executeScan("__google_drive__", true, "drive", [], tokenFromUrl || localStorage.getItem("d2d_google_access_token"));
       }, 350);
+    } else if (urlParams.get("oauth") === "error") {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      const errMsg = urlParams.get("msg") || "Google Drive connection was not completed.";
+      const banner = document.getElementById("scanner-status-banner");
+      if (banner) {
+        banner.style.borderColor = "var(--c-amber-border, #d97706)";
+        banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";
+        banner.innerHTML = `<span>⚠️ ${errMsg} Click '☁️ Drive' to try again, or use '📱 Device' to select files.</span>`;
+      }
     }
 
     if (btnScanDrive) {
@@ -330,10 +339,13 @@ class StudentDashboardView {
     const elPoints = document.getElementById("hero-eco-points");
     const elSubstats = document.getElementById("hero-substats");
 
-    if (elCarbon) elCarbon.textContent = `${this.stats.carbon_offset_g.toFixed(1)} g`;
-    if (elPoints) elPoints.textContent = this.stats.eco_points;
+    const carbonVal = (this.stats.carbon_offset_g != null ? Number(this.stats.carbon_offset_g) : 0).toFixed(1);
+    const treesEqVal = (this.stats.trees_equivalent != null ? Number(this.stats.trees_equivalent) : 0).toFixed(4);
+
+    if (elCarbon) elCarbon.textContent = `${carbonVal} g`;
+    if (elPoints) elPoints.textContent = this.stats.eco_points ?? 0;
     if (elSubstats) {
-      elSubstats.textContent = `Data Cleared: ${this.stats.bytes_cleared_formatted} • Trees Equivalent: ${this.stats.trees_equivalent.toFixed(4)}`;
+      elSubstats.textContent = `Data Cleared: ${this.stats.bytes_cleared_formatted || "0 B"} • Trees Equivalent: ${treesEqVal}`;
     }
 
     // Tree Progress
@@ -720,36 +732,26 @@ class StudentDashboardView {
       }
 
       if (response.status === 401 && res.status === "needs_auth") {
-        if (scanType === "drive" || scanType === "picker_files") {
-          localStorage.removeItem("d2d_google_access_token");
-          const lastRedirect = sessionStorage.getItem("d2d_last_oauth_redirect");
-          const now = Date.now();
-          if (lastRedirect && (now - Number(lastRedirect)) < 15000) {
-            console.warn("[!] Prevented OAuth redirect loop");
-            sessionStorage.removeItem("d2d_last_oauth_redirect");
-            const errorMsg = "Google Drive authorization was not granted or expired. Click '📱 Device' to select files, or try '☁️ Drive' again.";
-            if (banner) {
-              banner.style.borderColor = "var(--c-danger-red)";
-              banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
-              banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">⚠️ ${errorMsg}</span>`;
-            }
-            this.renderScannedFiles(errorMsg);
-            return;
-          }
-          sessionStorage.setItem("d2d_last_oauth_redirect", String(now));
-          window.location.href = "/auth/google/login";
-          return;
-        } else {
-          // Device scan should never redirect to Google Drive login
-          const errorMsg = "Device scan could not access files. Please use the Device folder or file selector.";
-          if (banner) {
-            banner.style.borderColor = "var(--c-danger-red)";
-            banner.style.backgroundColor = "rgba(168, 36, 36, 0.15)";
-            banner.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">❌ ${errorMsg}</span>`;
-          }
-          this.renderScannedFiles(errorMsg);
-          return;
+        localStorage.removeItem("d2d_google_access_token");
+        const errorMsg = res.error || "Google Drive connection required or expired.";
+        if (banner) {
+          banner.style.borderColor = "var(--c-amber-border, #d97706)";
+          banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";
+          banner.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span style="color: var(--c-amber-dark, #b45309); font-weight: bold;">⚠️ ${errorMsg}</span>
+              <div style="display: flex; gap: 6px;">
+                <a href="/auth/google/login" class="retro-btn retro-btn-sm retro-btn-gold" style="text-decoration: none; padding: 4px 10px; font-size: 11px;">🔑 Connect Google Drive</a>
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-banner-picker" style="padding: 4px 10px; font-size: 11px;">📁 Google Picker</button>
+              </div>
+            </div>
+          `;
+          banner.querySelector("#btn-banner-picker")?.addEventListener("click", () => {
+            this.openGooglePicker();
+          });
         }
+        this.renderScannedFiles(errorMsg);
+        return;
       }
 
       if (!response.ok || res.status === "error" || res.error) {

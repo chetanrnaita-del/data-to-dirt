@@ -209,29 +209,74 @@ def get_default_state() -> Dict[str, Any]:
     }
 
 
+_state_lock = threading.RLock()
+
+
 def load_state() -> Dict[str, Any]:
-    if STATE_FILE.exists():
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                state = json.load(f)
-                if "students" not in state:
-                    state["students"] = get_default_state().get("students", [])
-                if "analytics" not in state or not isinstance(state.get("analytics"), dict):
-                    state["analytics"] = get_default_state().get("analytics", {})
-                return state
-        except Exception:
-            pass
-    state = get_default_state()
-    save_state(state)
-    return state
+    with _state_lock:
+        if STATE_FILE.exists():
+            for attempt in range(3):
+                try:
+                    with open(STATE_FILE, "r", encoding="utf-8") as f:
+                        state = json.load(f)
+                        if "students" not in state:
+                            state["students"] = get_default_state().get("students", [])
+                        if "analytics" not in state or not isinstance(state.get("analytics"), dict):
+                            state["analytics"] = get_default_state().get("analytics", {})
+                        return state
+                except Exception as e:
+                    if attempt < 2:
+                        time.sleep(0.01 * (attempt + 1))
+                        continue
+                    print(f"[!] Warning: Failed to load state from {STATE_FILE}: {e}")
+            return get_default_state()
+        state = get_default_state()
+        save_state(state)
+        return state
 
 
 def save_state(state: Dict[str, Any]) -> None:
-    try:
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2)
-    except Exception as e:
-        print(f"[!] Warning: Failed to persist state: {e}")
+    with _state_lock:
+        try:
+            tmp_name = f"{STATE_FILE.stem}.tmp.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}.json"
+            tmp_file = STATE_FILE.parent / tmp_name
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2)
+            os.replace(tmp_file, STATE_FILE)
+        except Exception as e:
+            print(f"[!] Warning: Failed to persist state: {e}")
+
+
+def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = None) -> Dict[str, Any]:
+    """Resolves and returns the student record in state matching student_id.
+    
+    If student_id is empty or matches state['student']['student_id'], returns state['student'].
+    Otherwise looks up student in state['students']. If not found, creates and appends a record in state['students'].
+    """
+    default_stu = state.setdefault("student", get_default_state()["student"])
+    if not student_id:
+        return default_stu
+
+    clean_id = str(student_id).strip()
+    if clean_id.lower() == default_stu.get("student_id", "").strip().lower():
+        return default_stu
+
+    students_list = state.setdefault("students", [])
+    matched = next((s for s in students_list if s.get("student_id", "").strip().lower() == clean_id.lower()), None)
+    if not matched:
+        matched = {
+            "student_id": clean_id,
+            "name": clean_id,
+            "bytes_cleared": 0,
+            "eco_points": 0,
+            "streak_days": 1,
+            "last_deletion_date": time.strftime("%Y-%m-%d"),
+            "daily_deletions_today": 0,
+            "daily_deletion_limit": DAILY_DELETION_LIMIT,
+            "strikes": 0,
+        }
+        students_list.append(matched)
+    return matched
 
 
 def calculate_carbon_offset_g(bytes_cleared: int) -> float:
@@ -822,7 +867,7 @@ def create_flask_app():
             "client_id": client_id,
             "redirect_uri": redirect_uri,
             "response_type": "code",
-            "scope": "https://www.googleapis.com/auth/drive",
+            "scope": "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
             "access_type": "offline",
             "prompt": "consent",
             "state": state_str,
@@ -836,6 +881,12 @@ def create_flask_app():
         import base64
         code = request.args.get("code")
         state_param = request.args.get("state")
+        oauth_err = request.args.get("error")
+        if oauth_err or not code:
+            err_desc = request.args.get("error_description") or oauth_err or "No authorization code returned from Google"
+            print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
+            return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
+
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
 
@@ -1127,9 +1178,21 @@ def create_flask_app():
         session = default_auth_service.validate_token(token) if token else None
 
         state = load_state()
-        student = dict(state["student"])
+        today = time.strftime("%Y-%m-%d")
+        default_student = state["student"]
+        if default_student.get("last_deletion_date") != today:
+            default_student["daily_deletions_today"] = 0
+            default_student["last_deletion_date"] = today
 
         target_student_id = session.get("user_id") if session else request.args.get("student_id")
+        if target_student_id and target_student_id.lower() != default_student.get("student_id", "").lower():
+            matched_local = resolve_student_in_state(state, target_student_id)
+            if matched_local.get("last_deletion_date") != today:
+                matched_local["daily_deletions_today"] = 0
+                matched_local["last_deletion_date"] = today
+            student = dict(matched_local)
+        else:
+            student = dict(default_student)
 
         if target_student_id and firestore_db.is_connected:
             try:
@@ -1192,6 +1255,23 @@ def create_flask_app():
 
         if not leaderboard:
             leaderboard = state.get("leaderboard", [])
+            if not leaderboard:
+                known_students = []
+                if "student" in state:
+                    known_students.append(state["student"])
+                for s in state.get("students", []):
+                    if s.get("student_id") != state.get("student", {}).get("student_id"):
+                        known_students.append(s)
+                leaderboard = []
+                for s in known_students:
+                    leaderboard.append({
+                        "user_id": s.get("student_id", ""),
+                        "student_id": s.get("student_id", ""),
+                        "name": s.get("name", s.get("student_id", "Student")),
+                        "eco_points": s.get("eco_points", 0),
+                        "data_cleared_bytes": s.get("bytes_cleared", 0),
+                        "streak_days": s.get("streak_days", 0),
+                    })
 
         # Recalculate formatted data
         formatted_list = []
@@ -1210,8 +1290,25 @@ def create_flask_app():
 
     @app.route("/api/tree/growth", methods=["GET"])
     def api_tree_growth():
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+
         state = load_state()
-        bytes_cleared = state["student"]["bytes_cleared"]
+        target_student_id = request.args.get("student_id") or (session.get("user_id") if session and session.get("role") == "student" else None)
+        target_student = resolve_student_in_state(state, target_student_id)
+        bytes_cleared = target_student.get("bytes_cleared", 0)
+
+        if firestore_db.is_connected and target_student.get("student_id"):
+            try:
+                doc = firestore_db.db.collection("users").document(target_student["student_id"].upper()).get()
+                if doc.exists:
+                    fs_bytes = doc.to_dict().get("bytes_cleared")
+                    if fs_bytes is not None:
+                        bytes_cleared = max(bytes_cleared, int(fs_bytes))
+            except Exception:
+                pass
+
         stage = calculate_tree_stage(bytes_cleared)
         progress_pct = calculate_tree_progress_pct(bytes_cleared)
         return jsonify({
@@ -1746,6 +1843,8 @@ def create_flask_app():
                 return jsonify({"status": "needs_auth", "auth_url": "/auth/google/login"}), 401
 
             live_success = False
+            last_google_error = None
+            last_http_code = None
             scanned_items = []
             now = time.time()
             excluded_shared_count = 0
@@ -1760,7 +1859,7 @@ def create_flask_app():
                     drive_by_md5 = {}
                     
                     while True:
-                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime,shared,sharedWithMe,owners(me,displayName,emailAddress))&pageSize=100"
+                        url = f"https://www.googleapis.com/drive/v3/files?q={query}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime,shared,sharedWithMe,owners(me,displayName,emailAddress))&pageSize=100"
                         if page_token:
                             url += f"&pageToken={page_token}"
                         req = urllib.request.Request(url)
@@ -1874,19 +1973,39 @@ def create_flask_app():
                     scanned_items = drive_items
                     live_success = True
                 except urllib.error.HTTPError as http_err:
-                    print(f"[!] Live Google Drive HTTP error ({http_err.code}): {http_err.reason}")
-                    if http_err.code in (401, 403):
-                        live_success = False
+                    last_http_code = http_err.code
+                    try:
+                        err_payload = json.loads(http_err.read().decode('utf-8', errors='ignore'))
+                        last_google_error = err_payload.get("error", {}).get("message") or http_err.reason
+                    except Exception:
+                        last_google_error = http_err.reason
+                    print(f"[!] Live Google Drive HTTP error ({http_err.code}): {last_google_error}")
+                    live_success = False
                 except Exception as live_err:
-                    print(f"[!] Live Google Drive access skipped ({live_err}); connecting directly to Student Cloud Drive.")
+                    last_google_error = str(live_err)
+                    print(f"[!] Live Google Drive access skipped ({live_err}); error: {live_err}")
+                    live_success = False
 
             # 2. Require authentic Google Drive connection - zero synthetic mock injections
             if not live_success:
-                return jsonify({
-                    "status": "needs_auth",
-                    "error": "Google Drive authentication required or session expired. Please connect your Google account.",
-                    "auth_url": "/auth/google/login"
-                }), 401
+                if not access_token:
+                    return jsonify({
+                        "status": "needs_auth",
+                        "error": "Google Drive authentication required. Please connect your Google account.",
+                        "auth_url": "/auth/google/login"
+                    }), 401
+                elif last_http_code == 401:
+                    return jsonify({
+                        "status": "needs_auth",
+                        "error": f"Google Drive authorization expired: {last_google_error or '401 Unauthorized'}. Please reconnect your account.",
+                        "auth_url": "/auth/google/login"
+                    }), 401
+                else:
+                    return jsonify({
+                        "status": "error",
+                        "error": f"Google Drive API Notice: {last_google_error or 'Could not retrieve Drive files'}. Please verify the Google Drive API is enabled in your Google Cloud Console, or use '📁 Google Drive Picker' / '📱 Device'.",
+                        "auth_url": "/auth/google/login"
+                    }), 400
             
             # Sort by size descending
             scanned_items.sort(key=lambda x: x["size_bytes"], reverse=True)
@@ -1918,8 +2037,15 @@ def create_flask_app():
     
     @app.route("/api/scan/revoke", methods=["POST"])
     def api_scan_revoke():
+        global global_scanner
         state = load_state()
         count = len(state["scanner"]["files"])
+        if global_scanner:
+            try:
+                purged_count = global_scanner.revoke_access()
+                count = max(count, purged_count)
+            except Exception as e:
+                print(f"[!] Scanner revocation notice: {e}")
         state["scanner"]["state"] = "BLIND"
         state["scanner"]["current_folder"] = None
         state["scanner"]["files"] = []
@@ -1951,7 +2077,20 @@ def create_flask_app():
         is_drive = data.get("is_drive", False)
 
         state = load_state()
-        student = state["student"]
+        today = time.strftime("%Y-%m-%d")
+        default_student = state["student"]
+        if default_student.get("last_deletion_date") != today:
+            default_student["daily_deletions_today"] = 0
+            default_student["last_deletion_date"] = today
+
+        # Resolve authenticated or requested student
+        actual_student_id = data.get("student_id") or (session["user_id"] if session else default_student["student_id"])
+        target_student = resolve_student_in_state(state, actual_student_id)
+        if target_student.get("last_deletion_date") != today:
+            target_student["daily_deletions_today"] = 0
+            target_student["last_deletion_date"] = today
+        if data.get("student_name") and (target_student.get("name") == target_student.get("student_id") or not target_student.get("name")):
+            target_student["name"] = data["student_name"]
 
         # Prevent duplicate submissions for the same file
         existing_queue = state.get("teacher_queue", [])
@@ -1964,13 +2103,13 @@ def create_flask_app():
 
         # Check daily deletion limit
         is_test_mode = os.environ.get("TEST_MODE") == "1"
-        if is_test_mode and student.get("daily_deletions_today", 0) >= student.get("daily_deletion_limit", 5):
-            student["daily_deletions_today"] = 1
+        if is_test_mode and target_student.get("daily_deletions_today", 0) >= target_student.get("daily_deletion_limit", 5):
+            target_student["daily_deletions_today"] = 1
 
-        if not is_test_mode and student["daily_deletions_today"] >= student["daily_deletion_limit"]:
+        if not is_test_mode and target_student.get("daily_deletions_today", 0) >= target_student.get("daily_deletion_limit", 5):
             return jsonify({
                 "status": "limit_exceeded",
-                "error": f"Daily deletion limit of {student['daily_deletion_limit']} reached. Try again tomorrow!"
+                "error": f"Daily deletion limit of {target_student.get('daily_deletion_limit', 5)} reached. Try again tomorrow!"
             }), 429
 
 
@@ -1986,10 +2125,10 @@ def create_flask_app():
             confidence = 0.22
             is_gaming = True
             summary = "Suspicious: Vague or gaming reason provided. Does not explain why file is waste."
-            student["strikes"] = student.get("strikes", 0) + 1
-            if student["strikes"] >= 3:
-                student["streak_days"] = 0
-                student["eco_points"] = max(0, student["eco_points"] - 50)
+            target_student["strikes"] = target_student.get("strikes", 0) + 1
+            if target_student["strikes"] >= 3:
+                target_student["streak_days"] = 0
+                target_student["eco_points"] = max(0, target_student.get("eco_points", 0) - 50)
             save_state(state)
             return jsonify({
                 "status": "rejected_by_ai",
@@ -1999,16 +2138,10 @@ def create_flask_app():
                     "summary": summary,
                     "is_gaming": True
                 },
-                "strikes": student["strikes"],
-                "streak_days": student["streak_days"],
-                "eco_points": student["eco_points"]
+                "strikes": target_student["strikes"],
+                "streak_days": target_student.get("streak_days", 0),
+                "eco_points": target_student.get("eco_points", 0)
             }), 400
-
-        # Get current student's user_id from token or payload
-        auth_header = request.headers.get("Authorization", "")
-        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
-        session = default_auth_service.validate_token(token)
-        actual_student_id = data.get("student_id") or (session["user_id"] if session else student["student_id"])
 
         # Look up student's real name and class code (checking session, local state and Cloud Firestore)
         actual_student_name = (session.get("name") if session else None) or actual_student_id
@@ -2077,10 +2210,26 @@ def create_flask_app():
             except Exception as fe:
                 print(f"[!] Firestore immediate credit notice: {fe}")
 
-        student["bytes_cleared"] = student.get("bytes_cleared", 0) + file_size
-        student["eco_points"] = student.get("eco_points", 0) + pts
-        student["daily_deletions_today"] = student.get("daily_deletions_today", 0) + 1
-        student["streak_days"] = student.get("streak_days", 0) + 1
+        target_student["bytes_cleared"] = target_student.get("bytes_cleared", 0) + file_size
+        target_student["eco_points"] = target_student.get("eco_points", 0) + pts
+        target_student["daily_deletions_today"] = target_student.get("daily_deletions_today", 0) + 1
+        target_student["streak_days"] = target_student.get("streak_days", 0) + 1
+        target_student["last_deletion_date"] = today
+
+        try:
+            default_teacher_queue.submit_request(
+                student_id=actual_student_id,
+                file_name=file_name,
+                size_bytes=file_size,
+                reason=reason,
+                ai_score=confidence,
+                ai_summary=summary,
+                file_path=queue_item["file_path"],
+                student_name=actual_student_name,
+                carbon_offset_grams=calculate_carbon_offset_g(file_size),
+            )
+        except Exception:
+            pass
 
         ecofund = state.get("ecofund", {})
         ecofund["cumulative_waste_bytes"] = ecofund.get("cumulative_waste_bytes", 0) + file_size
@@ -2644,9 +2793,13 @@ def create_flask_app():
         donation_triggered = False
         new_tree_info = None
 
+        file_bytes = int(target_item.get("file_size_bytes") or 0)
+        student_id = target_item.get("student_id", "")
+        pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
+        trees = int(file_bytes // (1024**3))
+
         if action == "approve":
             target_item["status"] = "APPROVED"
-            file_bytes = target_item["file_size_bytes"]
             target_item["decided_by"] = teacher_id
             target_item["decided_at"] = time.time()
 
@@ -2677,10 +2830,6 @@ def create_flask_app():
                     pass
 
             # Update student in Firestore & local state if not already credited
-            student_id = target_item.get("student_id", "")
-            pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
-            trees = int(file_bytes // (1024**3))
-
             if not target_item.get("credited"):
                 if firestore_db.is_connected and student_id:
                     try:
@@ -2688,11 +2837,11 @@ def create_flask_app():
                     except Exception as fe:
                         print(f"[!] Firestore update_user_stats error: {fe}")
 
-                student = state["student"]
-                student["bytes_cleared"] += file_bytes
-                student["eco_points"] += pts
-                student["daily_deletions_today"] += 1
-                student["streak_days"] = student.get("streak_days", 0) + 1
+                target_stu = resolve_student_in_state(state, student_id)
+                target_stu["bytes_cleared"] = target_stu.get("bytes_cleared", 0) + file_bytes
+                target_stu["eco_points"] = target_stu.get("eco_points", 0) + pts
+                target_stu["daily_deletions_today"] = target_stu.get("daily_deletions_today", 0) + 1
+                target_stu["streak_days"] = target_stu.get("streak_days", 0) + 1
 
                 ecofund = state["ecofund"]
                 ecofund["cumulative_waste_bytes"] += file_bytes
@@ -2712,7 +2861,7 @@ def create_flask_app():
             # Check 1 GB threshold
             ecofund = state["ecofund"]
             thresh = ecofund["threshold_bytes"]
-            if ecofund["cumulative_waste_bytes"] >= thresh * (ecofund["trees_planted"] + 1):
+            while ecofund["cumulative_waste_bytes"] >= thresh * (ecofund["trees_planted"] + 1):
                 ecofund["trees_planted"] += 1
                 ecofund["balance_usd"] = max(0.0, round(ecofund["balance_usd"] - ecofund["cost_per_tree_usd"], 2))
                 donation_triggered = True
@@ -2731,17 +2880,16 @@ def create_flask_app():
             target_item["decided_by"] = teacher_id
             target_item["decided_at"] = time.time()
             if target_item.get("credited"):
-                student_id = target_item.get("student_id", "")
-                pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
-                trees = int(file_bytes // (1024**3))
                 if firestore_db.is_connected and student_id:
                     try:
                         firestore_db.update_user_stats(student_id, -file_bytes, -pts, -trees)
                     except Exception as fe:
                         print(f"[!] Firestore deduct error: {fe}")
-                student = state["student"]
-                student["bytes_cleared"] = max(0, student.get("bytes_cleared", 0) - file_bytes)
-                student["eco_points"] = max(0, student.get("eco_points", 0) - pts)
+
+                target_stu = resolve_student_in_state(state, student_id)
+                target_stu["bytes_cleared"] = max(0, target_stu.get("bytes_cleared", 0) - file_bytes)
+                target_stu["eco_points"] = max(0, target_stu.get("eco_points", 0) - pts)
+
                 ecofund = state["ecofund"]
                 ecofund["cumulative_waste_bytes"] = max(0, ecofund.get("cumulative_waste_bytes", 0) - file_bytes)
                 target_item["credited"] = False
@@ -2752,21 +2900,25 @@ def create_flask_app():
             target_item["decided_by"] = teacher_id
             target_item["decided_at"] = time.time()
             if target_item.get("credited"):
-                student_id = target_item.get("student_id", "")
-                pts = int((file_bytes / (1024 * 1024)) * 0.5) + 20
-                trees = int(file_bytes // (1024**3))
                 if firestore_db.is_connected and student_id:
                     try:
                         firestore_db.update_user_stats(student_id, -file_bytes, -pts, -trees)
                     except Exception as fe:
                         print(f"[!] Firestore deduct error: {fe}")
+
+                target_stu = resolve_student_in_state(state, student_id)
+                target_stu["bytes_cleared"] = max(0, target_stu.get("bytes_cleared", 0) - file_bytes)
+                target_stu["eco_points"] = max(0, target_stu.get("eco_points", 0) - pts)
+
                 ecofund = state["ecofund"]
                 ecofund["cumulative_waste_bytes"] = max(0, ecofund.get("cumulative_waste_bytes", 0) - file_bytes)
                 target_item["credited"] = False
-            student = state["student"]
-            student["strikes"] = student.get("strikes", 0) + 1
-            student["streak_days"] = 0
-            student["eco_points"] = max(0, student["eco_points"] - 50)
+
+            target_stu = resolve_student_in_state(state, student_id)
+            target_stu["strikes"] = target_stu.get("strikes", 0) + 1
+            target_stu["streak_days"] = 0
+            target_stu["eco_points"] = max(0, target_stu.get("eco_points", 0) - 50)
+
 
         # Mirror decision in default_teacher_queue
         try:
@@ -2830,38 +2982,75 @@ def create_flask_app():
         approved_count = 0
         total_approved_bytes = 0
 
-        # Also pull from firestore pending
-        if firestore_db.is_connected:
-            try:
-                from google.cloud.firestore_v1.base_query import FieldFilter
-                q = firestore_db.db.collection("deletion_queue").where(filter=FieldFilter("status", "==", "PENDING"))
-                for doc in q.stream():
-                    d = doc.to_dict()
-                    r_id = d.get("request_id")
-                    s_id = d.get("student_id", "")
-                    sz = d.get("file_size_bytes", 0)
-                    pts = int((sz / (1024 * 1024)) * 0.5) + 20
-                    trees = int(sz // (1024**3))
-                    if not d.get("credited"):
-                        firestore_db.update_user_stats(s_id, sz, pts, trees)
-                    firestore_db.update_deletion_status(r_id, "approve", teacher_id)
-                    approved_count += 1
-                    total_approved_bytes += sz
-            except Exception as e:
-                print(f"[!] Decide all firestore error: {e}")
-
         for item in queue:
             if item.get("status") == "PENDING":
                 item["status"] = "APPROVED"
                 item["decided_by"] = teacher_id
                 item["decided_at"] = time.time()
-                sz = item.get("file_size_bytes", 0)
+                sz = int(item.get("file_size_bytes") or 0)
+                pts = int((sz / (1024 * 1024)) * 0.5) + 20
+                trees = int(sz // (1024**3))
+                s_id = item.get("student_id", "")
+                r_id = item.get("request_id")
+
+                # Physical file recycling if local file exists
+                fpath = item.get("file_path")
+                if fpath and os.path.exists(fpath):
+                    try:
+                        if HAS_SEND2TRASH:
+                            send2trash.send2trash(fpath)
+                        else:
+                            os.remove(fpath)
+                        item["recycled_success"] = True
+                    except Exception:
+                        pass
+
                 if not item.get("credited"):
-                    state["student"]["bytes_cleared"] += sz
+                    if firestore_db.is_connected and s_id:
+                        try:
+                            firestore_db.update_user_stats(s_id, sz, pts, trees)
+                        except Exception as fe:
+                            print(f"[!] Firestore decide_all update_user_stats error: {fe}")
+
+                    target_stu = resolve_student_in_state(state, s_id)
+                    target_stu["bytes_cleared"] = target_stu.get("bytes_cleared", 0) + sz
+                    target_stu["eco_points"] = target_stu.get("eco_points", 0) + pts
+                    target_stu["daily_deletions_today"] = target_stu.get("daily_deletions_today", 0) + 1
+                    target_stu["streak_days"] = target_stu.get("streak_days", 0) + 1
+
                     state["ecofund"]["cumulative_waste_bytes"] += sz
                     item["credited"] = True
+
+                if firestore_db.is_connected and r_id:
+                    try:
+                        firestore_db.update_deletion_status(r_id, "approve", reviewer_id=teacher_id)
+                    except Exception as fe:
+                        print(f"[!] Firestore decide_all update_deletion_status error: {fe}")
+
+                try:
+                    default_teacher_queue.approve(r_id, teacher_id)
+                except Exception:
+                    pass
+
                 approved_count += 1
                 total_approved_bytes += sz
+
+        state["teacher_queue"] = queue
+
+        # Check tree donation threshold
+        ecofund = state["ecofund"]
+        thresh = ecofund.get("threshold_bytes", TREE_DONATION_THRESHOLD_BYTES)
+        while ecofund["cumulative_waste_bytes"] >= thresh * (ecofund["trees_planted"] + 1):
+            ecofund["trees_planted"] += 1
+            ecofund["balance_usd"] = max(0.0, round(ecofund["balance_usd"] - ecofund["cost_per_tree_usd"], 2))
+            new_tree_info = {
+                "tree_id": f"TN-{1000 + ecofund['trees_planted']}",
+                "species": "Mangrove (Rhizophora mucronata)",
+                "co2_offset_kg": 250.0,
+                "certificate_url": f"https://tree-nation.com/trees/view/{1000 + ecofund['trees_planted']}",
+                "planted_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            ecofund["donations_history"].append(new_tree_info)
 
         save_state(state)
 
@@ -3225,7 +3414,30 @@ def create_flask_app():
     @default_auth_service.require_role("admin")
     def api_admin_audit():
         state = load_state()
-        items = state.get("teacher_queue", [])
+        local_queue = state.get("teacher_queue", [])
+
+        # Merge real-time items from Cloud Firestore deletion_queue if connected
+        firestore_queue = []
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("deletion_queue").stream():
+                    d = doc.to_dict()
+                    d["request_id"] = d.get("request_id") or doc.id
+                    firestore_queue.append(d)
+            except Exception as fe:
+                print(f"[!] Firestore admin audit fetch notice: {fe}")
+
+        merged = {}
+        for item in local_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+        for item in firestore_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+
+        items = list(merged.values()) if merged else local_queue
         trees = state.get("ecofund", {}).get("trees_planted", 0)
         stats = AnalyticsService.calculate_analytics(items, trees_funded=trees)
         donations = state.get("ecofund", {}).get("donations_history", [])

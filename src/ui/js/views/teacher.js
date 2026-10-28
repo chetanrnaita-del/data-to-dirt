@@ -959,7 +959,9 @@ class TeacherConfirmationView {
           selectEl.value = targetClass;
         }
         const queryParam = activeClass && activeClass !== "all" ? `?class_code=${encodeURIComponent(activeClass)}` : "?class_code=all";
-        const res = await fetch(`/api/teacher/students${queryParam}`);
+        const res = await fetch(`/api/teacher/students${queryParam}`, {
+          headers: this.getAuthHeaders()
+        });
         const data = await res.json();
         currentStudents = data.students || [];
 
@@ -1155,11 +1157,26 @@ class TeacherConfirmationView {
       }
 
       if (response.status === 401 && res.status === "needs_auth") {
-        if (scanType === "drive" || scanType === "picker_files") {
-          localStorage.removeItem("d2d_google_access_token");
-          window.location.href = "/auth/google/login";
-          return;
+        localStorage.removeItem("d2d_google_access_token");
+        const errorMsg = res.error || "Google Drive connection required or expired.";
+        if (banner) {
+          banner.style.borderColor = "var(--c-amber-border, #d97706)";
+          banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";
+          banner.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span style="color: var(--c-amber-dark, #b45309); font-weight: bold;">⚠️ ${errorMsg}</span>
+              <div style="display: flex; gap: 6px;">
+                <a href="/auth/google/login" class="retro-btn retro-btn-sm retro-btn-gold" style="text-decoration: none; padding: 4px 10px; font-size: 11px;">🔑 Connect Google Drive</a>
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-tch-banner-picker" style="padding: 4px 10px; font-size: 11px;">📁 Google Picker</button>
+              </div>
+            </div>
+          `;
+          banner.querySelector("#btn-tch-banner-picker")?.addEventListener("click", () => {
+            this.openTeacherGooglePicker();
+          });
         }
+        this.renderTeacherScannedFiles(errorMsg);
+        return;
       }
 
       if (!response.ok || res.status === "error" || res.error) {
