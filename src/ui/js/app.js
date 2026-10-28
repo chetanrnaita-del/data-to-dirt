@@ -732,8 +732,9 @@ class DataToDirtApp {
     const elFill = document.getElementById("ecofund-thresh-fill");
     const elLog = document.getElementById("ecofund-donations-log");
 
-    if (elBal) elBal.textContent = `$${eco.balance_usd.toFixed(2)}`;
-    if (elTrees) elTrees.textContent = eco.trees_planted;
+    const balVal = (eco.balance_usd != null ? Number(eco.balance_usd) : 0).toFixed(2);
+    if (elBal) elBal.textContent = `$${balVal}`;
+    if (elTrees) elTrees.textContent = eco.trees_planted ?? 0;
 
     // Calculate progress to next 1 GB
     const thresh = eco.threshold_bytes || 1073741824;

@@ -46,7 +46,7 @@ class RetroTreeRenderer {
     if (window.RetroAudio) {
       window.RetroAudio.playVictoryFanfare();
     }
-    if (window.ParticleEngine) {
+    if (window.ParticleEngine && this.canvas) {
       const rect = this.canvas.getBoundingClientRect();
       window.ParticleEngine.emitConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 70);
     }

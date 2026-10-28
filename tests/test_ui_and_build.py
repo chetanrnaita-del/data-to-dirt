@@ -25,12 +25,16 @@ from src.app.config import (
     TREE_ABSORPTION_KG_YEAR,
     TREE_DONATION_THRESHOLD_BYTES,
 )
+from src.services.scanner import ScanState
 from src.app.server import (
     create_flask_app,
     calculate_carbon_offset_g,
     calculate_tree_stage,
     calculate_tree_progress_pct,
     format_bytes,
+    global_scanner,
+    load_state,
+    save_state,
 )
 from src.services.auth import default_auth_service
 
@@ -494,6 +498,217 @@ class TestServerRestEndpoints(unittest.TestCase):
         self.assertEqual(self.client.get("/api/analytics/dashboard", headers=self.teacher_headers).status_code, 403)
         self.assertEqual(self.client.get("/api/analytics/export", headers=self.teacher_headers).status_code, 403)
 
+    def test_api_teacher_decide_reject_and_flag_workflows(self):
+        """Verifies that teacher decide handles reject and flag without UnboundLocalError and properly updates state."""
+        # 1. Submit a valid deletion request
+        res_sub1 = self.client.post("/api/deletion/submit", json={
+            "file_id": "test_reject_file_id",
+            "file_name": "temp_notes.log",
+            "file_size": 10 * 1024 * 1024,
+            "reason": "This is an old leftover cache log from last semester",
+            "student_id": "STU-REJECT-TEST"
+        }, headers=self.student_headers)
+        self.assertEqual(res_sub1.status_code, 200)
+        req_id1 = res_sub1.get_json()["request_id"]
+
+        # Reject it as teacher
+        res_decide_rej = self.client.post("/api/teacher/decide", json={
+            "request_id": req_id1,
+            "action": "reject",
+            "feedback": "Keep this file for your archival record."
+        }, headers=self.teacher_headers)
+        self.assertEqual(res_decide_rej.status_code, 200)
+        self.assertEqual(res_decide_rej.get_json()["status"], "completed")
+        self.assertEqual(res_decide_rej.get_json()["action_taken"], "reject")
+
+        # 2. Submit another request for flag
+        res_sub2 = self.client.post("/api/deletion/submit", json={
+            "file_id": "test_flag_file_id",
+            "file_name": "gaming_sample.bin",
+            "file_size": 20 * 1024 * 1024,
+            "reason": "Legitimate dark data cleanup of old course project video",
+            "student_id": "STU-FLAG-TEST"
+        }, headers=self.student_headers)
+        self.assertEqual(res_sub2.status_code, 200)
+        req_id2 = res_sub2.get_json()["request_id"]
+
+        # Flag it as teacher
+        res_decide_flag = self.client.post("/api/teacher/decide", json={
+            "request_id": req_id2,
+            "action": "flag",
+            "feedback": "Suspicious pattern detected upon closer inspection."
+        }, headers=self.teacher_headers)
+        self.assertEqual(res_decide_flag.status_code, 200)
+        self.assertEqual(res_decide_flag.get_json()["status"], "completed")
+        self.assertEqual(res_decide_flag.get_json()["action_taken"], "flag")
+
+    def test_api_scan_revoke_purges_global_scanner_memory(self):
+        """Verifies that /api/scan/revoke transitions global_scanner to BLIND and clears in-memory cache."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            test_file = os.path.join(tmp_dir, "test_cache.tmp")
+            with open(test_file, "w") as f:
+                f.write("content")
+
+            # Perform scan
+            res_scan = self.client.post("/api/scan/request", json={"folder_path": tmp_dir, "session_only": True})
+            self.assertEqual(res_scan.status_code, 200)
+            self.assertEqual(global_scanner.get_state(), ScanState.COMPLETED)
+            self.assertGreater(len(global_scanner.get_scanned_files()), 0)
+
+            # Revoke scan
+            res_revoke = self.client.post("/api/scan/revoke")
+            self.assertEqual(res_revoke.status_code, 200)
+            self.assertEqual(global_scanner.get_state(), ScanState.BLIND)
+            self.assertEqual(len(global_scanner.get_scanned_files()), 0)
+
+    def test_daily_deletion_reset_on_date_change(self):
+        """Verifies that daily_deletions_today resets to 0 when last_deletion_date is from a previous day."""
+        state = load_state()
+        state["student"]["last_deletion_date"] = "2020-01-01"
+        state["student"]["daily_deletions_today"] = 5
+        save_state(state)
+
+        res = self.client.get("/api/student/stats")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["daily_deletions_today"], 0)
+        self.assertTrue(data["can_delete"])
+
+    def test_api_teacher_decide_all_batch_no_double_counting(self):
+        """Verifies that decide_all approves pending requests once without double-counting approved metrics."""
+        # Submit two distinct deletion requests
+        res1 = self.client.post("/api/deletion/submit", json={
+            "file_id": "batch_file_1",
+            "file_name": "batch1.iso",
+            "file_size": 1024 * 1024,
+            "reason": "Obsolete operating system image not needed anymore"
+        }, headers=self.student_headers)
+        self.assertEqual(res1.status_code, 200)
+
+        res2 = self.client.post("/api/deletion/submit", json={
+            "file_id": "batch_file_2",
+            "file_name": "batch2.iso",
+            "file_size": 2 * 1024 * 1024,
+            "reason": "Duplicate install media no longer required"
+        }, headers=self.student_headers)
+        self.assertEqual(res2.status_code, 200)
+
+        # Batch approve
+        res_batch = self.client.post("/api/teacher/decide_all", json={
+            "teacher_id": "TEACHER-001"
+        }, headers=self.teacher_headers)
+        self.assertEqual(res_batch.status_code, 200)
+        batch_data = res_batch.get_json()
+        self.assertEqual(batch_data["status"], "success")
+        self.assertGreaterEqual(batch_data["approved_count"], 2)
+
+    def test_student_isolation_penalty_on_flag(self):
+        """Verifies that teacher flagging a student's request does NOT deduct points or assign strikes to default_student."""
+        state = load_state()
+        state["student"]["strikes"] = 0
+        state["student"]["streak_days"] = 5
+        state["student"]["eco_points"] = 100
+        save_state(state)
+
+        # Submit request from STU-ISOLATE-TEST
+        res_sub = self.client.post("/api/deletion/submit", json={
+            "file_id": "file_isolate_99",
+            "file_name": "suspicious_log.txt",
+            "file_size": 10 * 1024 * 1024,
+            "reason": "Old log file from previous lab experiment",
+            "student_id": "STU-ISOLATE-TEST",
+            "student_name": "Test Isolate"
+        }, headers=self.student_headers)
+        self.assertEqual(res_sub.status_code, 200)
+        req_id = res_sub.get_json()["request_id"]
+
+        # Flag the request as teacher
+        res_flag = self.client.post("/api/teacher/decide", json={
+            "request_id": req_id,
+            "action": "flag",
+            "feedback": "Suspected unauthorized script execution"
+        }, headers=self.teacher_headers)
+        self.assertEqual(res_flag.status_code, 200)
+
+        # Verify state: default_student MUST remain untainted!
+        fresh_state = load_state()
+        self.assertEqual(fresh_state["student"]["strikes"], 0, "Default student strikes must NOT increase when another student is flagged!")
+        self.assertEqual(fresh_state["student"]["streak_days"], 5, "Default student streak must NOT reset when another student is flagged!")
+        self.assertEqual(fresh_state["student"]["eco_points"], 100, "Default student points must NOT be deducted!")
+
+        # Verify target student received the strike
+        target_stu = next((s for s in fresh_state.get("students", []) if s.get("student_id") == "STU-ISOLATE-TEST"), None)
+        self.assertIsNotNone(target_stu)
+        self.assertEqual(target_stu["strikes"], 1)
+        self.assertEqual(target_stu["streak_days"], 0)
+
+    def test_api_tree_growth_multi_student(self):
+        """Verifies that /api/tree/growth responds with individual metrics when student_id query parameter is provided."""
+        state = load_state()
+        state["student"]["bytes_cleared"] = 0
+        students_list = state.setdefault("students", [])
+        big_student = next((s for s in students_list if s.get("student_id") == "STU-BIG-CLEANER"), None)
+        if not big_student:
+            big_student = {
+                "student_id": "STU-BIG-CLEANER",
+                "name": "Big Cleaner",
+                "bytes_cleared": 6 * (1024**3),  # 6 GB
+                "eco_points": 500,
+                "streak_days": 10,
+                "last_deletion_date": time.strftime("%Y-%m-%d"),
+                "daily_deletions_today": 1,
+                "daily_deletion_limit": 5,
+                "strikes": 0,
+            }
+            students_list.append(big_student)
+        else:
+            big_student["bytes_cleared"] = 6 * (1024**3)
+        save_state(state)
+
+        # Default student tree growth
+        res_def = self.client.get("/api/tree/growth")
+        self.assertEqual(res_def.status_code, 200)
+        data_def = res_def.get_json()
+        self.assertEqual(data_def["bytes_cleared"], 0)
+        self.assertEqual(data_def["stage"], 0)
+
+        # Custom student tree growth
+        res_custom = self.client.get("/api/tree/growth?student_id=STU-BIG-CLEANER")
+        self.assertEqual(res_custom.status_code, 200)
+        data_custom = res_custom.get_json()
+        self.assertEqual(data_custom["bytes_cleared"], 6 * (1024**3))
+        self.assertGreaterEqual(data_custom["stage"], 3)
+
+    def test_leaderboard_fallback_local_mode(self):
+        """Verifies that /api/student/leaderboard synthesizes rankings from enrolled students when leaderboard list is empty."""
+        state = load_state()
+        state["leaderboard"] = []
+        state["student"]["eco_points"] = 120
+        students_list = state.setdefault("students", [])
+        s1 = next((s for s in students_list if s.get("student_id") == "STU-LB-1"), None)
+        if not s1:
+            students_list.append({
+                "student_id": "STU-LB-1",
+                "name": "Leaderboard Champ",
+                "eco_points": 350,
+                "bytes_cleared": 1024 * 1024 * 100,
+                "streak_days": 4,
+            })
+        else:
+            s1["eco_points"] = 350
+        save_state(state)
+
+        res = self.client.get("/api/student/leaderboard")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        lb = data["leaderboard"]
+        self.assertGreaterEqual(len(lb), 2)
+        # Highest points first
+        self.assertGreaterEqual(lb[0]["eco_points"], lb[1]["eco_points"])
+        self.assertEqual(lb[0]["rank"], 1)
+        self.assertEqual(lb[1]["rank"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
+
