@@ -61,9 +61,31 @@ class DataToDirtApp {
     const savedUserId = localStorage.getItem("d2d_user_id");
     const savedPin = localStorage.getItem("d2d_pin");
 
-    if (urlParams.get("oauth") === "success" && !savedRole) {
-      console.log("[+] Auto-provisioning student session on OAuth return...");
-      this.completeLogin("student", "STU-001", "", "bio101");
+    // Seamlessly preserve and restore session on OAuth return
+    if (urlParams.get("oauth") || tokenFromUrl) {
+      const roleToUse = (savedRole && ["student", "teacher", "admin"].includes(savedRole)) ? savedRole : "student";
+      const userToUse = savedUserId || (roleToUse === "teacher" ? "teacher_bio101" : "STU-001");
+      const pinToUse = savedPin || (roleToUse === "teacher" ? "teacher123" : "student123");
+      const classToUse = localStorage.getItem("d2d_class_code") || "bio101";
+
+      console.log(`[+] Auto-preserving active ${roleToUse} dashboard on OAuth return...`);
+      // Acquire active session token in background if missing
+      if (!existingToken) {
+        try {
+          const authRes = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: roleToUse, pin: pinToUse, user_id: userToUse })
+          });
+          const authData = await authRes.json();
+          if (authRes.ok && authData.token) {
+            localStorage.setItem("d2d_session_token", authData.token);
+          }
+        } catch (e) {
+          console.warn("Silent OAuth login token acquisition notice:", e);
+        }
+      }
+      this.completeLogin(roleToUse, userToUse, pinToUse, classToUse);
       return;
     }
 

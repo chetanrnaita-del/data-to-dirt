@@ -250,17 +250,6 @@ class StudentDashboardView {
     if (btnScanDrive) {
       btnScanDrive.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        const existingToken = localStorage.getItem("d2d_google_access_token");
-        if (isMobileOrTablet) {
-          if (!existingToken) {
-            // Directly navigate to Google OAuth to prevent Safari popup blocker on iPad/iOS
-            window.location.href = "/auth/google/login";
-            return;
-          }
-          // If token already exists on iPad, run direct Live Google Drive scan
-          this.executeScan("__google_drive__", true, "drive", [], existingToken);
-          return;
-        }
         this.showGoogleDriveModal();
       });
     }
@@ -456,7 +445,12 @@ class StudentDashboardView {
 
     modal.querySelector("#btn-gdrive-direct")?.addEventListener("click", async () => {
       dismiss();
-      await this.executeScan("__google_drive__", true, "drive");
+      const existingToken = localStorage.getItem("d2d_google_access_token");
+      if (!existingToken) {
+        window.location.href = "/auth/google/login";
+        return;
+      }
+      await this.executeScan("__google_drive__", true, "drive", [], existingToken);
     });
 
     modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {

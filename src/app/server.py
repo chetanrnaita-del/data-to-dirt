@@ -44,6 +44,32 @@ PROJECT_ROOT = SCRIPT_DIR.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Load .env file automatically if present
+def _load_env_file():
+    env_file = PROJECT_ROOT / ".env"
+    if env_file.is_file():
+        try:
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip().strip("'\"")
+                    if k not in os.environ:
+                        os.environ[k] = v
+        except Exception as e:
+            print(f"[!] Note loading .env: {e}")
+
+_load_env_file()
+
+def get_google_client_id() -> str:
+    return os.environ.get("GOOGLE_CLIENT_ID", "")
+
+def get_google_client_secret() -> str:
+    return os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
 from src.app.config import (
     DEFAULT_PORT,
     DEFAULT_HOST,
@@ -850,7 +876,10 @@ def create_flask_app():
     def google_login():
         from flask import session, redirect, request
         import base64
-        client_id = os.environ.get("GOOGLE_CLIENT_ID")
+        client_id = get_google_client_id()
+        if not client_id:
+            print("[OAUTH ERROR] GOOGLE_CLIENT_ID is not configured on the server.")
+            return redirect("/?oauth=error&msg=" + urllib.parse.quote("GOOGLE_CLIENT_ID is not configured on the server. Please verify environment settings."))
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
         print(f"[OAUTH DEBUG] Initiating login with redirect_uri = {redirect_uri}")
@@ -887,8 +916,13 @@ def create_flask_app():
             print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
 
-        client_id = os.environ.get("GOOGLE_CLIENT_ID")
-        client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+        client_id = get_google_client_id()
+        client_secret = get_google_client_secret()
+
+        if not client_id or not client_secret:
+            err_msg = "Google OAuth credentials not configured on server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET). Use Google Picker or Local Device cleaner."
+            print(f"[OAUTH ERROR] {err_msg}")
+            return redirect(f"/?oauth=error&msg={urllib.parse.quote(err_msg)}")
 
         now_ts = time.time()
         # Clean cached codes older than 2 minutes
@@ -939,73 +973,23 @@ def create_flask_app():
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
                 return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}")
         except urllib.error.HTTPError as e:
-            error_body = e.read().decode('utf-8')
+            error_body = ""
+            try:
+                error_body = e.read().decode('utf-8', errors='ignore')
+            except Exception:
+                pass
             print(f"[OAUTH ERROR] Google OAuth HTTP Error {e.code}: {e.reason} Details: {error_body}")
-            # Instead of a stranded raw text error, provide an elegant retro self-healing recovery view
-            return f"""<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Google Drive Authentication - Data to Dirt</title>
-  <style>
-    body {{
-      background: #f6ecdc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      box-sizing: border-box;
-    }}
-    .card {{
-      background: #fffdf8;
-      border: 3px solid #8d6e63;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      max-width: 440px;
-      width: 100%;
-      padding: 30px 24px;
-      text-align: center;
-    }}
-    .icon {{ font-size: 42px; margin-bottom: 12px; }}
-    .title {{ font-size: 19px; font-weight: bold; color: #4e342e; margin-bottom: 10px; }}
-    .desc {{ font-size: 13.5px; color: #6d4c41; line-height: 1.5; margin-bottom: 24px; }}
-    .btn {{
-      display: inline-block;
-      background: #2e7d32;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 14px;
-      padding: 13px 28px;
-      border-radius: 8px;
-      border: 2px solid #1b5e20;
-      box-shadow: 0 4px 0 #1b5e20;
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }}
-    .btn:active {{ transform: translateY(2px); box-shadow: 0 2px 0 #1b5e20; }}
-    .muted {{ font-size: 11px; color: #a1887f; margin-top: 18px; }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">☁️🌱</div>
-    <div class="title">Google Drive Reconnect Required</div>
-    <div class="desc">
-      Your authorization grant expired or was refreshed. Tap below to reconnect your Google Drive with a fresh session:
-    </div>
-    <a href="/auth/google/login" class="btn">🔄 Reconnect Google Drive</a>
-    <div class="muted">Data-to-Dirt Safe Auth &bull; Status: {e.code}</div>
-  </div>
-</body>
-</html>""", 200
+            parsed_err = ""
+            try:
+                err_json = json.loads(error_body)
+                parsed_err = err_json.get("error_description") or err_json.get("error") or ""
+            except Exception:
+                pass
+            clean_msg = parsed_err or f"OAuth token exchange error ({e.code}: {e.reason})"
+            return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(clean_msg))}")
         except Exception as e:
-            import traceback
-            return f"System Error: {e} <br><br> {traceback.format_exc()}"
+            print(f"[OAUTH EXCEPTION] Google OAuth general exception: {e}")
+            return redirect(f"/?oauth=error&msg={urllib.parse.quote(f'Google Drive setup notice: {e}')}")
 
     @app.route("/api/auth/teachers", methods=["GET"])
     def api_auth_teachers():
@@ -1142,7 +1126,7 @@ def create_flask_app():
     @app.route("/api/config/auth", methods=["GET"])
     def api_config_auth():
         from flask import session
-        cid = os.environ.get("GOOGLE_CLIENT_ID", "")
+        cid = get_google_client_id()
         app_id = cid.split("-")[0] if "-" in cid else ""
         return jsonify({
             "google_client_id": cid,

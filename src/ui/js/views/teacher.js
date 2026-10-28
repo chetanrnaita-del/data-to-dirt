@@ -1597,7 +1597,12 @@ class TeacherConfirmationView {
     const dismiss = () => modal.remove();
     modal.querySelector("#btn-tch-gdrive-direct")?.addEventListener("click", async () => {
       dismiss();
-      await this.executeTeacherScan("__google_drive__", true, "drive");
+      const existingToken = localStorage.getItem("d2d_google_access_token");
+      if (!existingToken) {
+        window.location.href = "/auth/google/login";
+        return;
+      }
+      await this.executeTeacherScan("__google_drive__", true, "drive", [], existingToken);
     });
     modal.querySelector("#btn-tch-gdrive-picker")?.addEventListener("click", () => {
       dismiss();
