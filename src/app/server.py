@@ -2757,6 +2757,7 @@ def create_flask_app():
             "file_path": data.get("file_path", file_name),
             "file_size_bytes": file_size,
             "file_age_days": data.get("file_age_days", 30),
+            "carbon_offset_grams": calculate_carbon_offset_g(file_size),
             "reason": reason,
             "is_drive": is_drive,
             "ai_evaluation": {
@@ -3389,7 +3390,7 @@ def create_flask_app():
         for item in queue:
             # Filter by class code so teachers ONLY see requests from their assigned 10 students
             student_id = item.get("student_id", "")
-            if teacher_class_code and session and session.get("role") != "admin":
+            if teacher_class_code:
                 item_class = (item.get("class_code") or "").lower()
                 if not item_class:
                     s_id = student_id.lower()
@@ -3655,9 +3656,14 @@ def create_flask_app():
 
         approved_count = 0
         total_approved_bytes = 0
+        target_class = normalize_grade(data.get("class_code") or request.args.get("class_code") or "")
+        if target_class in ["all", "*", "any"]:
+            target_class = ""
 
         for item in queue:
             if item.get("status") == "PENDING":
+                if target_class and normalize_grade(item.get("class_code") or "grade5") != target_class:
+                    continue
                 item["status"] = "APPROVED"
                 item["decided_by"] = teacher_id
                 item["decided_at"] = time.time()
@@ -3924,10 +3930,104 @@ def create_flask_app():
             if rid:
                 merged[rid] = item
 
-        items = list(merged.values())
-        trees = state.get("ecofund", {}).get("trees_planted", 0)
-        stats = AnalyticsService.calculate_analytics(items, trees_funded=trees)
-        return jsonify(stats.to_dict())
+        all_items = list(merged.values())
+
+        # Determine class filter from query param, token, or session
+        req_class = (request.args.get("class_code") or "").strip().lower()
+        target_class = ""
+        if req_class and req_class not in ["all", "*", "any"]:
+            target_class = normalize_grade(req_class)
+
+        # Merge enrolled students from local state and Cloud Firestore
+        local_students = state.get("students", [])
+        firestore_students = []
+        if firestore_db.is_connected:
+            try:
+                firestore_students = firestore_db.get_students_list(class_code=target_class, limit=250)
+            except Exception as e:
+                print(f"[!] Firestore analytics get_students error: {e}")
+
+        merged_students = {}
+        for s in local_students:
+            sid = s.get("student_id") or s.get("user_id")
+            if sid:
+                merged_students[sid] = s
+        for s in firestore_students:
+            sid = s.get("student_id") or s.get("user_id")
+            if sid:
+                merged_students[sid] = s
+
+        valid_students = [
+            s for s in list(merged_students.values())
+            if not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-SCHOOL-")
+            and not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-PERSONAL-")
+            and str(s.get("name") or "") != "Aaryan Agarawal"
+            and str(s.get("student_id") or s.get("user_id") or "") != "STU-8SB8FZ"
+        ]
+
+        if target_class:
+            valid_students = [
+                s for s in valid_students
+                if normalize_grade(s.get("class_code") or "grade5") == target_class
+            ]
+
+        # Filter queue items by target_class if specified
+        if target_class:
+            class_items = [
+                item for item in all_items
+                if normalize_grade(item.get("class_code") or "grade5") == target_class
+                or any(s.get("student_id") == item.get("student_id") for s in valid_students)
+            ]
+        else:
+            class_items = all_items
+
+        # Aggregate verified data cleared:
+        student_bytes_total = sum(int(s.get("bytes_cleared", 0) or 0) for s in valid_students)
+        queue_approved_bytes = sum(
+            int(it.get("file_size_bytes", 0) or 0)
+            for it in class_items
+            if str(it.get("status", "")).upper() == "APPROVED"
+        )
+        total_data_cleaned_bytes = max(
+            student_bytes_total,
+            queue_approved_bytes,
+            student_bytes_total + sum(int(it.get("file_size_bytes", 0) or 0) for it in class_items if str(it.get("status", "")).upper() == "APPROVED" and not it.get("credited"))
+        )
+
+        if not target_class:
+            total_data_cleaned_bytes = max(total_data_cleaned_bytes, int(state.get("ecofund", {}).get("cumulative_waste_bytes", 0) or 0))
+
+        # Avoided carbon offset
+        total_carbon_offset_grams = calculate_carbon_offset_g(total_data_cleaned_bytes)
+        total_carbon_offset_kg = total_carbon_offset_grams / 1000.0
+
+        # Trees funded
+        student_trees = sum(int(s.get("trees", 0) or 0) for s in valid_students)
+        ecofund_trees = state.get("ecofund", {}).get("trees_planted", 0)
+        total_trees_funded = max(student_trees, int(total_data_cleaned_bytes // (1024**3)))
+        if not target_class:
+            total_trees_funded = max(total_trees_funded, ecofund_trees)
+
+        # Gaming incidents flagged
+        flagged_count = sum(
+            1 for it in class_items
+            if str(it.get("status", "")).upper() == "FLAGGED"
+            or (isinstance(it.get("ai_evaluation"), dict) and it.get("ai_evaluation", {}).get("is_gaming"))
+        ) + sum(int(s.get("strikes", 0) or 0) for s in valid_students if (s.get("strikes", 0) or 0) > 0)
+
+        stats = AnalyticsService.calculate_analytics(class_items, trees_funded=total_trees_funded)
+        res_dict = stats.to_dict()
+        res_dict["total_data_cleaned_bytes"] = total_data_cleaned_bytes
+        res_dict["total_data_cleaned_gb"] = round(total_data_cleaned_bytes / (1024**3), 4)
+        res_dict["total_carbon_offset_grams"] = round(total_carbon_offset_grams, 2)
+        res_dict["total_carbon_offset_kg"] = round(total_carbon_offset_kg, 4)
+        res_dict["total_trees_funded"] = int(total_trees_funded)
+        res_dict["flagged_count"] = int(flagged_count)
+        res_dict["data_cleaned_formatted"] = format_bytes(total_data_cleaned_bytes)
+        res_dict["carbon_offset_formatted"] = f"{total_carbon_offset_kg:.2f} kg CO₂" if total_carbon_offset_kg >= 1.0 else f"{total_carbon_offset_grams:.1f} g CO₂"
+        res_dict["class_code"] = target_class or "all"
+
+        return jsonify(res_dict)
 
     @app.route("/api/teacher/students", methods=["GET"])
     @default_auth_service.require_role("teacher")

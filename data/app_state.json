@@ -547,13 +547,151 @@
       "status": "PENDING",
       "credited": true,
       "submitted_at": "2026-10-29 12:33:26"
+    },
+    {
+      "request_id": "REQ-8154",
+      "student_id": "STU_INDIV_A_1793258408",
+      "student_name": "STU_INDIV_A_1793258408",
+      "class_code": "bio101",
+      "file_id": "file_a_0_1793258408.153524",
+      "file_name": "test_doc_a_0.pdf",
+      "file_path": "test_doc_a_0.pdf",
+      "file_size_bytes": 2097152,
+      "file_age_days": 30,
+      "carbon_offset_grams": 0.22,
+      "reason": "Old duplicate study notes from past biology exam",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (2.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "credited": true,
+      "submitted_at": "2026-10-29 12:50:08"
+    },
+    {
+      "request_id": "REQ-8159",
+      "student_id": "STU_INDIV_A_1793258408",
+      "student_name": "STU_INDIV_A_1793258408",
+      "class_code": "bio101",
+      "file_id": "file_a_1_1793258408.159211",
+      "file_name": "test_doc_a_1.pdf",
+      "file_path": "test_doc_a_1.pdf",
+      "file_size_bytes": 2097152,
+      "file_age_days": 30,
+      "carbon_offset_grams": 0.22,
+      "reason": "Old duplicate study notes from past biology exam",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (2.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "credited": true,
+      "submitted_at": "2026-10-29 12:50:08"
+    },
+    {
+      "request_id": "REQ-8164",
+      "student_id": "STU_INDIV_A_1793258408",
+      "student_name": "STU_INDIV_A_1793258408",
+      "class_code": "bio101",
+      "file_id": "file_a_2_1793258408.1644",
+      "file_name": "test_doc_a_2.pdf",
+      "file_path": "test_doc_a_2.pdf",
+      "file_size_bytes": 2097152,
+      "file_age_days": 30,
+      "carbon_offset_grams": 0.22,
+      "reason": "Old duplicate study notes from past biology exam",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (2.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "credited": true,
+      "submitted_at": "2026-10-29 12:50:08"
+    },
+    {
+      "request_id": "REQ-8170",
+      "student_id": "STU_INDIV_A_1793258408",
+      "student_name": "STU_INDIV_A_1793258408",
+      "class_code": "bio101",
+      "file_id": "file_a_3_1793258408.170048",
+      "file_name": "test_doc_a_3.pdf",
+      "file_path": "test_doc_a_3.pdf",
+      "file_size_bytes": 2097152,
+      "file_age_days": 30,
+      "carbon_offset_grams": 0.22,
+      "reason": "Old duplicate study notes from past biology exam",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (2.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "credited": true,
+      "submitted_at": "2026-10-29 12:50:08"
+    },
+    {
+      "request_id": "REQ-8175",
+      "student_id": "STU_INDIV_A_1793258408",
+      "student_name": "STU_INDIV_A_1793258408",
+      "class_code": "bio101",
+      "file_id": "file_a_4_1793258408.175311",
+      "file_name": "test_doc_a_4.pdf",
+      "file_path": "test_doc_a_4.pdf",
+      "file_size_bytes": 2097152,
+      "file_age_days": 30,
+      "carbon_offset_grams": 0.22,
+      "reason": "Old duplicate study notes from past biology exam",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (2.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "credited": true,
+      "submitted_at": "2026-10-29 12:50:08"
+    },
+    {
+      "request_id": "REQ-8183",
+      "student_id": "STU_INDIV_B_1793258408",
+      "student_name": "STU_INDIV_B_1793258408",
+      "class_code": "bio101",
+      "file_id": "file_b_1_1793258408.182765",
+      "file_name": "chem_lab_duplicate.pdf",
+      "file_path": "chem_lab_duplicate.pdf",
+      "file_size_bytes": 3145728,
+      "file_age_days": 30,
+      "carbon_offset_grams": 0.33,
+      "reason": "Obsolete chemistry lab draft from previous semester",
+      "is_drive": false,
+      "ai_evaluation": {
+        "confidence_score": 0.85,
+        "tier": "HIGH_CONFIDENCE",
+        "summary": "Verified: Legitimate cleanup of dark data (3.0 MB). Reason explains redundancy.",
+        "is_gaming": false
+      },
+      "status": "PENDING",
+      "credited": true,
+      "submitted_at": "2026-10-29 12:50:08"
     }
   ],
   "ecofund": {
     "budget_usd": 100.0,
     "balance_usd": 100.0,
     "trees_planted": 0,
-    "cumulative_waste_bytes": 54525952,
+    "cumulative_waste_bytes": 68157440,
     "threshold_bytes": 1073741824,
     "cost_per_tree_usd": 1.5,
     "donations_history": []
@@ -783,15 +921,70 @@
       "eco_points": 80,
       "bytes_cleared": 209715200,
       "trees": 2
+    },
+    {
+      "student_id": "STU_INDIV_C_1793258408",
+      "name": "STU_INDIV_C_1793258408",
+      "class_code": "bio101",
+      "bytes_cleared": 0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "last_deletion_date": "2020-01-01",
+      "daily_deletions_today": 5,
+      "daily_deletion_limit": 5,
+      "strikes": 0
+    },
+    {
+      "student_id": "STU_INDIV_A_1793258408",
+      "name": "STU_INDIV_A_1793258408",
+      "class_code": "bio101",
+      "bytes_cleared": 10485760,
+      "eco_points": 105,
+      "trees": 0,
+      "streak_days": 6,
+      "last_deletion_date": "2026-10-29",
+      "daily_deletions_today": 5,
+      "daily_deletion_limit": 5,
+      "strikes": 0
+    },
+    {
+      "student_id": "STU_INDIV_B_1793258408",
+      "name": "STU_INDIV_B_1793258408",
+      "class_code": "bio101",
+      "bytes_cleared": 3145728,
+      "eco_points": 21,
+      "trees": 0,
+      "streak_days": 2,
+      "last_deletion_date": "2026-10-29",
+      "daily_deletions_today": 1,
+      "daily_deletion_limit": 5,
+      "strikes": 0
+    },
+    {
+      "student_id": "STU_BIO_1793258408",
+      "name": "Bio Student 1793258408",
+      "class_code": "bio101",
+      "eco_points": 50,
+      "bytes_cleared": 104857600,
+      "trees": 1
+    },
+    {
+      "student_id": "STU_CS_1793258408",
+      "name": "CS Student 1793258408",
+      "class_code": "cs301",
+      "eco_points": 80,
+      "bytes_cleared": 209715200,
+      "trees": 2
     }
   ],
   "analytics": {
     "global_kpis": {
-      "total_visitors": 16,
-      "total_scans": 4,
-      "total_bytes_cleaned": 2097152000,
-      "total_carbon_offset_kg": 0.24,
-      "total_trees_funded": 1,
+      "total_visitors": 20,
+      "total_scans": 5,
+      "total_bytes_cleaned": 2621440000,
+      "total_carbon_offset_kg": 0.3,
+      "total_trees_funded": 2,
       "active_sessions": 0,
       "tracked_cities_count": 0
     },
@@ -804,12 +997,12 @@
         "region": "",
         "lat": 0.0,
         "lon": 0.0,
-        "visitors": 8,
-        "active_users": 8,
+        "visitors": 10,
+        "active_users": 10,
         "scans": 0,
         "bytes_cleaned": 0,
         "co2_avoided_kg": 0.0,
-        "last_active": "2026-10-29 12:33:26"
+        "last_active": "2026-10-29 12:50:08"
       },
       "Singapore": {
         "city": "Singapore",
@@ -819,12 +1012,12 @@
         "region": "",
         "lat": 0.0,
         "lon": 0.0,
-        "visitors": 4,
-        "active_users": 4,
+        "visitors": 5,
+        "active_users": 5,
         "scans": 0,
         "bytes_cleaned": 0,
         "co2_avoided_kg": 0.0,
-        "last_active": "2026-10-29 12:33:25"
+        "last_active": "2026-10-29 12:50:06"
       },
       "Paris": {
         "city": "Paris",
@@ -834,15 +1027,67 @@
         "region": "\u00cele-de-France",
         "lat": 48.8566,
         "lon": 2.3522,
-        "visitors": 4,
-        "active_users": 4,
-        "scans": 4,
-        "bytes_cleaned": 2097152000,
-        "co2_avoided_kg": 0.22,
-        "last_active": "2026-10-29 12:33:25"
+        "visitors": 5,
+        "active_users": 5,
+        "scans": 5,
+        "bytes_cleaned": 2621440000,
+        "co2_avoided_kg": 0.275,
+        "last_active": "2026-10-29 12:50:06"
       }
     },
     "recent_events": [
+      {
+        "id": "EVT-406789",
+        "timestamp": "2026-10-29 12:50:06",
+        "city": "Global Visitor",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "user_id": "anonymous",
+        "role": "visitor",
+        "action": "Anonymous Page View",
+        "device_type": "Desktop",
+        "bytes_cleaned": 0
+      },
+      {
+        "id": "EVT-406777",
+        "timestamp": "2026-10-29 12:50:06",
+        "city": "Paris",
+        "country": "France",
+        "country_code": "FR",
+        "flag": "\ud83c\uddeb\ud83c\uddf7",
+        "user_id": "TEST-USER-PARIS",
+        "role": "student",
+        "action": "Device Scan (42 items indexed)",
+        "device_type": "macOS Desktop",
+        "bytes_cleaned": 524288000
+      },
+      {
+        "id": "EVT-406732",
+        "timestamp": "2026-10-29 12:50:06",
+        "city": "Singapore",
+        "country": "Singapore",
+        "country_code": "SG",
+        "flag": "\ud83c\uddf8\ud83c\uddec",
+        "user_id": "anonymous",
+        "role": "visitor",
+        "action": "Page Visit",
+        "device_type": "Desktop",
+        "bytes_cleaned": 0
+      },
+      {
+        "id": "EVT-406684",
+        "timestamp": "2026-10-29 12:50:06",
+        "city": "Global Visitor",
+        "country": "Global",
+        "country_code": "",
+        "flag": "\ud83c\udf10",
+        "user_id": "visitor",
+        "role": "visitor",
+        "action": "Analytics View",
+        "device_type": "Desktop Browser",
+        "bytes_cleaned": 0
+      },
       {
         "id": "EVT-405580",
         "timestamp": "2026-10-29 12:33:25",
@@ -1053,7 +1298,7 @@
       }
     ],
     "devices": {
-      "desktop": 16,
+      "desktop": 20,
       "mobile": 0,
       "tablet": 0
     },

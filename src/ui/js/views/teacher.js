@@ -218,10 +218,15 @@ class TeacherConfirmationView {
         btn.textContent = "Processing...";
       }
       try {
+        const sel = document.getElementById("t-class-filter-select");
+        const cCode = sel ? sel.value : (this.selectedClassCode || "all");
         const res = await fetch("/api/teacher/decide_all", {
           method: "POST",
           headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001" })
+          body: JSON.stringify({ 
+            teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001",
+            class_code: cCode
+          })
         }).then(r => r.json());
         if (this.audioSynth) this.audioSynth.playVictoryFanfare();
         if (this.particleEngine) this.particleEngine.emitConfetti();
@@ -399,11 +404,12 @@ class TeacherConfirmationView {
       const sel = document.getElementById("t-class-filter-select");
       const cCode = sel ? sel.value : (this.selectedClassCode || "all");
       const qUrl = cCode && cCode !== "all" ? `/api/teacher/queue?class_code=${encodeURIComponent(cCode)}` : `/api/teacher/queue?class_code=all`;
+      const aUrl = cCode && cCode !== "all" ? `/api/teacher/analytics?class_code=${encodeURIComponent(cCode)}` : `/api/teacher/analytics?class_code=all`;
 
       const authHeaders = this.getAuthHeaders();
       const [queueRes, analyticsRes] = await Promise.all([
         fetch(qUrl, { headers: authHeaders }).then((r) => r.json()),
-        fetch("/api/teacher/analytics", { headers: authHeaders }).then((r) => r.json()),
+        fetch(aUrl, { headers: authHeaders }).then((r) => r.json()),
       ]);
 
       this.queue = queueRes.queue || [];
@@ -457,8 +463,30 @@ class TeacherConfirmationView {
     }
 
     if (this.analytics) {
-      if (elCleared) elCleared.textContent = `${(this.analytics.total_data_cleaned_gb || 0).toFixed(2)} GB`;
-      if (elCarbon) elCarbon.textContent = `${(this.analytics.total_carbon_offset_kg || 0).toFixed(2)} kg CO₂`;
+      if (elCleared) {
+        if (this.analytics.data_cleaned_formatted) {
+          elCleared.textContent = this.analytics.data_cleaned_formatted;
+        } else if ((this.analytics.total_data_cleaned_gb || 0) >= 0.1) {
+          elCleared.textContent = `${this.analytics.total_data_cleaned_gb.toFixed(2)} GB`;
+        } else if ((this.analytics.total_data_cleaned_bytes || 0) > 0) {
+          elCleared.textContent = `${((this.analytics.total_data_cleaned_bytes || 0) / (1024 * 1024)).toFixed(1)} MB`;
+        } else {
+          elCleared.textContent = "0 B";
+        }
+      }
+
+      if (elCarbon) {
+        if (this.analytics.carbon_offset_formatted) {
+          elCarbon.textContent = this.analytics.carbon_offset_formatted;
+        } else if ((this.analytics.total_carbon_offset_kg || 0) >= 1.0) {
+          elCarbon.textContent = `${this.analytics.total_carbon_offset_kg.toFixed(2)} kg CO₂`;
+        } else if ((this.analytics.total_carbon_offset_grams || 0) > 0) {
+          elCarbon.textContent = `${this.analytics.total_carbon_offset_grams.toFixed(1)} g CO₂`;
+        } else {
+          elCarbon.textContent = "0.0 g CO₂";
+        }
+      }
+
       if (elTrees) elTrees.textContent = `${this.analytics.total_trees_funded || 0} 🌲`;
       if (elFlagged) elFlagged.textContent = `${this.analytics.flagged_count || 0} 🚩`;
     }

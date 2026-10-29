@@ -89,6 +89,8 @@ class AnalyticsService:
 
             size_bytes = int(r_dict.get("file_size_bytes") or r_dict.get("size_bytes") or 0)
             carbon_g = float(r_dict.get("carbon_offset_grams") or 0.0)
+            if carbon_g <= 0.0 and size_bytes > 0:
+                carbon_g = (size_bytes / BYTES_PER_GB) * 0.28 * 405.7
 
             if status == "pending":
                 stats.pending_count += 1
