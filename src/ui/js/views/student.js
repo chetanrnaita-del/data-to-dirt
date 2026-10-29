@@ -152,11 +152,11 @@ class StudentDashboardView {
                 🤖 AI Data Cleaner
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Scan Lighthouse Google Drive">
+                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Clean School Google Drive (Lighthouse Email)">
                   🏫 School Drive
                 </button>
-                <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-picker" title="Select Specific Google Drive Files or Folders">
-                  📁 Google Picker
+                <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-gdrive-personal" title="Clean Personal Google Drive (@gmail.com / Personal Email)">
+                  📧 Personal Email
                 </button>
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
                   <span id="btn-scan-local-text">📱 Device</span>
@@ -318,11 +318,18 @@ class StudentDashboardView {
       }
     }
 
-    const btnScanPicker = document.getElementById("btn-scan-picker");
-    if (btnScanPicker) {
-      btnScanPicker.addEventListener("click", () => {
+    const btnScanDrivePersonal = document.getElementById("btn-scan-gdrive-personal");
+    if (btnScanDrivePersonal) {
+      btnScanDrivePersonal.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        this.openGooglePicker();
+        localStorage.setItem("d2d_google_provider", "personal");
+        const existingToken = localStorage.getItem("d2d_google_access_token");
+        const activeProvider = localStorage.getItem("d2d_google_provider");
+        if (existingToken && activeProvider === "personal") {
+          this.executeScan("__google_drive__", true, "drive", [], existingToken);
+        } else {
+          this.showGoogleDriveModal("personal");
+        }
       });
     }
 
@@ -330,7 +337,13 @@ class StudentDashboardView {
       btnScanDrive.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
         localStorage.setItem("d2d_google_provider", "school");
-        this.showGoogleDriveModal();
+        const existingToken = localStorage.getItem("d2d_google_access_token");
+        const activeProvider = localStorage.getItem("d2d_google_provider");
+        if (existingToken && activeProvider === "school") {
+          this.executeScan("__google_drive__", true, "drive", [], existingToken);
+        } else {
+          this.showGoogleDriveModal("school");
+        }
       });
     }
 
@@ -539,11 +552,11 @@ class StudentDashboardView {
       .join("");
   }
 
-  showGoogleDriveModal() {
+  showGoogleDriveModal(preferredProvider = null) {
     document.getElementById("modal-gdrive-options")?.remove();
     const existingToken = localStorage.getItem("d2d_google_access_token");
-    const activeProvider = localStorage.getItem("d2d_google_provider") || "school";
-    const providerLabel = activeProvider === "personal" ? "Personal / Outside Account" : "School Account (Lighthouse Email)";
+    const activeProvider = localStorage.getItem("d2d_google_provider") || preferredProvider || "school";
+    const providerLabel = activeProvider === "personal" ? "Personal Email (@gmail.com)" : "School Account (Lighthouse Email)";
 
     const modal = document.createElement("div");
     modal.className = "retro-modal-backdrop";
@@ -575,21 +588,21 @@ class StudentDashboardView {
         ` : ''}
 
         <div style="font-size: 12px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 8px;">
-          ${existingToken ? 'Reconnect or Select Another Folder:' : 'Connect Google Drive:'}
+          ${existingToken ? 'Switch or Connect Another Account:' : 'Connect Google Drive:'}
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <button class="retro-btn retro-btn-green" id="btn-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
             <strong>🏫 Connect Lighthouse Google Drive</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              For student and teacher Google Workspace accounts.
+              For student and teacher Lighthouse email accounts.
             </div>
           </button>
 
-          <button class="retro-btn retro-btn-gold" id="btn-gdrive-picker" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
+          <button class="retro-btn retro-btn-gold" id="btn-gdrive-personal" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+            <strong>📧 Connect Personal Google Account / Email (@gmail.com)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Opens Google selection dialog to browse and handpick files to clean.
+              For personal Gmail and outside personal email accounts.
             </div>
           </button>
 
@@ -618,9 +631,11 @@ class StudentDashboardView {
       window.location.href = `/auth/google/login?provider=school&grade=${encodeURIComponent(this.classCode || "grade5")}`;
     });
 
-    modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {
+    modal.querySelector("#btn-gdrive-personal")?.addEventListener("click", () => {
       dismiss();
-      this.openGooglePicker();
+      localStorage.removeItem("d2d_google_access_token");
+      localStorage.setItem("d2d_google_provider", "personal");
+      window.location.href = `/auth/google/login?provider=personal&grade=${encodeURIComponent(this.classCode || "grade5")}`;
     });
 
     modal.querySelector("#btn-gdrive-cancel")?.addEventListener("click", dismiss);
@@ -913,10 +928,10 @@ class StudentDashboardView {
               </span>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-banner-reconnect-school" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
-                  🏫 Reconnect Lighthouse Drive
+                  🏫 Reconnect School Drive
                 </button>
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-wood" id="btn-banner-picker" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
-                  📁 Google Picker
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-gold" id="btn-banner-reconnect-personal" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
+                  📧 Reconnect Personal Email
                 </button>
               </div>
             </div>
@@ -925,11 +940,12 @@ class StudentDashboardView {
             localStorage.setItem("d2d_google_provider", "school");
             window.location.href = `/auth/google/login?provider=school&grade=${encodeURIComponent(this.classCode || "grade5")}`;
           });
-          banner.querySelector("#btn-banner-picker")?.addEventListener("click", () => {
-            this.openGooglePicker();
+          banner.querySelector("#btn-banner-reconnect-personal")?.addEventListener("click", () => {
+            localStorage.setItem("d2d_google_provider", "personal");
+            window.location.href = `/auth/google/login?provider=personal&grade=${encodeURIComponent(this.classCode || "grade5")}`;
           });
         }
-        this.renderScannedFiles("Google Drive authorization expired. Please click 'Reconnect Lighthouse Drive' above.");
+        this.renderScannedFiles("Google Drive authorization expired. Please click 'Reconnect School Drive' or 'Reconnect Personal Email' above.");
         return;
       }
 

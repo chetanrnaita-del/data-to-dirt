@@ -201,11 +201,11 @@ class TeacherConfirmationView {
               🤖 My Data Cleaner — Direct Delete (No Approval Needed)
             </div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-              <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-teacher-scan-gdrive-personal" title="Personal Google Drive (@gmail.com / Outside Account)">
-                🌐 Personal Drive
-              </button>
               <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-teacher-scan-gdrive" title="School Google Drive (Lighthouse Email)">
                 🏫 School Drive
+              </button>
+              <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-teacher-scan-gdrive-personal" title="Personal Google Drive (@gmail.com / Personal Email)">
+                📧 Personal Email
               </button>
               <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-teacher-scan-local">
                 <span id="btn-teacher-scan-local-text">📱 Device</span>
@@ -1436,7 +1436,7 @@ class TeacherConfirmationView {
               </span>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button type="button" class="retro-btn retro-btn-sm retro-btn-gold" id="btn-tch-banner-reconnect-personal" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
-                  🌐 Reconnect Personal Drive
+                  📧 Reconnect Personal Email
                 </button>
                 <button type="button" class="retro-btn retro-btn-sm retro-btn-wood" id="btn-tch-banner-reconnect-school" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
                   🏫 School Drive
@@ -1874,15 +1874,15 @@ class TeacherConfirmationView {
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+          <button class="retro-btn retro-btn-green" id="btn-tch-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
             <strong>🏫 Connect School Drive (Lighthouse Email)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
               For official Lighthouse teacher and faculty accounts.
             </div>
           </button>
 
-          <button class="retro-btn retro-btn-wood" id="btn-tch-gdrive-personal" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>🌐 Connect Personal / Outside Google Account (@gmail.com)</strong>
+          <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-personal" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+            <strong>📧 Connect Personal Google Account / Email (@gmail.com)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
               For personal Gmail accounts and external educational accounts.
             </div>
