@@ -429,7 +429,7 @@ class FirestoreDB:
                 "eco_points": u.get("eco_points", 0),
                 "data_cleared_bytes": u.get("bytes_cleared", 0),
                 "streak_days": u.get("streak_days", 1),
-                "trees": u.get("trees", 0)
+                "trees": u.get("trees", 0) if u.get("trees") is not None else 0
             })
         return leaderboard
 

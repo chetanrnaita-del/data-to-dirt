@@ -67,13 +67,13 @@ _load_env_file()
 
 def get_google_client_id(provider: str = "school") -> str:
     if str(provider).lower().strip() == "personal":
-        return os.environ.get("GOOGLE_CLIENT_ID_PERSONAL", "")
-    return os.environ.get("GOOGLE_CLIENT_ID", "")
+        return os.environ.get("GOOGLE_CLIENT_ID_PERSONAL") or os.environ.get("GOOGLE_CLIENT_ID", "")
+    return os.environ.get("GOOGLE_CLIENT_ID") or os.environ.get("GOOGLE_CLIENT_ID_PERSONAL", "")
 
 def get_google_client_secret(provider: str = "school") -> str:
     if str(provider).lower().strip() == "personal":
-        return os.environ.get("GOOGLE_CLIENT_SECRET_PERSONAL", "")
-    return os.environ.get("GOOGLE_CLIENT_SECRET", "")
+        return os.environ.get("GOOGLE_CLIENT_SECRET_PERSONAL") or os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    return os.environ.get("GOOGLE_CLIENT_SECRET") or os.environ.get("GOOGLE_CLIENT_SECRET_PERSONAL", "")
 
 def refresh_google_access_token(provider: str = "school", refresh_token: Optional[str] = None) -> Optional[str]:
     if not refresh_token:
@@ -302,6 +302,7 @@ def get_default_state() -> Dict[str, Any]:
         "student": {
             "student_id": "STU-8SB8FZ",
             "name": "Aaryan Agarawal",
+            "class_code": "bio101",
             "bytes_cleared": 0,
             "eco_points": 0,
             "streak_days": 0,
@@ -420,8 +421,10 @@ def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = 
         matched = {
             "student_id": clean_id,
             "name": clean_id,
+            "class_code": "bio101",
             "bytes_cleared": 0,
             "eco_points": 0,
+            "trees": 0,
             "streak_days": 1,
             "last_deletion_date": today,
             "daily_deletions_today": 0,
@@ -1358,8 +1361,10 @@ def create_flask_app():
                 if f_user:
                     student["student_id"] = target_student_id
                     student["name"] = f_user.get("name", student.get("name", target_student_id))
+                    student["class_code"] = f_user.get("class_code", student.get("class_code", "bio101"))
                     student["bytes_cleared"] = f_user.get("bytes_cleared", student.get("bytes_cleared", 0))
                     student["eco_points"] = f_user.get("eco_points", student.get("eco_points", 0))
+                    student["trees"] = f_user.get("trees") if f_user.get("trees") is not None else int(student["bytes_cleared"] // (1024**3))
                     student["streak_days"] = f_user.get("streak_days", student.get("streak_days", 1))
                     student["strikes"] = f_user.get("strikes", student.get("strikes", 0))
 
@@ -1386,11 +1391,13 @@ def create_flask_app():
         return jsonify({
             "student_id": student.get("student_id", target_student_id or "STU-001"),
             "student_name": student.get("name", "Student"),
+            "class_code": student.get("class_code", "bio101"),
             "bytes_cleared": bytes_cleared,
             "bytes_cleared_formatted": format_bytes(bytes_cleared),
             "carbon_offset_g": carbon_g,
             "trees_equivalent": trees_eq,
             "eco_points": student.get("eco_points", 0),
+            "trees": student.get("trees") if student.get("trees") is not None else int(bytes_cleared // (1024**3)),
             "current_streak_days": student.get("streak_days", 1),
             "daily_deletions_today": daily_count,
             "daily_deletion_limit": daily_limit,
@@ -1408,14 +1415,39 @@ def create_flask_app():
         student_id = request.args.get("student_id", "").strip()
         class_code = request.args.get("class_code", "").strip().lower()
 
+        # Try to resolve class_code if not passed explicitly
+        if not class_code:
+            auth_header = request.headers.get("Authorization", "")
+            token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+            session = default_auth_service.validate_token(token) if token else None
+            if session and session.get("class_code") and session.get("class_code") not in ["all", "*", "any"]:
+                class_code = session.get("class_code", "").strip().lower()
+
+        if not class_code and student_id:
+            clean_s_id = student_id.lower()
+            for s in state.get("students", []):
+                if s.get("student_id", "").lower() == clean_s_id or s.get("name", "").lower() == clean_s_id:
+                    class_code = (s.get("class_code") or "").strip().lower()
+                    break
+            if not class_code and state.get("student", {}).get("student_id", "").lower() == clean_s_id:
+                class_code = (state.get("student", {}).get("class_code") or "").strip().lower()
+
+            if not class_code and firestore_db.is_connected:
+                for check_id in [student_id, student_id.upper(), student_id.lower()]:
+                    try:
+                        stu_doc = firestore_db.db.collection("users").document(check_id).get()
+                        if stu_doc.exists:
+                            class_code = (stu_doc.to_dict().get("class_code") or "").strip().lower()
+                            if class_code:
+                                break
+                    except Exception:
+                        pass
+
+        if not class_code or class_code in ["all", "*", "any"]:
+            class_code = "bio101"
+
         if firestore_db.is_connected:
             try:
-                # If student_id is provided but no class_code, resolve student's class
-                if not class_code and student_id:
-                    stu_doc = firestore_db.db.collection("users").document(student_id.upper()).get()
-                    if stu_doc.exists:
-                        class_code = stu_doc.to_dict().get("class_code", "")
-
                 f_lb = firestore_db.get_class_leaderboard(class_code=class_code, limit=50)
                 if f_lb:
                     leaderboard = f_lb
@@ -1423,24 +1455,34 @@ def create_flask_app():
                 print(f"[!] Leaderboard firestore error: {e}")
 
         if not leaderboard:
-            leaderboard = state.get("leaderboard", [])
-            if not leaderboard:
-                known_students = []
-                if "student" in state:
-                    known_students.append(state["student"])
-                for s in state.get("students", []):
-                    if s.get("student_id") != state.get("student", {}).get("student_id"):
-                        known_students.append(s)
-                leaderboard = []
-                for s in known_students:
-                    leaderboard.append({
-                        "user_id": s.get("student_id", ""),
-                        "student_id": s.get("student_id", ""),
-                        "name": s.get("name", s.get("student_id", "Student")),
-                        "eco_points": s.get("eco_points", 0),
-                        "data_cleared_bytes": s.get("bytes_cleared", 0),
-                        "streak_days": s.get("streak_days", 0),
-                    })
+            known_students = []
+            if "student" in state:
+                known_students.append(state["student"])
+            for s in state.get("students", []):
+                if s.get("student_id") != state.get("student", {}).get("student_id"):
+                    known_students.append(s)
+
+            # STRICT FILTER BY CLASS CODE: Only students in THIS class
+            filtered_students = [
+                s for s in known_students 
+                if (s.get("class_code") or "bio101").strip().lower() == class_code
+            ]
+            leaderboard = []
+            for s in filtered_students:
+                b_cleared = s.get("bytes_cleared", 0)
+                trees_val = s.get("trees")
+                if trees_val is None:
+                    trees_val = int(b_cleared // (1024**3))
+                leaderboard.append({
+                    "user_id": s.get("student_id", ""),
+                    "student_id": s.get("student_id", ""),
+                    "name": s.get("name", s.get("student_id", "Student")),
+                    "class_code": class_code,
+                    "eco_points": s.get("eco_points", 0),
+                    "data_cleared_bytes": b_cleared,
+                    "streak_days": s.get("streak_days", 0),
+                    "trees": trees_val
+                })
 
         # Recalculate formatted data
         formatted_list = []
@@ -1448,6 +1490,8 @@ def create_flask_app():
             item = dict(entry)
             b_val = item.get("data_cleared_bytes", 0) or item.get("bytes_cleared", 0)
             item["data_cleared_formatted"] = format_bytes(b_val)
+            # Ensure trees is never None/undefined
+            item["trees"] = item.get("trees") if item.get("trees") is not None else int(b_val // (1024**3))
             # Mark isSelf if matching student_id
             if student_id and (str(item.get("user_id") or item.get("student_id") or "").lower() == student_id.lower()):
                 item["name"] = f"{item.get('name', student_id)} (You)"
@@ -1455,7 +1499,7 @@ def create_flask_app():
         for i, item in enumerate(formatted_list):
             item["rank"] = i + 1
 
-        return jsonify({"leaderboard": formatted_list})
+        return jsonify({"leaderboard": formatted_list, "class_code": class_code})
 
     @app.route("/api/tree/growth", methods=["GET"])
     def api_tree_growth():
@@ -2271,7 +2315,8 @@ def create_flask_app():
                         "error": f"Google Drive connection required for {prov_label}. Please connect your account.",
                         "auth_url": f"/auth/google/login?provider={scan_provider}"
                     }), 401
-                elif last_http_code == 401:
+                is_auth_error = (last_http_code == 401) or (last_google_error and any(k in str(last_google_error).lower() for k in ["invalid authentication credentials", "unauthenticated", "oauth 2", "invalid_grant", "credentials"]))
+                if is_auth_error:
                     return jsonify({
                         "status": "needs_auth",
                         "provider": scan_provider,
@@ -3659,19 +3704,20 @@ def create_flask_app():
         class_filter = request.args.get("class_code", "").lower().strip()
         is_admin = session and session.get("role") == "admin"
 
-        if class_filter in ["all", "*", "any", "admin2026", "admin"]:
-            class_filter = ""
-
-        if not class_filter and session and session.get("role") == "teacher" and not is_admin:
-            s_class = (session.get("class_code") or "").strip().lower()
-            if s_class and s_class not in ["all", "*", "any"]:
-                class_filter = s_class
-            else:
-                tid = session.get("user_id", "").lower()
+        if not is_admin:
+            # Teachers must only see students in their assigned class
+            teacher_class = (session.get("class_code") or "").strip().lower() if session else ""
+            if not teacher_class or teacher_class in ["all", "*", "any"]:
+                tid = (session.get("user_id") or "").lower() if session else ""
                 for c in ["bio101", "env201", "cs301", "chem102", "earth204"]:
                     if c in tid:
-                        class_filter = c
+                        teacher_class = c
                         break
+            if not teacher_class:
+                teacher_class = "bio101"
+            class_filter = teacher_class
+        elif class_filter in ["all", "*", "any", "admin2026", "admin"]:
+            class_filter = ""
 
         state = load_state()
         local_students = state.get("students", [])
@@ -3696,8 +3742,12 @@ def create_flask_app():
                 merged[sid] = s
                 
         results = list(merged.values())
+        for s in results:
+            if not s.get("class_code"):
+                s["class_code"] = "bio101"
+
         if class_filter:
-            results = [s for s in results if s.get("class_code", "").lower() == class_filter]
+            results = [s for s in results if s.get("class_code", "").strip().lower() == class_filter]
 
         # Sort newest students first so new students immediately appear at the top
         results.sort(

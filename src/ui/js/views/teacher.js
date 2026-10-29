@@ -25,11 +25,27 @@ class TeacherConfirmationView {
   mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
+    let teacherClass = (window.DataToDirt?.classCode || localStorage.getItem("d2d_class_code") || "").toLowerCase();
+    const role = (window.DataToDirt?.authenticatedRole || localStorage.getItem("d2d_role") || "").toLowerCase();
+    if (role === "teacher") {
+      const u = (window.DataToDirt?.userId || localStorage.getItem("d2d_user_id") || "").toLowerCase();
+      for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
+        if (u.includes(c) || teacherClass.includes(c)) {
+          teacherClass = c;
+          break;
+        }
+      }
+    }
+    if (!teacherClass || (teacherClass === "all" && role === "teacher")) {
+      teacherClass = "bio101";
+    }
+    this.selectedClassCode = teacherClass;
     this.renderLayout();
     this.fetchData();
   }
 
   renderLayout() {
+    const role = (window.DataToDirt?.authenticatedRole || localStorage.getItem("d2d_role") || "").toLowerCase();
     this.container.innerHTML = `
       <div class="teacher-dashboard" style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
 
@@ -38,7 +54,7 @@ class TeacherConfirmationView {
           <div>
             <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px;">
               <span>👨‍🏫 Teacher Confirmation Queue</span>
-              <span class="retro-tag retro-tag-clean" id="t-class-badge" style="font-size: 11px;">Class: BIO101</span>
+              <span class="retro-tag retro-tag-clean" id="t-class-badge" style="font-size: 11px;">Class: ${(this.selectedClassCode || "BIO101").toUpperCase()}</span>
               <span class="retro-tag retro-tag-stale" id="t-queue-badge">0 PENDING</span>
             </div>
             <div style="font-size: 11px; color: var(--c-ink-muted); margin-top: 2px;">
@@ -98,12 +114,12 @@ class TeacherConfirmationView {
             <!-- Search & Sort -->
             <div style="display: flex; align-items: center; gap: 8px;">
               <select id="t-class-filter-select" class="retro-input" style="padding: 4px 6px; font-size: 11px; cursor: pointer;">
-                <option value="all">🌐 All Classes</option>
-                <option value="bio101">🌿 Bio 101</option>
-                <option value="cs301">💻 CS 301</option>
-                <option value="env201">🌍 Env 201</option>
-                <option value="chem102">🧪 Chem 102</option>
-                <option value="earth204">⛰️ Earth 204</option>
+                ${role === 'admin' ? '<option value="all">🌐 All Classes</option>' : ''}
+                <option value="bio101" ${this.selectedClassCode === 'bio101' ? 'selected' : ''}>🌿 Bio 101</option>
+                <option value="cs301" ${this.selectedClassCode === 'cs301' ? 'selected' : ''}>💻 CS 301</option>
+                <option value="env201" ${this.selectedClassCode === 'env201' ? 'selected' : ''}>🌍 Env 201</option>
+                <option value="chem102" ${this.selectedClassCode === 'chem102' ? 'selected' : ''}>🧪 Chem 102</option>
+                <option value="earth204" ${this.selectedClassCode === 'earth204' ? 'selected' : ''}>⛰️ Earth 204</option>
               </select>
               <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
                 ⚡ Approve All Pending
@@ -752,21 +768,22 @@ class TeacherConfirmationView {
     if (existingModal) existingModal.remove();
 
     const genId = () => "STU-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    let defaultClassCode = (window.DataToDirt?.classCode || localStorage.getItem("d2d_class_code") || "").toLowerCase();
+    let defaultClassCode = this.selectedClassCode || (window.DataToDirt?.classCode || localStorage.getItem("d2d_class_code") || "").toLowerCase();
     const role = (window.DataToDirt?.authenticatedRole || localStorage.getItem("d2d_role") || "").toLowerCase();
-    if (!defaultClassCode || defaultClassCode.startsWith("admin") || role === "admin") {
-      defaultClassCode = "all";
+    if (role === "teacher") {
       const u = (window.DataToDirt?.userId || localStorage.getItem("d2d_user_id") || "").toLowerCase();
-      if (role === "teacher") {
-        for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
-          if (u.includes(c)) {
-            defaultClassCode = c;
-            break;
-          }
+      for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
+        if (u.includes(c) || defaultClassCode.includes(c)) {
+          defaultClassCode = c;
+          break;
         }
       }
+      if (!defaultClassCode || defaultClassCode === "all") {
+        defaultClassCode = "bio101";
+      }
+    } else if (!defaultClassCode || defaultClassCode.startsWith("admin") || role === "admin") {
+      defaultClassCode = "all";
     }
-    if (!defaultClassCode) defaultClassCode = "all";
 
     const modalHtml = `
       <div class="retro-modal-backdrop" id="modal-student-directory" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 6000; padding: 12px; backdrop-filter: blur(2px);">
@@ -831,7 +848,7 @@ class TeacherConfirmationView {
                 </div>
                 <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                   <select id="stu-class-filter-select" class="retro-select" style="font-size: 11px; padding: 4px 8px; border: 1.5px solid #8b5a2b; border-radius: 4px; background: #fff; font-weight: bold; color: #4a2e18; cursor: pointer;">
-                    <option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Classes</option>
+                    ${role === 'admin' ? `<option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Classes</option>` : ''}
                     <option value="bio101" ${defaultClassCode === 'bio101' ? 'selected' : ''}>🌿 Bio 101 (Dr. Reed)</option>
                     <option value="cs301" ${defaultClassCode === 'cs301' ? 'selected' : ''}>💻 CS 301 (Ms. Patel)</option>
                     <option value="env201" ${defaultClassCode === 'env201' ? 'selected' : ''}>🌍 Env 201 (Prof. Green)</option>
@@ -1177,7 +1194,10 @@ class TeacherConfirmationView {
         localStorage.setItem("d2d_google_access_token", res.new_access_token);
       }
 
-      if (response.status === 401 && res.status === "needs_auth") {
+      const isAuthExpired = (response.status === 401 && res.status === "needs_auth") ||
+        (res.error && (res.error.includes("expired") || res.error.includes("invalid authentication credentials") || res.error.includes("OAuth 2") || res.error.includes("UNAUTHENTICATED")));
+
+      if (isAuthExpired) {
         localStorage.removeItem("d2d_google_access_token");
         const activeProvider = localStorage.getItem("d2d_google_provider") || res.provider || "personal";
         const isPersonal = activeProvider === "personal";

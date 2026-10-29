@@ -19,6 +19,7 @@ class StudentDashboardView {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
     this.userId = localStorage.getItem("d2d_user_id") || "STU-001";
+    this.classCode = localStorage.getItem("d2d_class_code") || "bio101";
     this.renderLayout();
     this.fetchData();
 
@@ -174,7 +175,7 @@ class StudentDashboardView {
               <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border);">
                 🏆 Classroom Eco-Leaderboard
               </div>
-              <span class="retro-tag retro-tag-stale">Room 402</span>
+              <span class="retro-tag retro-tag-clean" id="student-class-badge">Class: ${(this.classCode || "BIO101").toUpperCase()}</span>
             </div>
 
             <div class="retro-inset" style="padding: 4px; flex: 1; overflow-y: auto;">
@@ -329,14 +330,21 @@ class StudentDashboardView {
     try {
       const token = localStorage.getItem("d2d_session_token");
       const userId = localStorage.getItem("d2d_user_id");
+      const classCode = this.classCode || localStorage.getItem("d2d_class_code") || "bio101";
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-      const userParam = userId ? `?student_id=${encodeURIComponent(userId)}` : "";
+      const userParam = `?student_id=${encodeURIComponent(userId || "")}&class_code=${encodeURIComponent(classCode)}`;
       const [statsRes, lbRes] = await Promise.all([
         fetch(`/api/student/stats${userParam}`, { headers }).then((r) => r.json()),
         fetch(`/api/student/leaderboard${userParam}`, { headers }).then((r) => r.json()),
       ]);
 
       this.stats = statsRes;
+      if (statsRes && statsRes.class_code) {
+        this.classCode = statsRes.class_code;
+        localStorage.setItem("d2d_class_code", statsRes.class_code);
+        const badgeEl = document.getElementById("student-class-badge");
+        if (badgeEl) badgeEl.textContent = `Class: ${statsRes.class_code.toUpperCase()}`;
+      }
       this.leaderboard = lbRes.leaderboard || [];
       this.updateStatsUI();
       this.updateLeaderboardUI();
@@ -415,7 +423,7 @@ class StudentDashboardView {
             </td>
             <td style="padding: 6px 8px; text-align: right; color: var(--c-ink-muted);">${entry.data_cleared_formatted}</td>
             <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: var(--c-brass-dark);">${entry.eco_points}</td>
-            <td style="padding: 6px 8px; text-align: center;">🌲 ${entry.trees}</td>
+            <td style="padding: 6px 8px; text-align: center;">🌲 ${(entry.trees != null && !isNaN(entry.trees)) ? entry.trees : 0}</td>
           </tr>
         `;
       })
@@ -795,7 +803,10 @@ class StudentDashboardView {
         localStorage.setItem("d2d_google_access_token", res.new_access_token);
       }
 
-      if (response.status === 401 && res.status === "needs_auth") {
+      const isAuthExpired = (response.status === 401 && res.status === "needs_auth") ||
+        (res.error && (res.error.includes("expired") || res.error.includes("invalid authentication credentials") || res.error.includes("OAuth 2") || res.error.includes("UNAUTHENTICATED")));
+
+      if (isAuthExpired) {
         localStorage.removeItem("d2d_google_access_token");
         const activeProvider = localStorage.getItem("d2d_google_provider") || res.provider || "personal";
         const isPersonal = activeProvider === "personal";

@@ -389,5 +389,72 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
         self.assertIn('autocomplete="off"', content)
 
 
+    def test_student_leaderboard_class_isolation_and_trees_defined(self):
+        """Verifies students in respective classes only appear in their class leaderboard and trees is always an integer."""
+        from src.app.server import load_state, save_state
+        state = load_state()
+        ts = int(time.time())
+        stu_bio = {
+            "student_id": f"STU_BIO_{ts}",
+            "name": f"Bio Student {ts}",
+            "class_code": "bio101",
+            "eco_points": 50,
+            "bytes_cleared": 1024 * 1024 * 100,
+            "trees": 1
+        }
+        stu_cs = {
+            "student_id": f"STU_CS_{ts}",
+            "name": f"CS Student {ts}",
+            "class_code": "cs301",
+            "eco_points": 80,
+            "bytes_cleared": 1024 * 1024 * 200,
+            "trees": 2
+        }
+        state["students"].extend([stu_bio, stu_cs])
+        save_state(state)
+
+        # Query BIO101 leaderboard
+        res_bio = self.client.get(f"/api/student/leaderboard?class_code=bio101&student_id={stu_bio['student_id']}")
+        self.assertEqual(res_bio.status_code, 200)
+        data_bio = res_bio.get_json()
+        lb_bio = data_bio.get("leaderboard", [])
+        bio_ids = [entry.get("student_id") for entry in lb_bio]
+        self.assertIn(stu_bio["student_id"], bio_ids)
+        self.assertNotIn(stu_cs["student_id"], bio_ids, "CS student must not appear in BIO101 leaderboard")
+
+        # Every entry must have trees as integer >= 0, never None or undefined
+        for entry in lb_bio:
+            self.assertIsNotNone(entry.get("trees"))
+            self.assertIsInstance(entry.get("trees"), int)
+            self.assertGreaterEqual(entry.get("trees"), 0)
+
+        # Query CS301 leaderboard
+        res_cs = self.client.get(f"/api/student/leaderboard?class_code=cs301&student_id={stu_cs['student_id']}")
+        self.assertEqual(res_cs.status_code, 200)
+        data_cs = res_cs.get_json()
+        lb_cs = data_cs.get("leaderboard", [])
+        cs_ids = [entry.get("student_id") for entry in lb_cs]
+        self.assertIn(stu_cs["student_id"], cs_ids)
+        self.assertNotIn(stu_bio["student_id"], cs_ids, "Bio student must not appear in CS301 leaderboard")
+
+    def test_teacher_students_strictly_scoped_to_assigned_class(self):
+        """Teacher session token for bio101 strictly scopes student directory to bio101."""
+        from src.services.auth import default_auth_service
+        teacher_session = default_auth_service.create_session(
+            role="teacher",
+            user_id="teacher_bio101",
+            class_code="bio101",
+            name="Dr. Reed"
+        )
+        token = teacher_session["token"]
+
+        res = self.client.get("/api/teacher/students", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        students = data.get("students", [])
+        for s in students:
+            self.assertEqual(s.get("class_code", "").lower(), "bio101", f"Student {s} has wrong class for Dr. Reed")
+
+
 if __name__ == "__main__":
     unittest.main()
