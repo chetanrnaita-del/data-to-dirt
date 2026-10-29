@@ -74,6 +74,10 @@ class DataToDirtApp {
     if (userNameFromUrl) {
       localStorage.setItem("d2d_student_name", userNameFromUrl);
     }
+    const classCodeFromUrl = urlParams.get("class_code");
+    if (classCodeFromUrl) {
+      localStorage.setItem("d2d_class_code", classCodeFromUrl);
+    }
 
     // Check if user is already logged in
     const existingToken = localStorage.getItem("d2d_session_token");
@@ -88,7 +92,7 @@ class DataToDirtApp {
       const roleToUse = (savedRole && ["student", "teacher", "admin"].includes(savedRole)) ? savedRole : "student";
       const userToUse = savedUserId || (isPersonal ? "Personal User" : (roleToUse === "teacher" ? "teacher_bio101" : "guest"));
       const pinToUse = savedPin || (roleToUse === "teacher" ? "teacher123" : "student123");
-      const classToUse = localStorage.getItem("d2d_class_code") || "all";
+      const classToUse = classCodeFromUrl || localStorage.getItem("d2d_class_code") || "grade5";
 
       console.log(`[+] Auto-preserving active ${roleToUse} dashboard on OAuth return (${activeProvider})...`);
       // Acquire active session token in background if missing
@@ -353,16 +357,16 @@ class DataToDirtApp {
     }
 
     if (this.authenticatedRole === "student") {
-      // Student: Only Student View. Analytics is strictly restricted to Admin.
-      if (btnStudent) btnStudent.style.display = "inline-block";
+      // Student: Single-view dashboard. Hide redundant nav button so only clean status badge appears.
+      if (btnStudent) btnStudent.style.display = "none";
       if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
         userRoleBadge.textContent = "🎒 STUDENT";
         userRoleBadge.style.background = "linear-gradient(135deg, #2d6a36, #439352)";
       }
     } else if (this.authenticatedRole === "teacher") {
-      // Teacher: Only Teacher View. Analytics is strictly restricted to Admin.
-      if (btnTeacher) btnTeacher.style.display = "inline-block";
+      // Teacher: Single-view dashboard.
+      if (btnTeacher) btnTeacher.style.display = "none";
       if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
         userRoleBadge.textContent = "📋 TEACHER";

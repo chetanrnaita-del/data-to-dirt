@@ -315,9 +315,9 @@ def get_default_state() -> Dict[str, Any]:
     """Returns initial genuine application state."""
     return {
         "student": {
-            "student_id": "STU-8SB8FZ",
-            "name": "Aaryan Agarawal",
-            "class_code": "bio101",
+            "student_id": "STU-001",
+            "name": "Student",
+            "class_code": "grade5",
             "bytes_cleared": 0,
             "eco_points": 0,
             "streak_days": 0,
@@ -408,6 +408,158 @@ def save_state(state: Dict[str, Any]) -> None:
             os.replace(tmp_file, STATE_FILE)
         except Exception as e:
             print(f"[!] Warning: Failed to persist state: {e}")
+
+
+def _resolve_google_user_profile(access_token: str, provider: str = "school", target_grade: str = "grade5") -> Dict[str, Any]:
+    """Fetches verified Google user profile and returns stable user_id, real name, email, and class_code."""
+    user_info = {}
+    if access_token:
+        try:
+            req = urllib.request.Request("https://www.googleapis.com/oauth2/v3/userinfo")
+            req.add_header("Authorization", f"Bearer {access_token}")
+            req.add_header("User-Agent", "DataToDirt/1.1")
+            with urllib.request.urlopen(req, timeout=6, context=get_ssl_context()) as resp:
+                user_info = json.loads(resp.read().decode())
+        except Exception as ex:
+            print(f"[OAUTH WARN] Could not fetch Google userinfo: {ex}")
+
+    google_name = (user_info.get("name") or "").strip()
+    google_email = (user_info.get("email") or "").strip().lower()
+    google_sub = (user_info.get("sub") or "").strip()
+
+    # Stable, deterministic student ID
+    if google_email:
+        clean_email_part = re.sub(r'[^a-zA-Z0-9]', '', google_email.split("@")[0]).upper()[:12]
+        stable_id = f"STU-{clean_email_part}"
+    elif google_sub:
+        stable_id = f"STU-G{google_sub[:8]}"
+    else:
+        stable_id = f"STU-{provider.upper()}"
+
+    display_name = google_name
+    if not display_name and google_email:
+        display_name = google_email.split("@")[0].replace(".", " ").title()
+    if not display_name:
+        display_name = "Student"
+
+    norm_grade = normalize_grade(target_grade) or "grade5"
+
+    existing_record = None
+    if firestore_db.is_connected:
+        try:
+            doc = firestore_db.db.collection("users").document(stable_id).get()
+            if doc.exists:
+                existing_record = doc.to_dict()
+            elif google_email:
+                matches = list(firestore_db.db.collection("users").where("email", "==", google_email).limit(1).stream())
+                if matches:
+                    existing_record = matches[0].to_dict()
+                    stable_id = existing_record.get("student_id") or existing_record.get("user_id") or stable_id
+        except Exception as fe:
+            print(f"[OAUTH WARN] Firestore lookup notice: {fe}")
+
+    state = load_state()
+    if not existing_record:
+        for s in state.get("students", []):
+            if s.get("student_id") == stable_id or (google_email and s.get("email") == google_email):
+                existing_record = s
+                break
+
+    if existing_record:
+        student_class = existing_record.get("class_code") or norm_grade
+        if display_name and display_name != "Student":
+            existing_record["name"] = display_name
+            if firestore_db.is_connected:
+                try:
+                    firestore_db.db.collection("users").document(stable_id).set({"name": display_name}, merge=True)
+                except Exception:
+                    pass
+        return {
+            "student_id": stable_id,
+            "name": display_name or existing_record.get("name") or "Student",
+            "class_code": student_class,
+            "email": google_email,
+            "existing": True
+        }
+    else:
+        new_student = {
+            "user_id": stable_id,
+            "student_id": stable_id,
+            "name": display_name,
+            "email": google_email,
+            "class_code": norm_grade,
+            "role": "student",
+            "eco_points": 0,
+            "bytes_cleared": 0,
+            "trees": 0,
+            "streak_days": 1,
+            "daily_deletions_today": 0,
+            "daily_deletion_limit": 5,
+            "created_at_iso": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        if firestore_db.is_connected:
+            try:
+                firestore_db.db.collection("users").document(stable_id).set(new_student, merge=True)
+            except Exception as fe:
+                print(f"[OAUTH WARN] Could not persist new student to Firestore: {fe}")
+
+        stus = state.get("students", [])
+        if not any(s.get("student_id") == stable_id for s in stus):
+            stus.append(new_student)
+            state["students"] = stus
+            save_state(state)
+
+        return {
+            "student_id": stable_id,
+            "name": display_name,
+            "class_code": norm_grade,
+            "email": google_email,
+            "existing": False
+        }
+
+
+def cleanup_ghost_users():
+    """Prunes old timestamp ghost accounts and sample mock users from local state and Cloud Firestore."""
+    try:
+        state = load_state()
+        changed = False
+        stus = state.get("students", [])
+        cleaned_stus = [
+            s for s in stus
+            if not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-SCHOOL-")
+            and not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-PERSONAL-")
+            and s.get("name") != "Aaryan Agarawal"
+            and s.get("student_id") != "STU-8SB8FZ"
+        ]
+        if len(cleaned_stus) != len(stus):
+            state["students"] = cleaned_stus
+            changed = True
+        
+        if state.get("student", {}).get("name") == "Aaryan Agarawal":
+            state["student"]["name"] = "Student"
+            state["student"]["student_id"] = "STU-001"
+            changed = True
+            
+        if changed:
+            save_state(state)
+    except Exception as e:
+        print(f"[!] Local state ghost cleanup notice: {e}")
+
+    if firestore_db.is_connected:
+        try:
+            docs = firestore_db.db.collection("users").stream()
+            for doc in docs:
+                doc_id = doc.id
+                d_data = doc.to_dict() or {}
+                d_name = d_data.get("name", "")
+                if doc_id.startswith("GOOGLE-SCHOOL-") or doc_id.startswith("GOOGLE-PERSONAL-") or d_name == "Aaryan Agarawal" or doc_id == "STU-8SB8FZ":
+                    try:
+                        print(f"[CLEANUP] Pruning ghost student document from Firestore: {doc_id}")
+                        doc.reference.delete()
+                    except Exception:
+                        pass
+        except Exception as fe:
+            print(f"[!] Firestore ghost cleanup notice: {fe}")
 
 
 def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = None) -> Dict[str, Any]:
@@ -925,6 +1077,9 @@ def create_flask_app():
     app = Flask(__name__, static_folder=str(UI_DIR), static_url_path="")
     CORS(app)
 
+    # Automatically purge timestamp ghost records and mock accounts
+    cleanup_ghost_users()
+
     app.secret_key = "datatodirt_secret_key"
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -1034,6 +1189,8 @@ def create_flask_app():
         if provider not in ("school", "personal"):
             provider = "school"
 
+        target_grade = normalize_grade(request.args.get("grade") or request.args.get("class_code") or "grade5")
+
         client_id = get_google_client_id(provider)
         if not client_id:
             env_var = "GOOGLE_CLIENT_ID_PERSONAL" if provider == "personal" else "GOOGLE_CLIENT_ID"
@@ -1042,13 +1199,13 @@ def create_flask_app():
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
         session["oauth_provider"] = provider
-        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}")
+        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}")
 
-        # Pack redirect_uri, provider, and timestamp into signed state parameter
-        # This guarantees the callback gets the exact matching redirect_uri and provider even if cookies are dropped
+        # Pack redirect_uri, provider, grade, and timestamp into signed state parameter
         state_payload = {
             "redirect_uri": redirect_uri,
             "provider": provider,
+            "grade": target_grade,
             "ts": time.time()
         }
         state_str = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
@@ -1057,7 +1214,7 @@ def create_flask_app():
             "client_id": client_id,
             "redirect_uri": redirect_uri,
             "response_type": "code",
-            "scope": "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
+            "scope": "openid https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
             "access_type": "offline",
             "prompt": "consent",
             "state": state_str,
@@ -1077,15 +1234,17 @@ def create_flask_app():
             print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
 
-        # 1. Extract verified redirect_uri and provider from state parameter first, falling back to session or host
+        # 1. Extract verified redirect_uri, provider, and grade from state parameter
         redirect_uri = None
         provider = "school"
+        target_grade = "grade5"
         if state_param:
             try:
                 decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
                 redirect_uri = decoded_json.get("redirect_uri")
                 provider = decoded_json.get("provider", "school")
-                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}")
+                target_grade = normalize_grade(decoded_json.get("grade") or "grade5")
+                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}")
             except Exception as ex:
                 print(f"[OAUTH WARN] Could not decode state param: {ex}")
 
@@ -1107,24 +1266,25 @@ def create_flask_app():
             if now_ts - data.get("ts", 0) > 120:
                 _oauth_code_cache.pop(c, None)
 
-        # 1. If this authorization code was already exchanged recently (e.g. browser duplicate navigation or retry),
-        # return the cached token immediately without re-calling Google (which triggers invalid_grant).
+        # 1. If this authorization code was already exchanged recently, return the cached token
         if code and code in _oauth_code_cache:
             cached_token = _oauth_code_cache[code].get("token", "")
             if cached_token:
                 print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
                 session["google_access_token"] = cached_token
                 session["oauth_provider"] = provider
-                session_user_id = f"GOOGLE-PERSONAL-{int(now_ts)}" if provider == "personal" else f"GOOGLE-SCHOOL-{int(now_ts)}"
-                session_user_name = "Personal Account" if provider == "personal" else "School Account"
+                profile = _resolve_google_user_profile(cached_token, provider, target_grade)
+                session_user_id = profile["student_id"]
+                session_user_name = profile["name"]
+                session_class_code = profile["class_code"]
                 session_tok = ""
                 try:
-                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code="all", name=session_user_name)
+                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code=session_class_code, name=session_user_name)
                     session_tok = oauth_sess.get("token", "")
                 except Exception as ex:
                     print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
                 cached_ref = session.get("google_refresh_token") or ""
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&refresh_token={urllib.parse.quote(cached_ref)}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&class_code={urllib.parse.quote(session_class_code)}&refresh_token={urllib.parse.quote(cached_ref)}")
 
         if not redirect_uri:
             redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
@@ -1153,15 +1313,18 @@ def create_flask_app():
                     session[f"google_refresh_token_{provider}"] = ref_tok
                 if code:
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
-                session_user_id = f"GOOGLE-PERSONAL-{int(now_ts)}" if provider == "personal" else f"GOOGLE-SCHOOL-{int(now_ts)}"
-                session_user_name = "Personal Account" if provider == "personal" else "School Account"
+                
+                profile = _resolve_google_user_profile(tok, provider, target_grade)
+                session_user_id = profile["student_id"]
+                session_user_name = profile["name"]
+                session_class_code = profile["class_code"]
                 session_tok = ""
                 try:
-                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code="all", name=session_user_name)
+                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code=session_class_code, name=session_user_name)
                     session_tok = oauth_sess.get("token", "")
                 except Exception as ex:
                     print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&refresh_token={urllib.parse.quote(ref_tok)}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&class_code={urllib.parse.quote(session_class_code)}&refresh_token={urllib.parse.quote(ref_tok)}")
         except urllib.error.HTTPError as e:
             error_body = ""
             try:
@@ -1453,7 +1616,9 @@ def create_flask_app():
                         pass
 
         if not class_code or class_code in ["all", "*", "any"]:
-            class_code = "bio101"
+            class_code = "grade5"
+        else:
+            class_code = normalize_grade(class_code)
 
         if firestore_db.is_connected:
             try:
@@ -1466,15 +1631,23 @@ def create_flask_app():
         if not leaderboard:
             known_students = []
             if "student" in state:
-                known_students.append(state["student"])
+                s_def = state["student"]
+                if s_def.get("name") and s_def.get("name") not in ("Student", "Aaryan Agarawal") and not str(s_def.get("student_id", "")).startswith("GOOGLE-"):
+                    known_students.append(s_def)
             for s in state.get("students", []):
-                if s.get("student_id") != state.get("student", {}).get("student_id"):
+                sid = str(s.get("student_id") or "")
+                sname = str(s.get("name") or "")
+                if sid.startswith("GOOGLE-SCHOOL-") or sid.startswith("GOOGLE-PERSONAL-"):
+                    continue
+                if sname in ("Aaryan Agarawal",) or sid in ("STU-8SB8FZ", "STU-001"):
+                    continue
+                if sid != state.get("student", {}).get("student_id"):
                     known_students.append(s)
 
             # STRICT FILTER BY CLASS CODE: Only students in THIS class
             filtered_students = [
                 s for s in known_students 
-                if (s.get("class_code") or "bio101").strip().lower() == class_code
+                if normalize_grade(s.get("class_code") or "grade5") == class_code
             ]
             leaderboard = []
             for s in filtered_students:
@@ -1490,17 +1663,22 @@ def create_flask_app():
                     "eco_points": s.get("eco_points", 0),
                     "data_cleared_bytes": b_cleared,
                     "streak_days": s.get("streak_days", 0),
-                    "trees": trees_val
+                    "trees": int(trees_val or 0)
                 })
 
-        # Recalculate formatted data
+        # Recalculate formatted data and filter ghost / mock accounts
         formatted_list = []
         for entry in sorted(leaderboard, key=lambda x: x.get("eco_points", 0), reverse=True):
+            uid = str(entry.get("user_id") or entry.get("student_id") or "")
+            uname = str(entry.get("name") or "")
+            if uid.startswith("GOOGLE-SCHOOL-") or uid.startswith("GOOGLE-PERSONAL-"):
+                continue
+            if uname in ("Aaryan Agarawal",) or uid in ("STU-8SB8FZ", "STU-001"):
+                continue
             item = dict(entry)
             b_val = item.get("data_cleared_bytes", 0) or item.get("bytes_cleared", 0)
             item["data_cleared_formatted"] = format_bytes(b_val)
-            # Ensure trees is never None/undefined
-            item["trees"] = item.get("trees") if item.get("trees") is not None else int(b_val // (1024**3))
+            item["trees"] = int(item.get("trees", 0) or 0)
             # Mark isSelf if matching student_id
             if student_id and (str(item.get("user_id") or item.get("student_id") or "").lower() == student_id.lower()):
                 item["name"] = f"{item.get('name', student_id)} (You)"
@@ -1509,6 +1687,43 @@ def create_flask_app():
             item["rank"] = i + 1
 
         return jsonify({"leaderboard": formatted_list, "class_code": class_code})
+
+    @app.route("/api/student/grade", methods=["POST"])
+    @app.route("/api/student/update_grade", methods=["POST"])
+    def api_student_update_grade():
+        data = request.get_json() or {}
+        new_grade = normalize_grade(data.get("class_code") or data.get("grade") or "")
+        if not new_grade:
+            return jsonify({"status": "error", "message": "Invalid grade specified."}), 400
+
+        student_id = (data.get("student_id") or "").strip()
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+        if not student_id and session:
+            student_id = session.get("user_id")
+
+        if not student_id:
+            return jsonify({"status": "error", "message": "Student ID required."}), 400
+
+        # Update in Firestore
+        if firestore_db.is_connected:
+            try:
+                firestore_db.db.collection("users").document(student_id).set({"class_code": new_grade}, merge=True)
+            except Exception as fe:
+                print(f"[!] Firestore update grade notice: {fe}")
+
+        # Update in local state
+        state = load_state()
+        for s in state.get("students", []):
+            if s.get("student_id") == student_id or s.get("user_id") == student_id:
+                s["class_code"] = new_grade
+                break
+        if state.get("student", {}).get("student_id") == student_id:
+            state["student"]["class_code"] = new_grade
+        save_state(state)
+
+        return jsonify({"status": "ok", "student_id": student_id, "class_code": new_grade})
 
     @app.route("/api/tree/growth", methods=["GET"])
     def api_tree_growth():
@@ -3725,7 +3940,7 @@ def create_flask_app():
         is_admin = session and session.get("role") == "admin"
 
         if not is_admin:
-            # Teachers must only see students in their assigned class
+            # Teachers default to their assigned class if no explicit filter is given
             teacher_class = (session.get("class_code") or "").strip().lower() if session else ""
             if not teacher_class or teacher_class in ["all", "*", "any"]:
                 tid = (session.get("user_id") or "").lower() if session else ""
@@ -3735,7 +3950,12 @@ def create_flask_app():
                         break
             if not teacher_class:
                 teacher_class = "grade5"
-            class_filter = teacher_class
+            # Prioritize explicit class filter from UI dropdown; fallback to teacher_class
+            if not class_filter or class_filter in ["all", "*", "any"]:
+                if teacher_class not in ["all", "*", "any"]:
+                    class_filter = teacher_class
+                else:
+                    class_filter = ""
         elif class_filter in ["all", "*", "any", "admin2026", "admin"]:
             class_filter = ""
 
@@ -3761,7 +3981,13 @@ def create_flask_app():
             if sid:
                 merged[sid] = s
                 
-        results = list(merged.values())
+        results = [
+            s for s in list(merged.values())
+            if not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-SCHOOL-")
+            and not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-PERSONAL-")
+            and str(s.get("name") or "") != "Aaryan Agarawal"
+            and str(s.get("student_id") or s.get("user_id") or "") != "STU-8SB8FZ"
+        ]
         for s in results:
             if not s.get("class_code"):
                 s["class_code"] = "grade5"

@@ -329,16 +329,22 @@ class FirestoreDB:
             students = []
             for d in docs:
                 data = d.to_dict()
+                sid = data.get("student_id") or data.get("user_id") or d.id
+                sname = data.get("name", "")
+                if str(sid).startswith("GOOGLE-SCHOOL-") or str(sid).startswith("GOOGLE-PERSONAL-"):
+                    continue
+                if sname in ("Aaryan Agarawal",) or sid in ("STU-8SB8FZ", "STU-001"):
+                    continue
                 created_at = data.get("created_at_iso")
                 if not created_at and "created_at" in data:
                     created_at = str(data["created_at"])
                 students.append({
-                    "student_id": data.get("student_id") or data.get("user_id") or d.id,
-                    "name": data.get("name", ""),
+                    "student_id": sid,
+                    "name": sname or sid,
                     "class_code": data.get("class_code", ""),
                     "eco_points": data.get("eco_points", 0),
                     "bytes_cleared": data.get("bytes_cleared", 0),
-                    "trees": data.get("trees", 0),
+                    "trees": int(data.get("trees", 0) or 0),
                     "created_by": data.get("created_by", "Teacher"),
                     "created_at": created_at or "Active"
                 })
@@ -419,17 +425,23 @@ class FirestoreDB:
         docs = query.stream()
 
         leaderboard = []
-        for i, d in enumerate(docs):
+        for d in docs:
             u = d.to_dict()
+            uid = str(u.get("user_id") or u.get("student_id") or "")
+            uname = str(u.get("name") or "")
+            if uid.startswith("GOOGLE-SCHOOL-") or uid.startswith("GOOGLE-PERSONAL-"):
+                continue
+            if uname in ("Aaryan Agarawal",) or uid in ("STU-8SB8FZ", "STU-001"):
+                continue
             leaderboard.append({
-                "rank": i + 1,
+                "rank": len(leaderboard) + 1,
                 "user_id": u.get("user_id"),
                 "name": u.get("name", u.get("user_id")),
                 "class_code": u.get("class_code", ""),
                 "eco_points": u.get("eco_points", 0),
                 "data_cleared_bytes": u.get("bytes_cleared", 0),
                 "streak_days": u.get("streak_days", 1),
-                "trees": u.get("trees", 0) if u.get("trees") is not None else 0
+                "trees": int(u.get("trees", 0) or 0)
             })
         return leaderboard
 

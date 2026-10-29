@@ -129,11 +129,11 @@ class StudentDashboardView {
                 🤖 AI Data Cleaner
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-gdrive-personal" title="Clean Personal Google Drive (@gmail.com or Outside School)">
-                  🌐 Personal Drive
-                </button>
-                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Clean School Google Drive (Lighthouse Email)">
+                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Scan Lighthouse Google Drive">
                   🏫 School Drive
+                </button>
+                <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-picker" title="Select Specific Google Drive Files or Folders">
+                  📁 Google Picker
                 </button>
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
                   <span id="btn-scan-local-text">📱 Device</span>
@@ -193,7 +193,19 @@ class StudentDashboardView {
               <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border);">
                 🏆 Classroom Eco-Leaderboard
               </div>
-              <span class="retro-tag retro-tag-clean" id="student-class-badge">${this.formatGradeLabel(this.classCode)}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="student-grade-select" style="font-size: 10px; font-weight: bold; color: var(--c-wood-border);">Grade:</label>
+                <select id="student-grade-select" class="retro-select" style="font-size: 11px; padding: 2px 6px; border: 1.5px solid var(--c-wood-border); border-radius: 4px; background: var(--c-parchment-light); font-weight: bold; color: var(--c-wood-dark); cursor: pointer;">
+                  <option value="grade5" ${this.normalizeGrade(this.classCode) === "grade5" ? "selected" : ""}>🎒 Grade 5</option>
+                  <option value="grade6" ${this.normalizeGrade(this.classCode) === "grade6" ? "selected" : ""}>🎒 Grade 6</option>
+                  <option value="grade7" ${this.normalizeGrade(this.classCode) === "grade7" ? "selected" : ""}>🎒 Grade 7</option>
+                  <option value="grade8" ${this.normalizeGrade(this.classCode) === "grade8" ? "selected" : ""}>🎒 Grade 8</option>
+                  <option value="grade9" ${this.normalizeGrade(this.classCode) === "grade9" ? "selected" : ""}>🎓 Grade 9</option>
+                  <option value="grade10" ${this.normalizeGrade(this.classCode) === "grade10" ? "selected" : ""}>🎓 Grade 10</option>
+                  <option value="grade11" ${this.normalizeGrade(this.classCode) === "grade11" ? "selected" : ""}>🎓 Grade 11</option>
+                  <option value="grade12" ${this.normalizeGrade(this.classCode) === "grade12" ? "selected" : ""}>🎓 Grade 12</option>
+                </select>
+              </div>
             </div>
 
             <div class="retro-inset" style="padding: 4px; flex: 1; overflow-y: auto;">
@@ -275,18 +287,11 @@ class StudentDashboardView {
       }
     }
 
-    const btnScanDrivePersonal = document.getElementById("btn-scan-gdrive-personal");
-    if (btnScanDrivePersonal) {
-      btnScanDrivePersonal.addEventListener("click", () => {
+    const btnScanPicker = document.getElementById("btn-scan-picker");
+    if (btnScanPicker) {
+      btnScanPicker.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        localStorage.setItem("d2d_google_provider", "personal");
-        const existingToken = localStorage.getItem("d2d_google_access_token");
-        const activeProvider = localStorage.getItem("d2d_google_provider");
-        if (existingToken && activeProvider === "personal") {
-          this.executeScan("__google_drive__", true, "drive", [], existingToken);
-        } else {
-          this.showGoogleDriveModal();
-        }
+        this.openGooglePicker();
       });
     }
 
@@ -295,6 +300,30 @@ class StudentDashboardView {
         if (window.RetroAudio) window.RetroAudio.playBlip();
         localStorage.setItem("d2d_google_provider", "school");
         this.showGoogleDriveModal();
+      });
+    }
+
+    const gradeSelect = document.getElementById("student-grade-select");
+    if (gradeSelect) {
+      gradeSelect.addEventListener("change", async (e) => {
+        const newGrade = e.target.value;
+        this.classCode = newGrade;
+        localStorage.setItem("d2d_class_code", newGrade);
+        const token = localStorage.getItem("d2d_session_token");
+        try {
+          await fetch("/api/student/grade", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ student_id: this.userId, class_code: newGrade })
+          });
+        } catch (err) {
+          console.warn("Could not save grade update:", err);
+        }
+        if (window.RetroAudio) window.RetroAudio.playBlip();
+        await this.fetchData();
       });
     }
 
@@ -360,8 +389,10 @@ class StudentDashboardView {
       if (statsRes && statsRes.class_code) {
         this.classCode = statsRes.class_code;
         localStorage.setItem("d2d_class_code", statsRes.class_code);
-        const badgeEl = document.getElementById("student-class-badge");
-        if (badgeEl) badgeEl.textContent = this.formatGradeLabel(statsRes.class_code);
+        const gradeSelect = document.getElementById("student-grade-select");
+        if (gradeSelect) {
+          gradeSelect.value = this.normalizeGrade(statsRes.class_code);
+        }
       }
       this.leaderboard = lbRes.leaderboard || [];
       this.updateStatsUI();
@@ -801,7 +832,7 @@ class StudentDashboardView {
         if (refTok) {
           payload.refresh_token = refTok;
         }
-        payload.provider = localStorage.getItem("d2d_google_provider") || "personal";
+        payload.provider = localStorage.getItem("d2d_google_provider") || "school";
       }
       
       const response = await fetch("/api/scan/request", {
@@ -826,43 +857,33 @@ class StudentDashboardView {
 
       if (isAuthExpired) {
         localStorage.removeItem("d2d_google_access_token");
-        const activeProvider = localStorage.getItem("d2d_google_provider") || res.provider || "personal";
-        const isPersonal = activeProvider === "personal";
-        const providerName = isPersonal ? "Personal Account (@gmail.com)" : "School Account (Lighthouse Email)";
         if (banner) {
           banner.style.borderColor = "var(--c-amber-border, #d97706)";
           banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";
           banner.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
               <span style="color: var(--c-amber-dark, #b45309); font-weight: bold;">
-                ⚠️ Google Drive connection expired for ${providerName} (tokens expire after 1 hour). Please reconnect:
+                ⚠️ Google Drive connection expired (tokens expire after 1 hour). Please reconnect:
               </span>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-gold" id="btn-banner-reconnect-personal" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
-                  🌐 Reconnect Personal Drive
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-banner-reconnect-school" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
+                  🏫 Reconnect Lighthouse Drive
                 </button>
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-wood" id="btn-banner-reconnect-school" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
-                  🏫 School Drive
-                </button>
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-banner-picker" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-wood" id="btn-banner-picker" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
                   📁 Google Picker
                 </button>
               </div>
             </div>
           `;
-          banner.querySelector("#btn-banner-reconnect-personal")?.addEventListener("click", () => {
-            localStorage.setItem("d2d_google_provider", "personal");
-            window.location.href = "/auth/google/login?provider=personal";
-          });
           banner.querySelector("#btn-banner-reconnect-school")?.addEventListener("click", () => {
             localStorage.setItem("d2d_google_provider", "school");
-            window.location.href = "/auth/google/login?provider=school";
+            window.location.href = `/auth/google/login?provider=school&grade=${encodeURIComponent(this.classCode || "grade5")}`;
           });
           banner.querySelector("#btn-banner-picker")?.addEventListener("click", () => {
             this.openGooglePicker();
           });
         }
-        this.renderScannedFiles("Google Drive authorization expired. Please click 'Reconnect Personal Drive' or 'School Drive' above.");
+        this.renderScannedFiles("Google Drive authorization expired. Please click 'Reconnect Lighthouse Drive' above.");
         return;
       }
 

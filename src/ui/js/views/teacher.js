@@ -1199,7 +1199,7 @@ class TeacherConfirmationView {
         if (refTok) {
           payload.refresh_token = refTok;
         }
-        payload.provider = localStorage.getItem("d2d_google_provider") || "personal";
+        payload.provider = localStorage.getItem("d2d_google_provider") || "school";
       }
 
       const response = await fetch("/api/scan/request", {
