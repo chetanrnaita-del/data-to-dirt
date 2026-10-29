@@ -1349,7 +1349,6 @@ def create_flask_app():
     @app.route("/api/auth/teachers", methods=["GET"])
     def api_auth_teachers():
         """Returns public list of registered teachers for the login view quick-select."""
-        built_in_teachers = []
         state = load_state()
         local_teachers = state.get("teachers", [])
         firestore_teachers = []
@@ -1358,6 +1357,15 @@ def create_flask_app():
                 firestore_teachers = firestore_db.get_teachers_list(limit=250)
             except Exception as e:
                 print(f"[!] Firestore teachers public fetch error: {e}")
+
+        built_in_teachers = []
+        if not local_teachers and not firestore_teachers:
+            built_in_teachers = [
+                {"teacher_id": "teacher_grade5", "name": "Grade 5 Lead Teacher", "class_code": "grade5", "pin": "teacher123"},
+                {"teacher_id": "teacher_grade6", "name": "Grade 6 Lead Teacher", "class_code": "grade6", "pin": "teacher123"},
+                {"teacher_id": "teacher_grade7", "name": "Grade 7 Lead Teacher", "class_code": "grade7", "pin": "teacher123"},
+                {"teacher_id": "teacher_grade8", "name": "Grade 8 Lead Teacher", "class_code": "grade8", "pin": "teacher123"},
+            ]
 
         def _is_test_teacher(tid: str, name: str) -> bool:
             low_id = (tid or "").lower()
@@ -1506,7 +1514,8 @@ def create_flask_app():
             "status": "ok",
             "app": "Data-to-Dirt",
             "version": "1.0.0",
-            "uptime_epoch": time.time()
+            "uptime_epoch": time.time(),
+            "firebase_connected": firestore_db.is_connected
         })
 
     @app.route("/api/student/stats", methods=["GET"])
@@ -4236,7 +4245,6 @@ def create_flask_app():
     @default_auth_service.require_role("admin")
     def api_admin_teachers():
         """Returns all registered teacher accounts from local state and Cloud Firestore."""
-        built_in_teachers = []
         state = load_state()
         local_teachers = state.get("teachers", [])
 
@@ -4246,6 +4254,15 @@ def create_flask_app():
                 firestore_teachers = firestore_db.get_teachers_list(limit=250)
             except Exception as e:
                 print(f"[!] Firestore get_teachers error: {e}")
+
+        built_in_teachers = []
+        if not local_teachers and not firestore_teachers:
+            built_in_teachers = [
+                {"teacher_id": "teacher_grade5", "name": "Grade 5 Lead Teacher", "class_code": "grade5", "role": "teacher", "created_by": "System"},
+                {"teacher_id": "teacher_grade6", "name": "Grade 6 Lead Teacher", "class_code": "grade6", "role": "teacher", "created_by": "System"},
+                {"teacher_id": "teacher_grade7", "name": "Grade 7 Lead Teacher", "class_code": "grade7", "role": "teacher", "created_by": "System"},
+                {"teacher_id": "teacher_grade8", "name": "Grade 8 Lead Teacher", "class_code": "grade8", "role": "teacher", "created_by": "System"},
+            ]
 
         all_candidates = []
         for t in built_in_teachers:

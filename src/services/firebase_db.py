@@ -65,8 +65,7 @@ class FirestoreDB:
                     self.db = firestore.client(database_id=db_name)
                 except Exception:
                     self.db = firestore.client()
-                self.is_connected = True
-                print(f"[✓] Connected to Cloud Firestore database '{db_name}' using environment variable credentials")
+                self._verify_connection(db_name, "environment variable credentials")
                 return
             except Exception as e:
                 print(f"[!] FIREBASE_KEY_JSON parse notice: {e}")
@@ -99,26 +98,42 @@ class FirestoreDB:
                 db_name = os.environ.get("FIREBASE_DATABASE_ID", "datatodirt")
                 try:
                     self.db = firestore.client(database_id=db_name)
-                    self.is_connected = True
-                    print(f"[✓] Connected to Cloud Firestore database '{db_name}' using key: {key_file}")
+                    self._verify_connection(db_name, f"key: {key_file}")
                 except Exception as db_err:
                     self.db = firestore.client()
-                    self.is_connected = True
-                    print(f"[✓] Connected to default Cloud Firestore using key: {key_file} ({db_err})")
+                    self._verify_connection("default", f"key: {key_file} ({db_err})")
             else:
                 # Try default application credentials if running in GCP or gcloud logged in
                 try:
                     if not firebase_admin._apps:
                         firebase_admin.initialize_app()
                     self.db = firestore.client()
-                    self.is_connected = True
-                    print("[✓] Connected to Cloud Firestore using Default Application Credentials!")
+                    self._verify_connection("default", "Default Application Credentials")
                 except Exception:
                     print("[!] No firebase_key.json found. FirestoreDB is in standby mode.")
                     print("[i] To activate Cloud Firestore: Download your serviceAccountKey.json from Firebase Console and save it as 'firebase_key.json' in the project root.")
         except Exception as e:
             print(f"[!] Firestore initialization failed: {e}")
             self.is_connected = False
+
+    def _verify_connection(self, db_name: str, source_desc: str):
+        """Actively probes Firestore to verify that the project exists and accepts queries."""
+        if not self.db:
+            self.is_connected = False
+            return
+
+        try:
+            # Attempt a lightweight live read probe
+            list(self.db.collection("_health").limit(1).stream())
+            self.is_connected = True
+            print(f"[✓] Cloud Firestore verified and fully connected to '{db_name}' via {source_desc}")
+        except Exception as probe_err:
+            self.is_connected = False
+            err_msg = str(probe_err)
+            if "has been deleted" in err_msg or "CONSUMER_INVALID" in err_msg:
+                print(f"[!] CRITICAL: Google Cloud project for Firestore is DELETED in Google Cloud Console ({source_desc}). Project recovery required: https://console.cloud.google.com/iam-admin/projects")
+            else:
+                print(f"[!] Cloud Firestore probe failed ({source_desc}): {probe_err}. Operating in local fallback mode.")
 
     # --------------------------------------------------------------------------
     # User Management (Supports 3,000+ Students, Teachers & Admins)

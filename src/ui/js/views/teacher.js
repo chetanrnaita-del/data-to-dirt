@@ -41,6 +41,14 @@ class TeacherConfirmationView {
     return code.toUpperCase();
   }
 
+  formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return "0 B";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
   mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
@@ -466,10 +474,10 @@ class TeacherConfirmationView {
       if (elCleared) {
         if (this.analytics.data_cleaned_formatted) {
           elCleared.textContent = this.analytics.data_cleaned_formatted;
+        } else if ((this.analytics.total_data_cleaned_bytes || 0) > 0) {
+          elCleared.textContent = this.formatBytes(this.analytics.total_data_cleaned_bytes);
         } else if ((this.analytics.total_data_cleaned_gb || 0) >= 0.1) {
           elCleared.textContent = `${this.analytics.total_data_cleaned_gb.toFixed(2)} GB`;
-        } else if ((this.analytics.total_data_cleaned_bytes || 0) > 0) {
-          elCleared.textContent = `${((this.analytics.total_data_cleaned_bytes || 0) / (1024 * 1024)).toFixed(1)} MB`;
         } else {
           elCleared.textContent = "0 B";
         }

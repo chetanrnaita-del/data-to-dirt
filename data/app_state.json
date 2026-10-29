@@ -32,7 +32,13 @@
   "auth": {
     "current_role": "student",
     "teacher_pin": "teacher123",
-    "admin_pin": "admin123"
+    "admin_pin": "admin123",
+    "teacher_passwords": {
+      "teacher_grade5": "teacher123",
+      "teacher_grade6": "teacher123",
+      "teacher_grade7": "teacher123",
+      "teacher_grade8": "teacher123"
+    }
   },
   "students": [
     {
@@ -118,6 +124,32 @@
       "user_id": "GOOGLE-SCHOOL-1793253986",
       "name": "GOOGLE-SCHOOL-1793253986",
       "class_code": "grade5",
+      "bytes_cleared": 0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0
+    },
+    {
+      "student_id": "STU-WXKA9S",
+      "user_id": "STU-WXKA9S",
+      "name": "Student WXKA9S",
+      "class_code": "grade6",
+      "bytes_cleared": 0,
+      "eco_points": 0,
+      "trees": 0,
+      "streak_days": 1,
+      "daily_deletions_today": 0,
+      "daily_deletion_limit": 5,
+      "strikes": 0
+    },
+    {
+      "student_id": "STU-45RC8Y",
+      "user_id": "STU-45RC8Y",
+      "name": "Student 45RC8Y",
+      "class_code": "grade6",
       "bytes_cleared": 0,
       "eco_points": 0,
       "trees": 0,
@@ -456,5 +488,47 @@
       "tablet": 0
     },
     "waste_categories": {}
-  }
+  },
+  "teachers": [
+    {
+      "teacher_id": "teacher_grade5",
+      "user_id": "teacher_grade5",
+      "name": "Grade 5 Lead Teacher",
+      "class_code": "grade5",
+      "pin": "teacher123",
+      "password": "teacher123",
+      "role": "teacher",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade6",
+      "user_id": "teacher_grade6",
+      "name": "Grade 6 Lead Teacher",
+      "class_code": "grade6",
+      "pin": "teacher123",
+      "password": "teacher123",
+      "role": "teacher",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade7",
+      "user_id": "teacher_grade7",
+      "name": "Grade 7 Lead Teacher",
+      "class_code": "grade7",
+      "pin": "teacher123",
+      "password": "teacher123",
+      "role": "teacher",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade8",
+      "user_id": "teacher_grade8",
+      "name": "Grade 8 Lead Teacher",
+      "class_code": "grade8",
+      "pin": "teacher123",
+      "password": "teacher123",
+      "role": "teacher",
+      "created_by": "System"
+    }
+  ]
 }
