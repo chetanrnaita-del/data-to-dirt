@@ -1,6 +1,8 @@
+import os
+import time
 import unittest
 import json
-from src.app.server import app, load_state, save_state, reset_all_auth_lockouts
+from src.app.server import app, load_state, save_state, reset_all_auth_lockouts, create_flask_app
 from src.services.auth import default_auth_service
 
 class TestLiveAuthentication(unittest.TestCase):
@@ -282,6 +284,110 @@ class TestLiveAuthentication(unittest.TestCase):
         self.assertEqual(r_ok.get_json().get("status"), "authenticated")
         with _auth_lockout_lock:
             self.assertNotIn(key, _auth_failed_attempts)
+
+
+class IndividualDailyDeletionIsolationTest(unittest.TestCase):
+    """Verifies that daily deletions are strictly isolated per individual student and never pooled class-wide."""
+
+    def setUp(self):
+        os.environ["TEST_MODE"] = "0"  # Enforce strict daily limit enforcement
+        self.app = create_flask_app()
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        os.environ["TEST_MODE"] = "1"
+
+    def test_individual_student_daily_deletions_isolation(self):
+        """Student A reaching the daily deletion limit must NOT block Student B."""
+        student_a = f"STU_INDIV_A_{int(time.time())}"
+        student_b = f"STU_INDIV_B_{int(time.time())}"
+
+        # 1. Student A submits 5 deletion requests
+        for i in range(5):
+            res = self.client.post("/api/deletion/submit", json={
+                "student_id": student_a,
+                "file_id": f"file_a_{i}_{time.time()}",
+                "file_name": f"test_doc_a_{i}.pdf",
+                "file_size": 2 * 1024 * 1024,
+                "reason": "Old duplicate study notes from past biology exam",
+                "is_drive": False
+            })
+            self.assertEqual(res.status_code, 200, f"Deletion {i+1} for Student A should succeed")
+
+        # 2. Student A stats should show 5/5 deletions and can_delete == False
+        stats_a = self.client.get(f"/api/student/stats?student_id={student_a}").get_json()
+        self.assertEqual(stats_a.get("daily_deletions_today"), 5)
+        self.assertEqual(stats_a.get("daily_deletion_limit"), 5)
+        self.assertFalse(stats_a.get("can_delete"))
+
+        # 3. Student A's 6th deletion must be blocked with HTTP 429
+        res_a_6 = self.client.post("/api/deletion/submit", json={
+            "student_id": student_a,
+            "file_id": f"file_a_extra_{time.time()}",
+            "file_name": "extra_doc.pdf",
+            "file_size": 1024 * 1024,
+            "reason": "Old duplicate study notes from past biology exam",
+            "is_drive": False
+        })
+        self.assertEqual(res_a_6.status_code, 429)
+        self.assertEqual(res_a_6.get_json().get("status"), "limit_exceeded")
+
+        # 4. Student B stats must be completely isolated at 0/5
+        stats_b = self.client.get(f"/api/student/stats?student_id={student_b}").get_json()
+        self.assertEqual(stats_b.get("daily_deletions_today"), 0, "Student B must start with 0 deletions")
+        self.assertEqual(stats_b.get("daily_deletion_limit"), 5)
+        self.assertTrue(stats_b.get("can_delete"), "Student B must be permitted to delete")
+
+        # 5. Student B submits their first deletion and succeeds
+        res_b_1 = self.client.post("/api/deletion/submit", json={
+            "student_id": student_b,
+            "file_id": f"file_b_1_{time.time()}",
+            "file_name": "chem_lab_duplicate.pdf",
+            "file_size": 3 * 1024 * 1024,
+            "reason": "Obsolete chemistry lab draft from previous semester",
+            "is_drive": False
+        })
+        self.assertEqual(res_b_1.status_code, 200, "Student B's deletion must succeed independently")
+        stats_b_after = self.client.get(f"/api/student/stats?student_id={student_b}").get_json()
+        self.assertEqual(stats_b_after.get("daily_deletions_today"), 1)
+        self.assertTrue(stats_b_after.get("can_delete"))
+
+    def test_daily_deletion_resets_on_new_calendar_day(self):
+        """When calendar day advances, student daily deletions must automatically reset to 0."""
+        student_c = f"STU_INDIV_C_{int(time.time())}"
+        
+        # Populate student C with yesterday's date and 5 deletions
+        from src.app.server import load_state, save_state, resolve_student_in_state
+        state = load_state()
+        stu = resolve_student_in_state(state, student_c)
+        stu["daily_deletions_today"] = 5
+        stu["last_deletion_date"] = "2020-01-01"  # Old date
+        save_state(state)
+
+        # Checking stats should reset daily_deletions_today to 0
+        stats = self.client.get(f"/api/student/stats?student_id={student_c}").get_json()
+        self.assertEqual(stats.get("daily_deletions_today"), 0)
+        self.assertTrue(stats.get("can_delete"))
+
+    def test_cache_control_headers_prevent_stale_cache(self):
+        """Index, JS, and Service Worker responses must have no-cache headers."""
+        r_index = self.client.get("/")
+        self.assertIn("no-cache", r_index.headers.get("Cache-Control", ""))
+        self.assertIn("no-store", r_index.headers.get("Cache-Control", ""))
+
+        r_sw = self.client.get("/sw.js")
+        self.assertIn("no-cache", r_sw.headers.get("Cache-Control", ""))
+
+    def test_no_autofill_banner_in_login_view(self):
+        """Verifies that login.js contains zero autofill banner or recent account buttons."""
+        login_js_path = os.path.join(os.path.dirname(__file__), "..", "src", "ui", "js", "views", "login.js")
+        with open(login_js_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertNotIn("Auto-Fill", content)
+        self.assertNotIn("recent-account-banner", content)
+        self.assertNotIn("btn-use-recent", content)
+        self.assertIn('autocomplete="off"', content)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -146,11 +146,28 @@ class FirestoreDB:
 
         if doc.exists:
             data = doc.to_dict()
-            # Update last active timestamp
-            doc_ref.update({"last_active": firestore.SERVER_TIMESTAMP})
+            today = time.strftime("%Y-%m-%d")
+            # Enforce individual daily deletion reset per user when new calendar day arrives
+            if data.get("last_deletion_date") != today:
+                data["daily_deletions_today"] = 0
+                data["last_deletion_date"] = today
+                try:
+                    doc_ref.update({
+                        "daily_deletions_today": 0,
+                        "last_deletion_date": today,
+                        "last_active": firestore.SERVER_TIMESTAMP
+                    })
+                except Exception:
+                    pass
+            else:
+                try:
+                    doc_ref.update({"last_active": firestore.SERVER_TIMESTAMP})
+                except Exception:
+                    pass
             return data
 
         # Create new user record
+        today = time.strftime("%Y-%m-%d")
         new_user = {
             "user_id": user_id,
             "name": name or user_id,
@@ -163,6 +180,7 @@ class FirestoreDB:
             "streak_days": 1,
             "daily_deletions_today": 0,
             "daily_deletion_limit": 5,
+            "last_deletion_date": today,
             "strikes": 0,
             "created_at": firestore.SERVER_TIMESTAMP,
             "last_active": firestore.SERVER_TIMESTAMP
@@ -197,6 +215,7 @@ class FirestoreDB:
             "streak_days": 1,
             "daily_deletions_today": 0,
             "daily_deletion_limit": 5,
+            "last_deletion_date": time.strftime("%Y-%m-%d"),
             "strikes": 0,
             "created_at_iso": time.strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -329,8 +348,8 @@ class FirestoreDB:
             return []
 
     def update_user_stats(self, user_id: str, bytes_delta: int, points_delta: int, trees_delta: int = 0):
-        """Atomically updates a student's carbon, data and tree progress."""
-        if not self.is_connected:
+        """Atomically updates an individual student's carbon, data and tree progress and daily deletions."""
+        if not self.is_connected or not user_id:
             return
 
         doc_ref = self.db.collection("users").document(user_id)
@@ -338,16 +357,31 @@ class FirestoreDB:
         if not doc.exists:
             return
 
-        doc_ref.update({
-            "bytes_cleared": firestore.Increment(bytes_delta),
-            "eco_points": firestore.Increment(points_delta),
-            "trees": firestore.Increment(trees_delta),
-            "daily_deletions_today": firestore.Increment(1),
-            "last_active": firestore.SERVER_TIMESTAMP
-        })
-
-        # Update class aggregation
         user_data = doc.to_dict()
+        today = time.strftime("%Y-%m-%d")
+        last_date = user_data.get("last_deletion_date")
+
+        # If today is a new calendar day for this individual student, reset their deletions to 1 for today
+        if last_date != today:
+            doc_ref.update({
+                "bytes_cleared": firestore.Increment(bytes_delta),
+                "eco_points": firestore.Increment(points_delta),
+                "trees": firestore.Increment(trees_delta),
+                "daily_deletions_today": 1,
+                "last_deletion_date": today,
+                "last_active": firestore.SERVER_TIMESTAMP
+            })
+        else:
+            doc_ref.update({
+                "bytes_cleared": firestore.Increment(bytes_delta),
+                "eco_points": firestore.Increment(points_delta),
+                "trees": firestore.Increment(trees_delta),
+                "daily_deletions_today": firestore.Increment(1),
+                "last_deletion_date": today,
+                "last_active": firestore.SERVER_TIMESTAMP
+            })
+
+        # Update class aggregation (bytes & trees only, NEVER daily deletions)
         class_code = user_data.get("class_code", "general")
         self._update_class_stats(class_code, bytes_delta=bytes_delta, trees_delta=trees_delta)
 

@@ -397,19 +397,25 @@ def save_state(state: Dict[str, Any]) -> None:
 def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = None) -> Dict[str, Any]:
     """Resolves and returns the student record in state matching student_id.
     
-    If student_id is empty or matches state['student']['student_id'], returns state['student'].
-    Otherwise looks up student in state['students']. If not found, creates and appends a record in state['students'].
+    Guarantees strict isolation of daily deletion limits and statistics per individual student.
+    If student_id matches state['student']['student_id'] or name, returns state['student'].
+    Otherwise looks up student in state['students']. If not found, creates and appends an isolated record.
     """
     default_stu = state.setdefault("student", get_default_state()["student"])
+    today = time.strftime("%Y-%m-%d")
+    if default_stu.get("last_deletion_date") != today:
+        default_stu["daily_deletions_today"] = 0
+        default_stu["last_deletion_date"] = today
+
     if not student_id:
         return default_stu
 
     clean_id = str(student_id).strip()
-    if clean_id.lower() == default_stu.get("student_id", "").strip().lower():
+    if clean_id.lower() in (default_stu.get("student_id", "").strip().lower(), default_stu.get("name", "").strip().lower()):
         return default_stu
 
     students_list = state.setdefault("students", [])
-    matched = next((s for s in students_list if s.get("student_id", "").strip().lower() == clean_id.lower()), None)
+    matched = next((s for s in students_list if s.get("student_id", "").strip().lower() == clean_id.lower() or s.get("name", "").strip().lower() == clean_id.lower()), None)
     if not matched:
         matched = {
             "student_id": clean_id,
@@ -417,12 +423,16 @@ def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = 
             "bytes_cleared": 0,
             "eco_points": 0,
             "streak_days": 1,
-            "last_deletion_date": time.strftime("%Y-%m-%d"),
+            "last_deletion_date": today,
             "daily_deletions_today": 0,
             "daily_deletion_limit": DAILY_DELETION_LIMIT,
             "strikes": 0,
         }
         students_list.append(matched)
+    elif matched.get("last_deletion_date") != today:
+        matched["daily_deletions_today"] = 0
+        matched["last_deletion_date"] = today
+
     return matched
 
 
@@ -906,6 +916,11 @@ def create_flask_app():
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        path = request.path.lower()
+        if path == "/" or path.endswith((".html", ".js", ".json", "sw.js")):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         return response
 
     @app.route("/")
@@ -1330,26 +1345,31 @@ def create_flask_app():
             default_student["daily_deletions_today"] = 0
             default_student["last_deletion_date"] = today
 
-        target_student_id = session.get("user_id") if session else request.args.get("student_id")
-        if target_student_id and target_student_id.lower() != default_student.get("student_id", "").lower():
-            matched_local = resolve_student_in_state(state, target_student_id)
-            if matched_local.get("last_deletion_date") != today:
-                matched_local["daily_deletions_today"] = 0
-                matched_local["last_deletion_date"] = today
-            student = dict(matched_local)
-        else:
-            student = dict(default_student)
+        target_student_id = (session.get("user_id") if session else None) or request.args.get("student_id")
+        matched_local = resolve_student_in_state(state, target_student_id)
+        if matched_local.get("last_deletion_date") != today:
+            matched_local["daily_deletions_today"] = 0
+            matched_local["last_deletion_date"] = today
+        student = dict(matched_local)
 
         if target_student_id and firestore_db.is_connected:
             try:
                 f_user = firestore_db.get_or_create_user(target_student_id, role="student")
                 if f_user:
                     student["student_id"] = target_student_id
-                    student["name"] = f_user.get("name", target_student_id)
+                    student["name"] = f_user.get("name", student.get("name", target_student_id))
                     student["bytes_cleared"] = f_user.get("bytes_cleared", student.get("bytes_cleared", 0))
                     student["eco_points"] = f_user.get("eco_points", student.get("eco_points", 0))
                     student["streak_days"] = f_user.get("streak_days", student.get("streak_days", 1))
                     student["strikes"] = f_user.get("strikes", student.get("strikes", 0))
+
+                    # Individual daily deletion metrics strictly from THIS student's Firestore user document
+                    f_date = f_user.get("last_deletion_date")
+                    if f_date == today:
+                        student["daily_deletions_today"] = int(f_user.get("daily_deletions_today", 0))
+                    else:
+                        student["daily_deletions_today"] = 0
+                    student["daily_deletion_limit"] = int(f_user.get("daily_deletion_limit", 5))
             except Exception as ex:
                 print(f"[!] Firestore student stats lookup notice: {ex}")
 
@@ -1360,8 +1380,11 @@ def create_flask_app():
         progress_pct = calculate_tree_progress_pct(bytes_cleared)
         stage_name = TREE_STAGE_THRESHOLDS[stage][1]
 
+        daily_count = int(student.get("daily_deletions_today", 0))
+        daily_limit = int(student.get("daily_deletion_limit", 5))
+
         return jsonify({
-            "student_id": student.get("student_id", "STU-001"),
+            "student_id": student.get("student_id", target_student_id or "STU-001"),
             "student_name": student.get("name", "Student"),
             "bytes_cleared": bytes_cleared,
             "bytes_cleared_formatted": format_bytes(bytes_cleared),
@@ -1369,9 +1392,9 @@ def create_flask_app():
             "trees_equivalent": trees_eq,
             "eco_points": student.get("eco_points", 0),
             "current_streak_days": student.get("streak_days", 1),
-            "daily_deletions_today": student.get("daily_deletions_today", 0),
-            "daily_deletion_limit": student.get("daily_deletion_limit", 5),
-            "can_delete": student.get("daily_deletions_today", 0) < student.get("daily_deletion_limit", 5),
+            "daily_deletions_today": daily_count,
+            "daily_deletion_limit": daily_limit,
+            "can_delete": daily_count < daily_limit,
             "tree_growth_stage": stage,
             "tree_growth_stage_name": stage_name,
             "tree_growth_progress_pct": progress_pct,
@@ -2360,15 +2383,31 @@ def create_flask_app():
                     "error": f"This file has already been submitted for deletion (Request: {item['request_id']})."
                 }), 409
 
-        # Check daily deletion limit
+        # Check daily deletion limit strictly for THIS individual student
         is_test_mode = os.environ.get("TEST_MODE") == "1"
-        if is_test_mode and target_student.get("daily_deletions_today", 0) >= target_student.get("daily_deletion_limit", 5):
-            target_student["daily_deletions_today"] = 1
+        current_deletions = int(target_student.get("daily_deletions_today", 0))
+        daily_limit = int(target_student.get("daily_deletion_limit", 5))
 
-        if not is_test_mode and target_student.get("daily_deletions_today", 0) >= target_student.get("daily_deletion_limit", 5):
+        if firestore_db.is_connected and actual_student_id:
+            try:
+                f_user = firestore_db.get_or_create_user(actual_student_id, role="student")
+                if f_user:
+                    if f_user.get("last_deletion_date") == today:
+                        current_deletions = max(current_deletions, int(f_user.get("daily_deletions_today", 0)))
+                    daily_limit = int(f_user.get("daily_deletion_limit", daily_limit))
+            except Exception as fe:
+                print(f"[!] Firestore individual limit check error: {fe}")
+
+        if is_test_mode and current_deletions >= daily_limit:
+            target_student["daily_deletions_today"] = 1
+            current_deletions = 1
+
+        if not is_test_mode and current_deletions >= daily_limit:
             return jsonify({
                 "status": "limit_exceeded",
-                "error": f"Daily deletion limit of {target_student.get('daily_deletion_limit', 5)} reached. Try again tomorrow!"
+                "error": f"Daily deletion limit of {daily_limit} reached for your account. Try again tomorrow!",
+                "daily_deletions_today": current_deletions,
+                "daily_deletion_limit": daily_limit
             }), 429
 
 
@@ -2471,9 +2510,10 @@ def create_flask_app():
 
         target_student["bytes_cleared"] = target_student.get("bytes_cleared", 0) + file_size
         target_student["eco_points"] = target_student.get("eco_points", 0) + pts
-        target_student["daily_deletions_today"] = target_student.get("daily_deletions_today", 0) + 1
+        target_student["daily_deletions_today"] = current_deletions + 1
         target_student["streak_days"] = target_student.get("streak_days", 0) + 1
         target_student["last_deletion_date"] = today
+        save_state(state)
 
         try:
             default_teacher_queue.submit_request(
@@ -3195,6 +3235,7 @@ def create_flask_app():
                 target_stu["eco_points"] = target_stu.get("eco_points", 0) + pts
                 target_stu["daily_deletions_today"] = target_stu.get("daily_deletions_today", 0) + 1
                 target_stu["streak_days"] = target_stu.get("streak_days", 0) + 1
+                target_stu["last_deletion_date"] = time.strftime("%Y-%m-%d")
 
                 ecofund = state["ecofund"]
                 ecofund["cumulative_waste_bytes"] += file_bytes
@@ -3370,6 +3411,7 @@ def create_flask_app():
                     target_stu["eco_points"] = target_stu.get("eco_points", 0) + pts
                     target_stu["daily_deletions_today"] = target_stu.get("daily_deletions_today", 0) + 1
                     target_stu["streak_days"] = target_stu.get("streak_days", 0) + 1
+                    target_stu["last_deletion_date"] = time.strftime("%Y-%m-%d")
 
                     state["ecofund"]["cumulative_waste_bytes"] += sz
                     item["credited"] = True

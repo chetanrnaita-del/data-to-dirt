@@ -18,6 +18,7 @@ class StudentDashboardView {
   mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
+    this.userId = localStorage.getItem("d2d_user_id") || "STU-001";
     this.renderLayout();
     this.fetchData();
 
