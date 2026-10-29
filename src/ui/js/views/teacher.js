@@ -41,6 +41,26 @@ class TeacherConfirmationView {
     return code.toUpperCase();
   }
 
+  normalizeGrade(code) {
+    if (window.normalizeGrade) return window.normalizeGrade(code);
+    if (!code) return "grade5";
+    const low = String(code).trim().toLowerCase();
+    if (low === "all") return "all";
+    if (low.startsWith("grade") || low.startsWith("gr")) {
+      const num = low.replace(/[^0-9]/g, "");
+      return num ? `grade${num}` : "grade5";
+    }
+    const legacyMap = {
+      "bio101": "grade5",
+      "env201": "grade6",
+      "cs301": "grade7",
+      "chem102": "grade8",
+      "earth204": "grade9"
+    };
+    if (legacyMap[low]) return legacyMap[low];
+    return low;
+  }
+
   formatBytes(bytes) {
     if (!bytes || bytes <= 0) return "0 B";
     if (bytes < 1024) return `${bytes} B`;
@@ -908,7 +928,7 @@ class TeacherConfirmationView {
                 </div>
                 <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                   <select id="stu-class-filter-select" class="retro-select" style="font-size: 11px; padding: 4px 8px; border: 1.5px solid #8b5a2b; border-radius: 4px; background: #fff; font-weight: bold; color: #4a2e18; cursor: pointer;">
-                    ${role === 'admin' ? `<option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Grades</option>` : ''}
+                    <option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Grades</option>
                     <option value="grade5" ${defaultClassCode === 'grade5' || defaultClassCode === 'bio101' ? 'selected' : ''}>🎒 Grade 5</option>
                     <option value="grade6" ${defaultClassCode === 'grade6' || defaultClassCode === 'env201' ? 'selected' : ''}>🎒 Grade 6</option>
                     <option value="grade7" ${defaultClassCode === 'grade7' || defaultClassCode === 'cs301' ? 'selected' : ''}>🎒 Grade 7</option>

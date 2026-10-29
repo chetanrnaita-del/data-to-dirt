@@ -462,7 +462,13 @@ class AnalyticsDashboardView {
       date = new Date(evt.timestamp_epoch * 1000);
     } else if (evt.timestamp) {
       const s = String(evt.timestamp).trim();
-      if (s.endsWith("Z") || s.includes("T")) {
+      if (/^\d{1,2}:\d{2}(:\d{2})?/.test(s) && !s.includes("-") && !s.includes("/")) {
+        // Raw UTC time without date, e.g. "06:45:26"
+        const parts = s.split(":");
+        const d = new Date();
+        d.setUTCHours(parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2] || "0", 10), 0);
+        date = d;
+      } else if (s.endsWith("Z") || s.includes("T")) {
         date = new Date(s);
       } else if (s.includes(" ")) {
         // Parse UTC timestamp: "YYYY-MM-DD HH:MM:SS" -> Date in UTC
@@ -473,23 +479,24 @@ class AnalyticsDashboardView {
     }
 
     if (!date || isNaN(date.getTime())) {
-      return evt.timestamp ? String(evt.timestamp).split(" ")[1] || String(evt.timestamp) : "Just now";
+      return "Just now";
     }
 
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffSec >= 0 && diffSec < 15) {
+    // Treat minor clock skew (up to -60s) or recent events as "Just now"
+    if (diffSec >= -60 && diffSec < 20) {
       return "Just now";
     }
-    if (diffSec >= 15 && diffSec < 60) {
+    if (diffSec >= 20 && diffSec < 60) {
       return `${diffSec}s ago`;
     }
     if (diffSec >= 60 && diffSec < 3600) {
       return `${Math.floor(diffSec / 60)}m ago`;
     }
 
-    // Format in authentic local browser time
+    // Format in authentic local browser time with 12-hour AM/PM
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
   }
 

@@ -378,20 +378,34 @@ class FirestoreDB:
             if clean_class in ["all", "*", "any", "admin2026", "admin"]:
                 clean_class = ""
 
+            # Use single-field filter on role to avoid requiring composite indexes
             if FieldFilter:
                 query = self.db.collection("users").where(filter=FieldFilter("role", "==", "student"))
-                if clean_class:
-                    query = query.where(filter=FieldFilter("class_code", "==", clean_class))
             else:
                 query = self.db.collection("users").where("role", "==", "student")
-                if clean_class:
-                    query = query.where("class_code", "==", clean_class)
             docs = query.limit(limit).stream()
             students = []
             for d in docs:
                 data = d.to_dict()
                 sid = data.get("student_id") or data.get("user_id") or d.id
                 sname = data.get("name", "")
+                stu_class = (data.get("class_code") or "").strip().lower()
+
+                if clean_class:
+                    target_norm = clean_class
+                    if target_norm.startswith("grade") or target_norm.startswith("gr"):
+                        num = "".join(filter(str.isdigit, target_norm))
+                        target_norm = f"grade{num}" if num else target_norm
+                    stu_norm = stu_class
+                    if stu_norm.startswith("grade") or stu_norm.startswith("gr"):
+                        num = "".join(filter(str.isdigit, stu_norm))
+                        stu_norm = f"grade{num}" if num else stu_norm
+                    legacy = {"bio101": "grade5", "env201": "grade6", "cs301": "grade7", "chem102": "grade8", "earth204": "grade9"}
+                    stu_norm = legacy.get(stu_norm, stu_norm)
+                    target_norm = legacy.get(target_norm, target_norm)
+                    if stu_norm != target_norm:
+                        continue
+
                 created_at = data.get("created_at_iso")
                 if not created_at and "created_at" in data:
                     created_at = str(data["created_at"])

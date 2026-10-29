@@ -33,6 +33,26 @@ class StudentDashboardView {
     return code.toUpperCase();
   }
 
+  normalizeGrade(code) {
+    if (window.normalizeGrade) return window.normalizeGrade(code);
+    if (!code) return "grade5";
+    const low = String(code).trim().toLowerCase();
+    if (low === "all") return "all";
+    if (low.startsWith("grade") || low.startsWith("gr")) {
+      const num = low.replace(/[^0-9]/g, "");
+      return num ? `grade${num}` : "grade5";
+    }
+    const legacyMap = {
+      "bio101": "grade5",
+      "env201": "grade6",
+      "cs301": "grade7",
+      "chem102": "grade8",
+      "earth204": "grade9"
+    };
+    if (legacyMap[low]) return legacyMap[low];
+    return low;
+  }
+
   mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;

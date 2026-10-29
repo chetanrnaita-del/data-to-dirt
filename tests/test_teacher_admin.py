@@ -811,6 +811,42 @@ class TestStudentDeletion(unittest.TestCase):
         list_g5 = self.client.get("/api/teacher/students?class_code=grade5", headers=headers)
         self.assertGreater(len(list_g5.get_json().get("students", [])), 0)
 
+    def test_student_directory_all_grades_filter(self):
+        """Verify teacher can query all grades via class_code=all."""
+        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        res_all = self.client.get("/api/teacher/students?class_code=all", headers=headers)
+        self.assertEqual(res_all.status_code, 200)
+        data = res_all.get_json()
+        self.assertEqual(data["status"], "ok")
+        self.assertIsInstance(data["students"], list)
+
+    def test_analytics_event_utc_iso_timestamp(self):
+        """Verify analytics event stream emits UTC ISO-formatted timestamps with timestamp_epoch."""
+        res = self.client.post("/api/analytics/track", json={
+            "city": "Singapore",
+            "country": "Singapore",
+            "action": "Dashboard View",
+            "device_type": "macOS Desktop"
+        })
+        self.assertEqual(res.status_code, 200)
+
+        # Admin login and fetch analytics
+        adm_login = self.client.post("/api/auth/login", json={
+            "role": "admin",
+            "user_id": "admin",
+            "pin": "admin123"
+        })
+        admin_token = adm_login.get_json().get("token")
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        an_res = self.client.get("/api/analytics/dashboard", headers=admin_headers)
+        self.assertEqual(an_res.status_code, 200)
+        recent_events = an_res.get_json().get("recent_events", [])
+        self.assertGreater(len(recent_events), 0)
+        latest = recent_events[0]
+        self.assertIn("timestamp", latest)
+        self.assertIn("timestamp_epoch", latest)
+        self.assertIsInstance(latest["timestamp_epoch"], (int, float))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,28 @@
  * ==============================================================================
  */
 
+/**
+ * Global Grade Normalizer for 5th through 12th Grade
+ */
+window.normalizeGrade = function(code) {
+  if (!code) return "grade5";
+  const low = String(code).trim().toLowerCase();
+  if (low === "all") return "all";
+  if (low.startsWith("grade") || low.startsWith("gr")) {
+    const num = low.replace(/[^0-9]/g, "");
+    return num ? `grade${num}` : "grade5";
+  }
+  const legacyMap = {
+    "bio101": "grade5",
+    "env201": "grade6",
+    "cs301": "grade7",
+    "chem102": "grade8",
+    "earth204": "grade9"
+  };
+  if (legacyMap[low]) return legacyMap[low];
+  return low;
+};
+
 class DataToDirtApp {
   constructor() {
     this.currentRole = null;
@@ -12,6 +34,10 @@ class DataToDirtApp {
     this.audioSynth = window.RetroAudio;
     this.particleEngine = window.ParticleEngine;
     this.activeView = null;
+  }
+
+  normalizeGrade(code) {
+    return window.normalizeGrade(code);
   }
 
   async init() {

@@ -16,7 +16,7 @@ import hmac
 import re
 import difflib
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -886,6 +886,7 @@ def record_telemetry_event(
 
     now_ts = time.time()
     now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    now_iso = datetime.now(timezone.utc).isoformat()
 
     # If device_type is default "Desktop" or generic, attempt to detect from request User-Agent
     if not device_type or device_type == "Desktop":
@@ -996,7 +997,8 @@ def record_telemetry_event(
     # Event stream
     event_obj = {
         "id": f"EVT-{int(now_ts * 1000) % 1000000}",
-        "timestamp": now_str,
+        "timestamp": now_iso,
+        "timestamp_str": now_str,
         "timestamp_epoch": now_ts,
         "city": city,
         "country": country,
@@ -1762,7 +1764,7 @@ def create_flask_app():
             "stages_legend": [{"stage": idx, "name": name, "threshold_bytes": thresh} for idx, (thresh, name) in enumerate(TREE_STAGE_THRESHOLDS)]
         })
 
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone, timezone
 
     @app.route("/api/scan/request", methods=["POST"])
     def api_scan_request():
@@ -4052,8 +4054,10 @@ def create_flask_app():
         class_filter = request.args.get("class_code", "").lower().strip()
         is_admin = session and session.get("role") == "admin"
 
-        if not is_admin:
-            # Teachers default to their assigned class if no explicit filter is given
+        if class_filter in ["all", "*", "any", "admin2026", "admin"]:
+            class_filter = ""
+        elif not class_filter and not is_admin:
+            # Teachers default to their assigned class only when no filter is provided
             teacher_class = (session.get("class_code") or "").strip().lower() if session else ""
             if not teacher_class or teacher_class in ["all", "*", "any"]:
                 tid = (session.get("user_id") or "").lower() if session else ""
@@ -4061,16 +4065,7 @@ def create_flask_app():
                     if c in tid:
                         teacher_class = normalize_grade(c)
                         break
-            if not teacher_class:
-                teacher_class = "grade5"
-            # Prioritize explicit class filter from UI dropdown; fallback to teacher_class
-            if not class_filter or class_filter in ["all", "*", "any"]:
-                if teacher_class not in ["all", "*", "any"]:
-                    class_filter = teacher_class
-                else:
-                    class_filter = ""
-        elif class_filter in ["all", "*", "any", "admin2026", "admin"]:
-            class_filter = ""
+            class_filter = teacher_class or "grade5"
 
         state = load_state()
         local_students = state.get("students", [])
