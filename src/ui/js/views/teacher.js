@@ -115,6 +115,9 @@ class TeacherConfirmationView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-t-manage-students" title="Student Directory">
               👥 Students
             </button>
+            <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-t-manage-teachers" title="Teacher Accounts Directory">
+              🧑‍🏫 Teachers
+            </button>
             <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-t-logout" title="Sign out">
               🚪 Logout
             </button>
@@ -274,6 +277,16 @@ class TeacherConfirmationView {
     document.getElementById("btn-t-manage-students")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       this.openStudentDirectoryModal();
+    });
+
+    // Teacher directory & accounts management
+    document.getElementById("btn-t-manage-teachers")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      if (window.openTeacherDirectoryModal) {
+        window.openTeacherDirectoryModal();
+      } else if (window.AdminView && window.AdminView.openTeacherDirectoryModal) {
+        window.AdminView.openTeacherDirectoryModal();
+      }
     });
 
     // Refresh queue

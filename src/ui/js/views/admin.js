@@ -904,3 +904,4 @@ class AdminEcoFundView {
 
 // Global Singleton Instance
 window.AdminView = new AdminEcoFundView();
+window.openTeacherDirectoryModal = () => window.AdminView.openTeacherDirectoryModal();

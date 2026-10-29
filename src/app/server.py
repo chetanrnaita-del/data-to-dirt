@@ -1535,7 +1535,8 @@ def create_flask_app():
                 print(f"[!] Firestore teachers public fetch error: {e}")
 
         built_in_teachers = []
-        if not local_teachers and not firestore_teachers:
+        deleted_ids = set(str(t).strip().lower() for t in state.get("deleted_teacher_ids", []))
+        if not state.get("teachers_cleared") and "teachers" not in state and not local_teachers and not firestore_teachers:
             built_in_teachers = [
                 {"teacher_id": "teacher_grade5", "name": "Grade 5 Lead Teacher", "class_code": "grade5", "pin": "teacher123"},
                 {"teacher_id": "teacher_grade6", "name": "Grade 6 Lead Teacher", "class_code": "grade6", "pin": "teacher123"},
@@ -1561,15 +1562,17 @@ def create_flask_app():
 
         all_candidates = []
         for t in built_in_teachers:
-            all_candidates.append({
-                "teacher_id": t["teacher_id"],
-                "name": t["name"],
-                "class_code": t.get("class_code", "bio101"),
-                "pin": t.get("pin", "teacher123")
-            })
+            tid = str(t.get("teacher_id") or "").strip().lower()
+            if tid not in deleted_ids:
+                all_candidates.append({
+                    "teacher_id": t["teacher_id"],
+                    "name": t["name"],
+                    "class_code": t.get("class_code", "bio101"),
+                    "pin": t.get("pin", "teacher123")
+                })
         for t in local_teachers:
-            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
-            if tid:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").strip().lower()
+            if tid and tid not in deleted_ids:
                 all_candidates.append({
                     "teacher_id": tid,
                     "name": t.get("name", tid),
@@ -1577,8 +1580,8 @@ def create_flask_app():
                     "pin": t.get("pin") or t.get("password") or "teacher123"
                 })
         for t in firestore_teachers:
-            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
-            if tid:
+            tid = (t.get("teacher_id") or t.get("user_id") or "").strip().lower()
+            if tid and tid not in deleted_ids:
                 all_candidates.append({
                     "teacher_id": tid,
                     "name": t.get("name", tid),
@@ -3197,9 +3200,14 @@ def create_flask_app():
                 {"teacher_id": "teacher_chem102", "name": "Dr. Arthur Thorne", "class_code": "chem102"},
                 {"teacher_id": "teacher_earth204", "name": "Mr. Samuel Woods", "class_code": "earth204"},
             ]
+            deleted_tids = set(str(t).strip().lower() for t in state.get("deleted_teacher_ids", []))
+            teachers_cleared = state.get("teachers_cleared", False)
+
             for bt in built_in_teachers:
                 bt_id = bt["teacher_id"].lower()
                 bt_name = bt["name"].lower()
+                if bt_id in deleted_tids or (teachers_cleared and bt["class_code"].startswith("grade")):
+                    continue
                 if (clean_t == bt_id or 
                     clean_t == bt_name or 
                     clean_t in bt_name or 
@@ -4576,7 +4584,7 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/teachers", methods=["GET"])
-    @default_auth_service.require_role("admin")
+    @default_auth_service.require_role("teacher")
     def api_admin_teachers():
         """Returns all registered teacher accounts from local state and Cloud Firestore."""
         state = load_state()
@@ -4589,8 +4597,10 @@ def create_flask_app():
             except Exception as e:
                 print(f"[!] Firestore get_teachers error: {e}")
 
+        # Built-in teachers ONLY if teachers have never been explicitly managed or cleared
         built_in_teachers = []
-        if not local_teachers and not firestore_teachers:
+        deleted_ids = set(str(t).strip().lower() for t in state.get("deleted_teacher_ids", []))
+        if not state.get("teachers_cleared") and "teachers" not in state and not local_teachers and not firestore_teachers:
             built_in_teachers = [
                 {"teacher_id": "teacher_grade5", "name": "Grade 5 Lead Teacher", "class_code": "grade5", "role": "teacher", "created_by": "System"},
                 {"teacher_id": "teacher_grade6", "name": "Grade 6 Lead Teacher", "class_code": "grade6", "role": "teacher", "created_by": "System"},
@@ -4600,11 +4610,17 @@ def create_flask_app():
 
         all_candidates = []
         for t in built_in_teachers:
-            all_candidates.append(t)
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid not in deleted_ids:
+                all_candidates.append(t)
         for t in local_teachers:
-            all_candidates.append(t)
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid not in deleted_ids:
+                all_candidates.append(t)
         for t in firestore_teachers:
-            all_candidates.append(t)
+            tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
+            if tid not in deleted_ids:
+                all_candidates.append(t)
 
         seen_keys = set()
         seen_tids = set()
@@ -4612,7 +4628,7 @@ def create_flask_app():
         for t in all_candidates:
             tid = (t.get("teacher_id") or t.get("user_id") or "").lower()
             name = t.get("name") or tid
-            if is_test_teacher_account(tid, name):
+            if is_test_teacher_account(tid, name) or tid in deleted_ids:
                 continue
             key = normalize_teacher_name_key(name)
             if tid in seen_tids or (key and key in seen_keys):
@@ -4629,9 +4645,9 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/teachers/create", methods=["POST"])
-    @default_auth_service.require_role("admin")
+    @default_auth_service.require_role("teacher")
     def api_admin_teachers_create():
-        """Allows administrator to create a new teacher account."""
+        """Allows administrator or teacher to create a new teacher account."""
         data = request.get_json() or {}
         name = (data.get("name") or "").strip()
         teacher_id = (data.get("teacher_id") or "").strip()
@@ -4689,6 +4705,13 @@ def create_flask_app():
         teachers.append(new_teacher)
         state["teachers"] = teachers
         state.setdefault("auth", {}).setdefault("teacher_passwords", {})[clean_id] = pin
+        
+        # Remove from deleted_teacher_ids if re-creating
+        deleted_ids = state.setdefault("deleted_teacher_ids", [])
+        if clean_id in deleted_ids:
+            deleted_ids.remove(clean_id)
+        state["teachers_cleared"] = False
+
         save_state(state)
 
         return jsonify({
@@ -4699,11 +4722,12 @@ def create_flask_app():
         }), 201
 
     @app.route("/api/admin/teachers/delete", methods=["POST"])
-    @default_auth_service.require_role("admin")
+    @default_auth_service.require_role("teacher")
     def api_admin_teachers_delete():
-        """Allows administrator to delete a teacher account."""
+        """Allows administrator or teacher to delete a teacher account."""
         data = request.get_json() or {}
-        teacher_id = (data.get("teacher_id") or "").strip().lower()
+        raw_teacher_id = (data.get("teacher_id") or "").strip()
+        teacher_id = raw_teacher_id.lower()
         if not teacher_id:
             return jsonify({"status": "error", "message": "Teacher ID is required"}), 400
 
@@ -4714,18 +4738,38 @@ def create_flask_app():
 
         state = load_state()
         teachers = state.get("teachers", [])
-        state["teachers"] = [t for t in teachers if (t.get("teacher_id") or t.get("user_id") or "").lower() != teacher_id]
+        state["teachers"] = [t for t in teachers if (t.get("teacher_id") or t.get("user_id") or "").strip().lower() != teacher_id]
         if "auth" in state and "teacher_passwords" in state["auth"]:
             state["auth"]["teacher_passwords"].pop(teacher_id, None)
+            state["auth"]["teacher_passwords"].pop(raw_teacher_id, None)
+
+        deleted_ids = state.setdefault("deleted_teacher_ids", [])
+        if teacher_id not in deleted_ids:
+            deleted_ids.append(teacher_id)
+        if raw_teacher_id and raw_teacher_id not in deleted_ids:
+            deleted_ids.append(raw_teacher_id)
+
         save_state(state)
 
         deleted_fb = False
         if firestore_db.is_connected:
             try:
-                doc = firestore_db.db.collection("users").document(teacher_id)
-                if doc.get().exists:
-                    doc.delete()
-                    deleted_fb = True
+                for did in [raw_teacher_id, teacher_id]:
+                    if did:
+                        doc = firestore_db.db.collection("users").document(did)
+                        if doc.get().exists:
+                            doc.delete()
+                            deleted_fb = True
+                if FieldFilter:
+                    q = firestore_db.db.collection("users").where(filter=FieldFilter("role", "==", "teacher"))
+                else:
+                    q = firestore_db.db.collection("users").where("role", "==", "teacher")
+                for doc in q.stream():
+                    d = doc.to_dict()
+                    d_tid = str(d.get("teacher_id") or d.get("user_id") or doc.id).strip().lower()
+                    if d_tid == teacher_id or doc.id.lower() == teacher_id:
+                        doc.reference.delete()
+                        deleted_fb = True
             except Exception as e:
                 print(f"[!] Error deleting teacher from Firestore: {e}")
 
@@ -4737,11 +4781,22 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/teachers/delete_all", methods=["POST"])
-    @default_auth_service.require_role("admin")
+    @default_auth_service.require_role("teacher")
     def api_admin_teachers_delete_all():
-        """Allows administrator to delete all teacher accounts at once."""
+        """Allows administrator or teacher to delete all teacher accounts at once."""
         state = load_state()
+
+        deleted_ids = state.setdefault("deleted_teacher_ids", [])
+        for t in state.get("teachers", []):
+            tid = str(t.get("teacher_id") or t.get("user_id") or "").strip().lower()
+            if tid and tid not in deleted_ids:
+                deleted_ids.append(tid)
+        for def_id in ["teacher_grade5", "teacher_grade6", "teacher_grade7", "teacher_grade8", "teacher_grade9", "teacher_grade10", "teacher_grade11", "teacher_grade12"]:
+            if def_id not in deleted_ids:
+                deleted_ids.append(def_id)
+
         state["teachers"] = []
+        state["teachers_cleared"] = True
         if "auth" in state and "teacher_passwords" in state["auth"]:
             state["auth"]["teacher_passwords"] = {}
         save_state(state)
@@ -4759,6 +4814,12 @@ def create_flask_app():
                     deleted_fb_count += 1
             except Exception as e:
                 print(f"[!] Error deleting all teachers from Firestore: {e}")
+
+        return jsonify({
+            "status": "deleted_all",
+            "message": f"All teacher accounts ({deleted_fb_count} from cloud) have been successfully deleted.",
+            "deleted_count": deleted_fb_count
+        })
 
         return jsonify({
             "status": "deleted_all",
