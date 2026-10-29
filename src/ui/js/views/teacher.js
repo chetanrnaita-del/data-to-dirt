@@ -480,8 +480,10 @@ class TeacherConfirmationView {
           elCarbon.textContent = this.analytics.carbon_offset_formatted;
         } else if ((this.analytics.total_carbon_offset_kg || 0) >= 1.0) {
           elCarbon.textContent = `${this.analytics.total_carbon_offset_kg.toFixed(2)} kg CO₂`;
-        } else if ((this.analytics.total_carbon_offset_grams || 0) > 0) {
+        } else if ((this.analytics.total_carbon_offset_grams || 0) >= 0.1) {
           elCarbon.textContent = `${this.analytics.total_carbon_offset_grams.toFixed(1)} g CO₂`;
+        } else if ((this.analytics.total_carbon_offset_grams || 0) > 0) {
+          elCarbon.textContent = `${this.analytics.total_carbon_offset_grams.toFixed(3)} g CO₂`;
         } else {
           elCarbon.textContent = "0.0 g CO₂";
         }

@@ -4021,7 +4021,14 @@ def create_flask_app():
         res_dict["total_trees_funded"] = int(total_trees_funded)
         res_dict["flagged_count"] = int(flagged_count)
         res_dict["data_cleaned_formatted"] = format_bytes(total_data_cleaned_bytes)
-        res_dict["carbon_offset_formatted"] = f"{total_carbon_offset_kg:.2f} kg CO₂" if total_carbon_offset_kg >= 1.0 else f"{total_carbon_offset_grams:.1f} g CO₂"
+        if total_carbon_offset_kg >= 1.0:
+            res_dict["carbon_offset_formatted"] = f"{total_carbon_offset_kg:.2f} kg CO₂"
+        elif total_carbon_offset_grams >= 0.1:
+            res_dict["carbon_offset_formatted"] = f"{total_carbon_offset_grams:.1f} g CO₂"
+        elif total_carbon_offset_grams > 0:
+            res_dict["carbon_offset_formatted"] = f"{total_carbon_offset_grams:.3f} g CO₂"
+        else:
+            res_dict["carbon_offset_formatted"] = "0.0 g CO₂"
         res_dict["class_code"] = target_class or "all"
 
         return jsonify(res_dict)
