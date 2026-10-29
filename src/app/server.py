@@ -4186,6 +4186,92 @@ def create_flask_app():
             "message": f"Student ID '{student_id}' created successfully for {name}!"
         }), 201
 
+    @app.route("/api/teacher/students/delete", methods=["POST"])
+    @default_auth_service.require_role("teacher")
+    def api_teacher_delete_student():
+        """Allows a teacher or administrator to delete a student record."""
+        data = request.get_json() or {}
+        student_id = (data.get("student_id") or data.get("user_id") or "").strip()
+        if not student_id:
+            return jsonify({"status": "error", "message": "Student ID is required."}), 400
+
+        clean_id = student_id.lower()
+
+        state = load_state()
+        students = state.get("students", [])
+        original_count = len(students)
+
+        # Filter out matching student
+        filtered_students = [
+            s for s in students 
+            if (s.get("student_id") or s.get("user_id") or "").strip().lower() != clean_id
+        ]
+        state["students"] = filtered_students
+
+        # Cancel any pending deletion queue requests by this student
+        queue = state.get("teacher_queue", [])
+        if queue:
+            state["teacher_queue"] = [
+                item for item in queue
+                if (item.get("student_id") or item.get("user_id") or "").strip().lower() != clean_id
+            ]
+
+        save_state(state)
+
+        # Delete from Firestore if connected
+        deleted_fb = False
+        if firestore_db.is_connected:
+            deleted_fb = firestore_db.delete_student_record(student_id)
+
+        found = (len(filtered_students) < original_count) or deleted_fb
+        return jsonify({
+            "status": "deleted" if found else "not_found",
+            "student_id": student_id,
+            "deleted_from_firebase": deleted_fb,
+            "message": f"Student '{student_id}' deleted successfully." if found else f"Student '{student_id}' not found."
+        })
+
+    @app.route("/api/teacher/students/delete_all", methods=["POST"])
+    @default_auth_service.require_role("teacher")
+    def api_teacher_delete_all_students():
+        """Allows teacher or admin to delete all students in a grade or all grades."""
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token)
+
+        data = request.get_json() or {}
+        class_filter = (data.get("class_code") or "").strip().lower()
+
+        is_admin = session and session.get("role") == "admin"
+        if not is_admin and not class_filter:
+            class_filter = (session.get("class_code") or "").strip().lower() if session else ""
+
+        state = load_state()
+        students = state.get("students", [])
+        orig_count = len(students)
+
+        if class_filter and class_filter not in ["all", "*", "any"]:
+            norm_target = normalize_grade(class_filter)
+            remaining = [s for s in students if normalize_grade(s.get("class_code", "")) != norm_target]
+        else:
+            remaining = []
+
+        deleted_count = orig_count - len(remaining)
+        state["students"] = remaining
+        save_state(state)
+
+        deleted_fb = 0
+        if firestore_db.is_connected:
+            deleted_fb = firestore_db.delete_students_by_class(class_filter)
+
+        total_deleted = max(deleted_count, deleted_fb)
+        return jsonify({
+            "status": "deleted_all",
+            "deleted_count": total_deleted,
+            "class_code": class_filter or "all",
+            "message": f"Successfully deleted {total_deleted} student record(s)."
+        })
+
     @app.route("/api/admin/ecofund", methods=["GET", "POST"])
     @default_auth_service.require_role("admin")
     def api_admin_ecofund():

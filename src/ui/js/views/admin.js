@@ -41,6 +41,9 @@ class AdminEcoFundView {
             <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-adm-manage-teachers" title="Create & Manage Teacher Accounts">
               👨‍🏫 Manage Teachers
             </button>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-manage-students" title="View & Delete Enrolled Students">
+              👥 Manage Students
+            </button>
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-refresh">
               🔄 Refresh
             </button>
@@ -214,6 +217,13 @@ class AdminEcoFundView {
     document.getElementById("btn-adm-manage-teachers")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       this.openTeacherDirectoryModal();
+    });
+
+    document.getElementById("btn-adm-manage-students")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      if (window.TeacherView) {
+        window.TeacherView.openStudentDirectoryModal();
+      }
     });
 
     document.getElementById("btn-adm-teacher-queue")?.addEventListener("click", () => {

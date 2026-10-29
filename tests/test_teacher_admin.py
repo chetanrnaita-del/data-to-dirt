@@ -722,5 +722,95 @@ class TestTeacherDirectDeletionWithAiAnalysis(unittest.TestCase):
         self.assertTrue(len(ai_eval.get("summary", "")) > 10)
 
 
+class TestStudentDeletion(unittest.TestCase):
+    def setUp(self):
+        import copy
+        from src.app.server import app, load_state
+        self.app = app
+        self.client = self.app.test_client()
+        self.orig_state = copy.deepcopy(load_state())
+        # Log in as a teacher
+        res = self.client.post("/api/auth/login", json={
+            "role": "teacher",
+            "user_id": "teacher_grade5",
+            "pin": "teacher123"
+        })
+        self.teacher_token = res.get_json().get("token")
+
+    def tearDown(self):
+        from src.app.server import save_state
+        save_state(self.orig_state)
+
+    def test_delete_single_student_success(self):
+        """Teacher can delete an enrolled student by ID."""
+        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        # 1. Create student
+        create_res = self.client.post("/api/teacher/students/create", headers=headers, json={
+            "name": "Delete Test Student",
+            "class_code": "grade5",
+            "student_id": "STU-DEL-01"
+        })
+        self.assertEqual(create_res.status_code, 201)
+
+        # 2. Delete student
+        del_res = self.client.post("/api/teacher/students/delete", headers=headers, json={
+            "student_id": "STU-DEL-01"
+        })
+        self.assertEqual(del_res.status_code, 200)
+        self.assertEqual(del_res.get_json()["status"], "deleted")
+        self.assertEqual(del_res.get_json()["student_id"], "STU-DEL-01")
+
+        # 3. Verify student no longer in list
+        list_res = self.client.get("/api/teacher/students?class_code=grade5", headers=headers)
+        sids = [s.get("student_id") for s in list_res.get_json().get("students", [])]
+        self.assertNotIn("STU-DEL-01", sids)
+
+    def test_delete_student_not_found(self):
+        """Deleting a non-existent student returns not_found status."""
+        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        del_res = self.client.post("/api/teacher/students/delete", headers=headers, json={
+            "student_id": "STU-NONEXISTENT-999"
+        })
+        self.assertEqual(del_res.status_code, 200)
+        self.assertEqual(del_res.get_json()["status"], "not_found")
+
+    def test_delete_student_requires_auth(self):
+        """Delete student endpoint rejects requests without teacher/admin token."""
+        del_res = self.client.post("/api/teacher/students/delete", json={
+            "student_id": "STU-UNAUTH"
+        })
+        self.assertEqual(del_res.status_code, 401)
+
+    def test_delete_all_students_in_specific_grade(self):
+        """Teacher/admin can delete all students in a specified class."""
+        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        # Create 2 students in grade8
+        self.client.post("/api/teacher/students/create", headers=headers, json={
+            "name": "Grade 8 Student A",
+            "class_code": "grade8",
+            "student_id": "STU-G8-A"
+        })
+        self.client.post("/api/teacher/students/create", headers=headers, json={
+            "name": "Grade 8 Student B",
+            "class_code": "grade8",
+            "student_id": "STU-G8-B"
+        })
+
+        # Bulk delete grade8
+        del_res = self.client.post("/api/teacher/students/delete_all", headers=headers, json={
+            "class_code": "grade8"
+        })
+        self.assertEqual(del_res.status_code, 200)
+        self.assertEqual(del_res.get_json()["status"], "deleted_all")
+        self.assertGreaterEqual(del_res.get_json()["deleted_count"], 2)
+
+        # Verify grade8 is empty while grade5 students remain
+        list_g8 = self.client.get("/api/teacher/students?class_code=grade8", headers=headers)
+        self.assertEqual(len(list_g8.get_json().get("students", [])), 0)
+
+        list_g5 = self.client.get("/api/teacher/students?class_code=grade5", headers=headers)
+        self.assertGreater(len(list_g5.get_json().get("students", [])), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

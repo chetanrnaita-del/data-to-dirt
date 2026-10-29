@@ -252,6 +252,52 @@ class FirestoreDB:
 
         return {"status": "success", "student": record}
 
+    def delete_student_record(self, student_id: str) -> bool:
+        """Deletes a student record from Cloud Firestore users collection."""
+        if not self.is_connected:
+            return False
+        clean_id = (student_id or "").strip()
+        if not clean_id:
+            return False
+
+        try:
+            # Check direct document ID and uppercase/lowercase variants
+            for check_id in [clean_id, clean_id.upper(), clean_id.lower()]:
+                doc_ref = self.db.collection("users").document(check_id)
+                if doc_ref.get().exists:
+                    doc_ref.delete()
+                    return True
+            return False
+        except Exception as e:
+            print(f"[!] Firestore delete_student_record error: {e}")
+            return False
+
+    def delete_students_by_class(self, class_code: str = "") -> int:
+        """Deletes students matching a class code from Cloud Firestore."""
+        if not self.is_connected:
+            return 0
+
+        clean_code = (class_code or "").strip().lower()
+        deleted_count = 0
+        try:
+            if clean_code and clean_code not in ["all", "*", "any"]:
+                if FieldFilter:
+                    q = self.db.collection("users").where(filter=FieldFilter("role", "==", "student")).where(filter=FieldFilter("class_code", "==", clean_code))
+                else:
+                    q = self.db.collection("users").where("role", "==", "student").where("class_code", "==", clean_code)
+            else:
+                if FieldFilter:
+                    q = self.db.collection("users").where(filter=FieldFilter("role", "==", "student"))
+                else:
+                    q = self.db.collection("users").where("role", "==", "student")
+
+            for doc in q.stream():
+                doc.reference.delete()
+                deleted_count += 1
+        except Exception as e:
+            print(f"[!] Firestore delete_students_by_class error: {e}")
+        return deleted_count
+
     def create_teacher_record(self, teacher_id: str, name: str, class_code: str, pin: str = "teacher123", created_by: str = "Admin") -> Dict[str, Any]:
         """Creates and stores a new teacher record in Firebase Firestore."""
         clean_id = (teacher_id or "").strip()

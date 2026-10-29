@@ -920,6 +920,7 @@ class TeacherConfirmationView {
                   </select>
                   <input type="text" id="stu-search-filter" class="retro-input" placeholder="Search by name, ID..." style="font-size: 11px; padding: 4px 8px; width: 140px; border: 1px solid #ccc; border-radius: 4px;" />
                   <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-stu-refresh-list" title="Refresh Directory">🔄</button>
+                  <button type="button" class="retro-btn retro-btn-danger retro-btn-sm" id="btn-stu-delete-all-in-view" title="Delete All Students in this Grade View" style="font-size: 10px; padding: 4px 8px; font-weight: bold; cursor: pointer;">🗑️ Delete All</button>
                 </div>
               </div>
 
@@ -1023,9 +1024,12 @@ class TeacherConfirmationView {
             <td style="padding: 7px 10px; text-align: right; font-weight: bold; color: #27ae60;">
               ${points} pts
             </td>
-            <td style="padding: 7px 10px; text-align: center;">
-              <button class="retro-btn retro-btn-wood retro-btn-sm btn-copy-stu-id" data-id="${sid}" title="Copy Student ID" style="padding: 2px 8px; font-size: 10px;">
+            <td style="padding: 7px 10px; text-align: center; white-space: nowrap;">
+              <button class="retro-btn retro-btn-wood retro-btn-sm btn-copy-stu-id" data-id="${sid}" title="Copy Student ID" style="padding: 2px 7px; font-size: 10px; cursor: pointer;">
                 📋 Copy
+              </button>
+              <button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-stu" data-id="${sid}" data-name="${name}" title="Delete Student" style="padding: 2px 7px; font-size: 10px; margin-left: 4px; cursor: pointer;">
+                🗑️ Delete
               </button>
             </td>
           </tr>
@@ -1046,6 +1050,44 @@ class TeacherConfirmationView {
             btn.classList.remove("retro-btn-gold");
           }, 1500);
           this.showToast(`Copied Student ID '${idToCopy}' to clipboard`, "info");
+        });
+      });
+
+      // Bind delete buttons
+      tbody.querySelectorAll(".btn-delete-stu").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const sid = btn.getAttribute("data-id");
+          const sname = btn.getAttribute("data-name") || sid;
+          if (!confirm(`🗑️ Are you sure you want to permanently delete student '${sname}' (${sid})?\n\nThis cannot be undone.`)) {
+            return;
+          }
+          if (this.audioSynth) this.audioSynth.playBlip();
+          btn.disabled = true;
+          btn.textContent = "⏳...";
+          try {
+            const res = await fetch("/api/teacher/students/delete", {
+              method: "POST",
+              headers: {
+                ...this.getAuthHeaders(),
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ student_id: sid })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status === "deleted" || data.status === "ok")) {
+              this.showToast(`Student '${sname}' (${sid}) deleted successfully.`, "success");
+              await loadStudents();
+              this.fetchData();
+            } else {
+              alert(`Failed to delete student: ${data.message || "Error"}`);
+              btn.disabled = false;
+              btn.textContent = "🗑️ Delete";
+            }
+          } catch (err) {
+            alert(`Network error deleting student: ${err.message}`);
+            btn.disabled = false;
+            btn.textContent = "🗑️ Delete";
+          }
         });
       });
     };
@@ -1099,6 +1141,56 @@ class TeacherConfirmationView {
     document.getElementById("btn-stu-refresh-list")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       loadStudents();
+    });
+
+    // Delete all students in view binding
+    document.getElementById("btn-stu-delete-all-in-view")?.addEventListener("click", async () => {
+      const selectEl = document.getElementById("stu-class-filter-select");
+      const activeClass = selectEl?.value || defaultClassCode;
+      const gradeLabel = this.formatGradeLabel(activeClass);
+
+      if (!currentStudents || currentStudents.length === 0) {
+        alert(`No students found in ${gradeLabel} to delete.`);
+        return;
+      }
+
+      const count = currentStudents.length;
+      if (!confirm(`⚠️ Are you sure you want to permanently delete all ${count} student(s) in ${gradeLabel}?\n\nThis cannot be undone.`)) {
+        return;
+      }
+
+      if (this.audioSynth) this.audioSynth.playBlip();
+      const btn = document.getElementById("btn-stu-delete-all-in-view");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ Deleting...";
+      }
+
+      try {
+        const res = await fetch("/api/teacher/students/delete_all", {
+          method: "POST",
+          headers: {
+            ...this.getAuthHeaders(),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ class_code: activeClass })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          this.showToast(`Deleted ${data.deleted_count || count} student(s) from ${gradeLabel}.`, "success");
+          await loadStudents(activeClass);
+          this.fetchData();
+        } else {
+          alert(`Failed to delete students: ${data.message || "Unknown error"}`);
+        }
+      } catch (err) {
+        alert(`Network error while deleting students: ${err.message}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "🗑️ Delete All";
+        }
+      }
     });
 
     // Create student submit
