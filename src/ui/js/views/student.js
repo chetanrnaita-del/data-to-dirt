@@ -410,10 +410,29 @@ class StudentDashboardView {
     const elPoints = document.getElementById("hero-eco-points");
     const elSubstats = document.getElementById("hero-substats");
 
-    const carbonVal = (this.stats.carbon_offset_g != null ? Number(this.stats.carbon_offset_g) : 0).toFixed(1);
-    const treesEqVal = (this.stats.trees_equivalent != null ? Number(this.stats.trees_equivalent) : 0).toFixed(4);
+    const carbonRaw = this.stats.carbon_offset_g != null ? Number(this.stats.carbon_offset_g) : 0;
+    let carbonDisplay = "0.0 g";
+    if (carbonRaw >= 1000) {
+      carbonDisplay = `${(carbonRaw / 1000).toFixed(2)} kg`;
+    } else if (carbonRaw >= 1) {
+      carbonDisplay = `${carbonRaw.toFixed(1)} g`;
+    } else if (carbonRaw > 0) {
+      carbonDisplay = `${carbonRaw.toFixed(3)} g`;
+    } else {
+      carbonDisplay = "0.0 g";
+    }
 
-    if (elCarbon) elCarbon.textContent = `${carbonVal} g`;
+    const treesRaw = this.stats.trees_equivalent != null ? Number(this.stats.trees_equivalent) : 0;
+    let treesEqVal = "0.0000";
+    if (treesRaw >= 1) {
+      treesEqVal = treesRaw.toFixed(2);
+    } else if (treesRaw >= 0.0001) {
+      treesEqVal = treesRaw.toFixed(4);
+    } else if (treesRaw > 0) {
+      treesEqVal = "< 0.0001";
+    }
+
+    if (elCarbon) elCarbon.textContent = carbonDisplay;
     if (elPoints) elPoints.textContent = this.stats.eco_points ?? 0;
     if (elSubstats) {
       elSubstats.textContent = `Data Cleared: ${this.stats.bytes_cleared_formatted || "0 B"} • Trees Equivalent: ${treesEqVal}`;
@@ -464,6 +483,7 @@ class StudentDashboardView {
         const rowBg = isSelf ? "background: rgba(92, 179, 57, 0.18);" : "";
         const rankMedal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `${entry.rank}`;
 
+        const treesNum = (entry.trees != null && !isNaN(Number(entry.trees))) ? Number(entry.trees) : 0;
         return `
           <tr style="${rowBg} border-bottom: 1px dashed var(--c-parchment-border);">
             <td style="padding: 6px 8px; font-weight: bold;">${rankMedal}</td>
@@ -472,7 +492,7 @@ class StudentDashboardView {
             </td>
             <td style="padding: 6px 8px; text-align: right; color: var(--c-ink-muted);">${entry.data_cleared_formatted}</td>
             <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: var(--c-brass-dark);">${entry.eco_points}</td>
-            <td style="padding: 6px 8px; text-align: center;">🌲 ${(entry.trees != null && !isNaN(entry.trees)) ? entry.trees : 0}</td>
+            <td style="padding: 6px 8px; text-align: center;">🌲 ${treesNum}</td>
           </tr>
         `;
       })
@@ -515,25 +535,18 @@ class StudentDashboardView {
         ` : ''}
 
         <div style="font-size: 12px; font-weight: bold; color: var(--c-wood-border); margin-bottom: 8px;">
-          ${existingToken ? 'Switch or Connect Another Account:' : 'Choose Your Google Account Type:'}
+          ${existingToken ? 'Reconnect or Select Another Folder:' : 'Connect Google Drive:'}
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="retro-btn retro-btn-gold" id="btn-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>🏫 Connect School Drive (Lighthouse Email)</strong>
+          <button class="retro-btn retro-btn-green" id="btn-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+            <strong>🏫 Connect Lighthouse Google Drive</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              For Lighthouse student and teacher Google accounts.
+              For student and teacher Google Workspace accounts.
             </div>
           </button>
 
-          <button class="retro-btn retro-btn-wood" id="btn-gdrive-personal" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>🌐 Connect Personal / Outside Google Account (@gmail.com)</strong>
-            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              For personal Gmail accounts and participants from outside the school.
-            </div>
-          </button>
-
-          <button class="retro-btn retro-btn-green" id="btn-gdrive-picker" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
+          <button class="retro-btn retro-btn-gold" id="btn-gdrive-picker" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
             <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
               Opens Google selection dialog to browse and handpick files to clean.
@@ -562,14 +575,7 @@ class StudentDashboardView {
       dismiss();
       localStorage.removeItem("d2d_google_access_token");
       localStorage.setItem("d2d_google_provider", "school");
-      window.location.href = "/auth/google/login?provider=school";
-    });
-
-    modal.querySelector("#btn-gdrive-personal")?.addEventListener("click", () => {
-      dismiss();
-      localStorage.removeItem("d2d_google_access_token");
-      localStorage.setItem("d2d_google_provider", "personal");
-      window.location.href = "/auth/google/login?provider=personal";
+      window.location.href = `/auth/google/login?provider=school&grade=${encodeURIComponent(this.classCode || "grade5")}`;
     });
 
     modal.querySelector("#btn-gdrive-picker")?.addEventListener("click", () => {

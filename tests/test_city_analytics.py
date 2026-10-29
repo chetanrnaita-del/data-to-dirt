@@ -13,11 +13,26 @@ from src.services.analytics import AnalyticsService
 class TestCityAnalytics(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        import copy
+        from src.app.server import load_state
+        cls._saved_state = copy.deepcopy(load_state())
         cls.app = create_flask_app()
         cls.client = cls.app.test_client()
         from src.services.auth import default_auth_service
         cls.admin_token = default_auth_service.login(role="admin", pin="admin2026", user_id="admin")["token"]
         cls.admin_headers = {"Authorization": f"Bearer {cls.admin_token}"}
+
+    @classmethod
+    def tearDownClass(cls):
+        from src.app.server import save_state
+        if hasattr(cls, "_saved_state") and cls._saved_state:
+            # Strip test events before restoring
+            analytics = cls._saved_state.get("analytics", {})
+            events = analytics.get("recent_events", [])
+            analytics["recent_events"] = [e for e in events if e.get("user_id") != "TEST-USER-PARIS" and e.get("city") != "Paris"]
+            if "cities" in analytics and "Paris" in analytics["cities"]:
+                del analytics["cities"]["Paris"]
+            save_state(cls._saved_state)
 
     def test_country_code_to_flag(self):
         """Validates conversion of ISO country codes to Unicode flag emojis."""

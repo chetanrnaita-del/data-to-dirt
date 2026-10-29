@@ -455,6 +455,44 @@ class AnalyticsDashboardView {
     }).join("");
   }
 
+  formatEventTime(evt) {
+    if (!evt) return "Just now";
+    let date = null;
+    if (evt.timestamp_epoch) {
+      date = new Date(evt.timestamp_epoch * 1000);
+    } else if (evt.timestamp) {
+      const s = String(evt.timestamp).trim();
+      if (s.endsWith("Z") || s.includes("T")) {
+        date = new Date(s);
+      } else if (s.includes(" ")) {
+        // Parse UTC timestamp: "YYYY-MM-DD HH:MM:SS" -> Date in UTC
+        date = new Date(s.replace(" ", "T") + "Z");
+      } else {
+        date = new Date(s);
+      }
+    }
+
+    if (!date || isNaN(date.getTime())) {
+      return evt.timestamp ? String(evt.timestamp).split(" ")[1] || String(evt.timestamp) : "Just now";
+    }
+
+    const now = new Date();
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffSec >= 0 && diffSec < 15) {
+      return "Just now";
+    }
+    if (diffSec >= 15 && diffSec < 60) {
+      return `${diffSec}s ago`;
+    }
+    if (diffSec >= 60 && diffSec < 3600) {
+      return `${Math.floor(diffSec / 60)}m ago`;
+    }
+
+    // Format in authentic local browser time
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
+  }
+
   renderEventStream() {
     const stream = document.getElementById("an-event-stream");
     if (!stream || !this.data) return;
@@ -466,8 +504,8 @@ class AnalyticsDashboardView {
     }
 
     stream.innerHTML = events.slice(0, 15).map(evt => {
-      const ts = evt.timestamp ? String(evt.timestamp) : "";
-      const timeStr = ts.includes(" ") ? ts.split(" ")[1] : (ts || "Just now");
+      const timeStr = this.formatEventTime(evt);
+      const fullTimeStr = evt.timestamp ? String(evt.timestamp) : "";
       return `
         <div class="retro-inset" style="padding: 6px 8px; font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -476,14 +514,14 @@ class AnalyticsDashboardView {
               <span>${evt.city || "Global"}</span>
               <span class="retro-tag retro-tag-clean" style="font-size: 8px; padding: 1px 4px;">${evt.role || "user"}</span>
             </div>
-            <span style="font-size: 9px; color: var(--c-ink-light);">${timeStr}</span>
+            <span style="font-size: 9px; color: var(--c-ink-light); font-weight: 600;" title="${fullTimeStr}">${timeStr}</span>
           </div>
           <div style="color: var(--c-ink); font-size: 10.5px; line-height: 1.3;">
             ${evt.action || "Activity"}
           </div>
           <div style="font-size: 9px; color: var(--c-ink-light); display: flex; justify-content: space-between;">
             <span>ID: ${evt.user_id || "visitor"}</span>
-            <span>${evt.device_type || "Desktop"}</span>
+            <span style="font-weight: 600;">${evt.device_type || "macOS Desktop"}</span>
           </div>
         </div>
       `;

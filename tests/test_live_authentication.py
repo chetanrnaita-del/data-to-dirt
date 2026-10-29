@@ -2,14 +2,25 @@ import os
 import time
 import unittest
 import json
+import copy
 from src.app.server import app, load_state, save_state, reset_all_auth_lockouts, create_flask_app
 from src.services.auth import default_auth_service
 
 class TestLiveAuthentication(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._class_saved_state = copy.deepcopy(load_state())
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, "_class_saved_state") and cls._class_saved_state:
+            save_state(copy.deepcopy(cls._class_saved_state))
+        reset_all_auth_lockouts()
+
     def setUp(self):
         self.app = app
         self.client = self.app.test_client()
-        self.orig_state = load_state()
+        self.orig_state = copy.deepcopy(self._class_saved_state)
         reset_all_auth_lockouts()
         state = load_state()
         if not any(s.get("student_id") == "STU-001" for s in state.get("students", [])):
@@ -22,7 +33,7 @@ class TestLiveAuthentication(unittest.TestCase):
             save_state(state)
 
     def tearDown(self):
-        save_state(self.orig_state)
+        save_state(copy.deepcopy(self.orig_state))
         reset_all_auth_lockouts()
 
     def test_student_unknown_username_rejected(self):
@@ -288,6 +299,15 @@ class TestLiveAuthentication(unittest.TestCase):
 
 class IndividualDailyDeletionIsolationTest(unittest.TestCase):
     """Verifies that daily deletions are strictly isolated per individual student and never pooled class-wide."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._class_saved_state = copy.deepcopy(load_state())
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, "_class_saved_state") and cls._class_saved_state:
+            save_state(copy.deepcopy(cls._class_saved_state))
 
     def setUp(self):
         os.environ["TEST_MODE"] = "0"  # Enforce strict daily limit enforcement

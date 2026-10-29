@@ -331,10 +331,6 @@ class FirestoreDB:
                 data = d.to_dict()
                 sid = data.get("student_id") or data.get("user_id") or d.id
                 sname = data.get("name", "")
-                if str(sid).startswith("GOOGLE-SCHOOL-") or str(sid).startswith("GOOGLE-PERSONAL-"):
-                    continue
-                if sname in ("Aaryan Agarawal",) or sid in ("STU-8SB8FZ", "STU-001"):
-                    continue
                 created_at = data.get("created_at_iso")
                 if not created_at and "created_at" in data:
                     created_at = str(data["created_at"])
@@ -427,12 +423,6 @@ class FirestoreDB:
         leaderboard = []
         for d in docs:
             u = d.to_dict()
-            uid = str(u.get("user_id") or u.get("student_id") or "")
-            uname = str(u.get("name") or "")
-            if uid.startswith("GOOGLE-SCHOOL-") or uid.startswith("GOOGLE-PERSONAL-"):
-                continue
-            if uname in ("Aaryan Agarawal",) or uid in ("STU-8SB8FZ", "STU-001"):
-                continue
             leaderboard.append({
                 "rank": len(leaderboard) + 1,
                 "user_id": u.get("user_id"),

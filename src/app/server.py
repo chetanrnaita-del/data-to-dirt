@@ -519,47 +519,27 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
 
 
 def cleanup_ghost_users():
-    """Prunes old timestamp ghost accounts and sample mock users from local state and Cloud Firestore."""
+    """Prunes unit test artifacts from analytics telemetry without touching authentic user accounts or Firestore."""
     try:
         state = load_state()
         changed = False
-        stus = state.get("students", [])
-        cleaned_stus = [
-            s for s in stus
-            if not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-SCHOOL-")
-            and not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-PERSONAL-")
-            and s.get("name") != "Aaryan Agarawal"
-            and s.get("student_id") != "STU-8SB8FZ"
-        ]
-        if len(cleaned_stus) != len(stus):
-            state["students"] = cleaned_stus
-            changed = True
-        
-        if state.get("student", {}).get("name") == "Aaryan Agarawal":
-            state["student"]["name"] = "Student"
-            state["student"]["student_id"] = "STU-001"
+
+        # Clean test events from analytics
+        analytics = state.get("analytics", {})
+        if "recent_events" in analytics:
+            old_events = analytics["recent_events"]
+            cleaned_events = [e for e in old_events if e.get("user_id") != "TEST-USER-PARIS" and e.get("city") != "Paris"]
+            if len(cleaned_events) != len(old_events):
+                analytics["recent_events"] = cleaned_events
+                changed = True
+        if "cities" in analytics and "Paris" in analytics["cities"]:
+            del analytics["cities"]["Paris"]
             changed = True
             
         if changed:
             save_state(state)
     except Exception as e:
-        print(f"[!] Local state ghost cleanup notice: {e}")
-
-    if firestore_db.is_connected:
-        try:
-            docs = firestore_db.db.collection("users").stream()
-            for doc in docs:
-                doc_id = doc.id
-                d_data = doc.to_dict() or {}
-                d_name = d_data.get("name", "")
-                if doc_id.startswith("GOOGLE-SCHOOL-") or doc_id.startswith("GOOGLE-PERSONAL-") or d_name == "Aaryan Agarawal" or doc_id == "STU-8SB8FZ":
-                    try:
-                        print(f"[CLEANUP] Pruning ghost student document from Firestore: {doc_id}")
-                        doc.reference.delete()
-                    except Exception:
-                        pass
-        except Exception as fe:
-            print(f"[!] Firestore ghost cleanup notice: {fe}")
+        print(f"[!] Analytics cleanup notice: {e}")
 
 
 def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = None) -> Dict[str, Any]:
@@ -907,6 +887,27 @@ def record_telemetry_event(
     now_ts = time.time()
     now_str = time.strftime("%Y-%m-%d %H:%M:%S")
 
+    # If device_type is default "Desktop" or generic, attempt to detect from request User-Agent
+    if not device_type or device_type == "Desktop":
+        try:
+            from flask import request as flask_req
+            ua = flask_req.headers.get("User-Agent", "")
+            if ua:
+                if any(x in ua for x in ["iPad", "Tablet"]) or ("Macintosh" in ua and "Touch" in ua):
+                    device_type = "Tablet (iPadOS)"
+                elif any(x in ua for x in ["iPhone", "iPod"]):
+                    device_type = "Mobile (iPhone)"
+                elif "Android" in ua:
+                    device_type = "Mobile (Android)"
+                elif any(x in ua for x in ["Macintosh", "Mac OS X"]):
+                    device_type = "macOS Desktop"
+                elif "Windows" in ua:
+                    device_type = "Windows Desktop"
+                elif "Linux" in ua:
+                    device_type = "Linux Desktop"
+        except Exception:
+            pass
+
     # Debounce identical page-visit / session hits within 3 seconds for same city & device
     is_page_hit = any(k in action.lower() for k in ["visit", "start", "view"])
     if is_page_hit and recent_events:
@@ -996,6 +997,7 @@ def record_telemetry_event(
     event_obj = {
         "id": f"EVT-{int(now_ts * 1000) % 1000000}",
         "timestamp": now_str,
+        "timestamp_epoch": now_ts,
         "city": city,
         "country": country,
         "country_code": country_code,
@@ -1632,23 +1634,24 @@ def create_flask_app():
             known_students = []
             if "student" in state:
                 s_def = state["student"]
-                if s_def.get("name") and s_def.get("name") not in ("Student", "Aaryan Agarawal") and not str(s_def.get("student_id", "")).startswith("GOOGLE-"):
+                if s_def.get("name"):
                     known_students.append(s_def)
             for s in state.get("students", []):
                 sid = str(s.get("student_id") or "")
-                sname = str(s.get("name") or "")
-                if sid.startswith("GOOGLE-SCHOOL-") or sid.startswith("GOOGLE-PERSONAL-"):
-                    continue
-                if sname in ("Aaryan Agarawal",) or sid in ("STU-8SB8FZ", "STU-001"):
-                    continue
                 if sid != state.get("student", {}).get("student_id"):
                     known_students.append(s)
 
             # STRICT FILTER BY CLASS CODE: Only students in THIS class
-            filtered_students = [
-                s for s in known_students 
-                if normalize_grade(s.get("class_code") or "grade5") == class_code
-            ]
+            if class_code.startswith("grade"):
+                filtered_students = [
+                    s for s in known_students 
+                    if normalize_grade(s.get("class_code") or "grade5") == class_code
+                ]
+            else:
+                filtered_students = [
+                    s for s in known_students 
+                    if (s.get("class_code") or "").strip().lower() == class_code
+                ]
             leaderboard = []
             for s in filtered_students:
                 b_cleared = s.get("bytes_cleared", 0)
@@ -1666,15 +1669,9 @@ def create_flask_app():
                     "trees": int(trees_val or 0)
                 })
 
-        # Recalculate formatted data and filter ghost / mock accounts
+        # Recalculate formatted data
         formatted_list = []
         for entry in sorted(leaderboard, key=lambda x: x.get("eco_points", 0), reverse=True):
-            uid = str(entry.get("user_id") or entry.get("student_id") or "")
-            uname = str(entry.get("name") or "")
-            if uid.startswith("GOOGLE-SCHOOL-") or uid.startswith("GOOGLE-PERSONAL-"):
-                continue
-            if uname in ("Aaryan Agarawal",) or uid in ("STU-8SB8FZ", "STU-001"):
-                continue
             item = dict(entry)
             b_val = item.get("data_cleared_bytes", 0) or item.get("bytes_cleared", 0)
             item["data_cleared_formatted"] = format_bytes(b_val)
@@ -3957,19 +3954,19 @@ def create_flask_app():
             if sid:
                 merged_students[sid] = s
 
-        valid_students = [
-            s for s in list(merged_students.values())
-            if not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-SCHOOL-")
-            and not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-PERSONAL-")
-            and str(s.get("name") or "") != "Aaryan Agarawal"
-            and str(s.get("student_id") or s.get("user_id") or "") != "STU-8SB8FZ"
-        ]
+        valid_students = list(merged_students.values())
 
         if target_class:
-            valid_students = [
-                s for s in valid_students
-                if normalize_grade(s.get("class_code") or "grade5") == target_class
-            ]
+            if target_class.startswith("grade"):
+                valid_students = [
+                    s for s in valid_students
+                    if normalize_grade(s.get("class_code") or "grade5") == target_class
+                ]
+            else:
+                valid_students = [
+                    s for s in valid_students
+                    if (s.get("class_code") or "").strip().lower() == target_class
+                ]
 
         # Filter queue items by target_class if specified
         if target_class:
@@ -4081,19 +4078,16 @@ def create_flask_app():
             if sid:
                 merged[sid] = s
                 
-        results = [
-            s for s in list(merged.values())
-            if not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-SCHOOL-")
-            and not str(s.get("student_id") or s.get("user_id") or "").startswith("GOOGLE-PERSONAL-")
-            and str(s.get("name") or "") != "Aaryan Agarawal"
-            and str(s.get("student_id") or s.get("user_id") or "") != "STU-8SB8FZ"
-        ]
+        results = list(merged.values())
         for s in results:
             if not s.get("class_code"):
                 s["class_code"] = "grade5"
 
         if class_filter:
-            results = [s for s in results if s.get("class_code", "").strip().lower() == class_filter or normalize_grade(s.get("class_code", "")) == normalize_grade(class_filter)]
+            if class_filter.startswith("grade"):
+                results = [s for s in results if normalize_grade(s.get("class_code", "")) == class_filter]
+            else:
+                results = [s for s in results if s.get("class_code", "").strip().lower() == class_filter]
 
         # Sort newest students first so new students immediately appear at the top
         results.sort(
