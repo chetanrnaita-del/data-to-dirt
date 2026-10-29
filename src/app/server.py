@@ -1984,6 +1984,82 @@ def create_flask_app():
 
         return jsonify({"status": "ok", "student_id": student_id, "class_code": new_grade})
 
+    @app.route("/api/student/password", methods=["POST"])
+    @app.route("/api/student/change_password", methods=["POST"])
+    def api_student_change_password():
+        """Allows an authenticated student to update their account password."""
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+
+        data = request.get_json() or {}
+        student_id = (data.get("student_id") or "").strip()
+        if not student_id and session:
+            student_id = session.get("user_id")
+
+        if not student_id:
+            return jsonify({"status": "error", "message": "Authentication required. Student ID missing."}), 401
+
+        new_password = str(data.get("new_password") or data.get("password") or "").strip()
+        if not new_password:
+            return jsonify({"status": "error", "message": "New password cannot be empty."}), 400
+        if len(new_password) < 3:
+            return jsonify({"status": "error", "message": "Password must be at least 3 characters long."}), 400
+
+        state = load_state()
+
+        # Update in local state
+        updated_local = False
+        target_student = None
+        for s in state.get("students", []):
+            if (s.get("student_id") or s.get("user_id") or "").strip().lower() == student_id.lower():
+                target_student = s
+                s["pin"] = new_password
+                s["password"] = new_password
+                updated_local = True
+                break
+
+        if state.get("student", {}).get("student_id", "").strip().lower() == student_id.lower():
+            state["student"]["pin"] = new_password
+            state["student"]["password"] = new_password
+            updated_local = True
+
+        # Store in student_passwords map in state
+        if "student_passwords" not in state:
+            state["student_passwords"] = {}
+        state["student_passwords"][student_id.lower()] = new_password
+        state["student_passwords"][student_id.upper()] = new_password
+        if target_student and target_student.get("name"):
+            state["student_passwords"][target_student["name"].lower()] = new_password
+
+        save_state(state)
+
+        # Update in Cloud Firestore if connected
+        updated_fb = False
+        if firestore_db.is_connected:
+            try:
+                for doc_id in [student_id, student_id.upper(), student_id.lower()]:
+                    doc_ref = firestore_db.db.collection("users").document(doc_id)
+                    if doc_ref.get().exists:
+                        doc_ref.set({"pin": new_password, "password": new_password}, merge=True)
+                        updated_fb = True
+                        break
+                if not updated_fb:
+                    q = firestore_db.db.collection("users").where("student_id", "==", student_id.upper()).limit(1).get()
+                    for qd in q:
+                        qd.reference.set({"pin": new_password, "password": new_password}, merge=True)
+                        updated_fb = True
+                        break
+            except Exception as fe:
+                print(f"[!] Firestore update password error: {fe}")
+
+        return jsonify({
+            "status": "ok",
+            "student_id": student_id,
+            "message": "Password changed successfully! You can now use your new password to sign in.",
+            "saved_to_firebase": updated_fb
+        })
+
     @app.route("/api/tree/growth", methods=["GET"])
     def api_tree_growth():
         auth_header = request.headers.get("Authorization", "")
@@ -3474,21 +3550,28 @@ def create_flask_app():
             expected_class_code = (matched_student.get("class_code") or "").strip().lower()
             stored_student_pin = str(matched_student.get("pin") or matched_student.get("password") or "").strip().lower()
 
+            # Check student_passwords map in state
+            custom_student_pw = state.get("student_passwords", {}).get(clean_ident) or \
+                                state.get("student_passwords", {}).get(clean_ident_alphanum) or \
+                                (matched_student and state.get("student_passwords", {}).get(str(matched_student.get("student_id") or "").lower()))
+
             entered_pin_clean = str(pin).strip().lower()
             entered_norm = re.sub(r'[^a-zA-Z0-9]', '', entered_pin_clean)
             expected_norm = re.sub(r'[^a-zA-Z0-9]', '', expected_class_code)
             stored_norm = re.sub(r'[^a-zA-Z0-9]', '', stored_student_pin)
+            custom_norm = re.sub(r'[^a-zA-Z0-9]', '', str(custom_student_pw or "").strip().lower())
 
-            # Accept class code (with/without space, e.g. "cs301", "cs 301", "CS-301"),
-            # custom pin, or standard student passwords
+            # Accept custom password, stored pin, class code, or standard student passwords
             STANDARD_STUDENT_PASSWORDS = [
                 "student123", "student", "1234", "password", "pass", "demo"
             ]
 
             password_matches = False
-            if entered_norm and (entered_norm == expected_norm or entered_norm in expected_norm):
+            if custom_norm and entered_norm == custom_norm:
                 password_matches = True
             elif stored_norm and entered_norm == stored_norm:
+                password_matches = True
+            elif entered_norm and (entered_norm == expected_norm or entered_norm in expected_norm):
                 password_matches = True
             elif entered_norm in [re.sub(r'[^a-zA-Z0-9]', '', p) for p in STANDARD_STUDENT_PASSWORDS]:
                 password_matches = True

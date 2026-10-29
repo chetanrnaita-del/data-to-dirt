@@ -917,7 +917,9 @@ class TeacherConfirmationView {
                     <option value="grade10" ${defaultClassCode === 'grade10' ? 'selected' : ''}>🎓 Grade 10</option>
                     <option value="grade11" ${defaultClassCode === 'grade11' ? 'selected' : ''}>🎓 Grade 11</option>
                     <option value="grade12" ${defaultClassCode === 'grade12' ? 'selected' : ''}>🎓 Grade 12</option>
+                    <option value="custom">✏️ Other / Custom Class Code...</option>
                   </select>
+                  <input type="text" id="stu-input-custom-class" class="retro-input" placeholder="e.g. bio101" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px; margin-top: 4px; display: none;" />
                 </div>
               </div>
 
@@ -1240,15 +1242,28 @@ class TeacherConfirmationView {
       }
     });
 
+    // Toggle custom class code input if "Other / Custom" selected
+    document.getElementById("stu-input-class")?.addEventListener("change", (e) => {
+      const customInput = document.getElementById("stu-input-custom-class");
+      if (customInput) {
+        customInput.style.display = e.target.value === "custom" ? "block" : "none";
+        if (e.target.value === "custom") customInput.focus();
+      }
+    });
+
     // Create student submit
     document.getElementById("btn-stu-submit")?.addEventListener("click", async () => {
       const nameInput = document.getElementById("stu-input-name");
       const classInput = document.getElementById("stu-input-class");
+      const customClassInput = document.getElementById("stu-input-custom-class");
       const idInput = document.getElementById("stu-input-id");
       const msgEl = document.getElementById("stu-create-msg");
 
       const name = (nameInput?.value || "").trim();
-      const classCode = (classInput?.value || "").trim();
+      let classCode = (classInput?.value || "").trim();
+      if (classCode === "custom") {
+        classCode = (customClassInput?.value || "").trim();
+      }
       const studentId = (idInput?.value || "").trim();
 
       if (!name) {

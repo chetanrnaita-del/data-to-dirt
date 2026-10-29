@@ -339,6 +339,16 @@ class DataToDirtApp {
         this.switchRole("analytics");
       });
     }
+
+    const btnStudentPassword = document.getElementById("nav-student-password-btn");
+    if (btnStudentPassword) {
+      btnStudentPassword.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        if (window.StudentView && window.StudentView.openChangePasswordModal) {
+          window.StudentView.openChangePasswordModal();
+        }
+      });
+    }
   }
 
   startClock() {
@@ -360,10 +370,11 @@ class DataToDirtApp {
     const btnAdmin = document.getElementById("nav-admin-view");
     const btnAnalytics = document.getElementById("nav-analytics-view");
     const btnLogout = document.getElementById("nav-logout-btn");
+    const btnStudentPassword = document.getElementById("nav-student-password-btn");
     const userRoleBadge = document.getElementById("header-role-badge");
 
     // Hide all navigation buttons by default
-    [btnStudent, btnTeacher, btnAdmin, btnAnalytics, btnLogout].forEach((btn) => {
+    [btnStudent, btnTeacher, btnAdmin, btnAnalytics, btnLogout, btnStudentPassword].forEach((btn) => {
       if (btn) {
         btn.style.display = "none";
         btn.classList.remove("retro-btn-gold");
@@ -387,9 +398,10 @@ class DataToDirtApp {
     }
 
     if (this.authenticatedRole === "student") {
-      // Student: Single-view dashboard. Hide redundant nav button so only clean status badge appears.
+      // Student: Single-view dashboard. Show password change button for student accounts.
       if (btnStudent) btnStudent.style.display = "none";
       if (btnAnalytics) btnAnalytics.style.display = "none";
+      if (btnStudentPassword) btnStudentPassword.style.display = "inline-block";
       if (userRoleBadge) {
         const studentName = localStorage.getItem("d2d_student_name") || this.authenticatedName || "";
         const studentId = this.userId || localStorage.getItem("d2d_user_id") || "";

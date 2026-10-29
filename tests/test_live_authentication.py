@@ -572,6 +572,69 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
         self.assertEqual(len(aaryan_entries2), 1)
         self.assertIn("(You)", aaryan_entries2[0]["name"])
 
+    def test_student_password_change_flow(self):
+        """Validates that a student can change their password from their account and log in with it."""
+        from src.services.auth import default_auth_service
+
+        state = load_state()
+        test_student_id = "STU-PW-TEST"
+        state["students"] = [s for s in state.get("students", []) if s.get("student_id") != test_student_id]
+        state["students"].append({
+            "student_id": test_student_id,
+            "user_id": test_student_id,
+            "name": "Password Test Student",
+            "class_code": "grade6",
+            "pin": "initial123",
+            "password": "initial123",
+            "eco_points": 10,
+            "bytes_cleared": 1024
+        })
+        save_state(state)
+
+        # 1. Unauthenticated request without student_id should fail
+        res_unauth = self.client.post("/api/student/password", json={"new_password": "newsecret123"})
+        self.assertEqual(res_unauth.status_code, 401)
+
+        # 2. Too short password should fail
+        session = default_auth_service.create_session(role="student", user_id=test_student_id, class_code="grade6")
+        token = session["token"]
+        res_short = self.client.post(
+            "/api/student/password",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"student_id": test_student_id, "new_password": "ab"}
+        )
+        self.assertEqual(res_short.status_code, 400)
+
+        # 3. Successful password change
+        new_pw = "supersecret2026"
+        res_success = self.client.post(
+            "/api/student/password",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"student_id": test_student_id, "new_password": new_pw}
+        )
+        self.assertEqual(res_success.status_code, 200)
+        data = res_success.get_json()
+        self.assertEqual(data["status"], "ok")
+
+        # 4. Login with the new password must succeed
+        res_login = self.client.post("/api/auth/login", json={
+            "role": "student",
+            "user_id": test_student_id,
+            "pin": new_pw
+        })
+        self.assertEqual(res_login.status_code, 200)
+        login_data = res_login.get_json()
+        self.assertEqual(login_data["status"], "authenticated")
+        self.assertEqual(login_data["user_id"], test_student_id)
+
+        # 5. Login with an incorrect password must fail
+        res_fail = self.client.post("/api/auth/login", json={
+            "role": "student",
+            "user_id": test_student_id,
+            "pin": "wrongpasswordxyz"
+        })
+        self.assertEqual(res_fail.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()

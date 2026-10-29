@@ -91,9 +91,10 @@ class StudentDashboardView {
           <!-- Carbon Footprint Hero Card -->
           <div class="retro-card" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <span>Verified Carbon Footprint Offset</span>
                 <span class="retro-tag retro-tag-clean" id="hero-student-name" style="font-size: 10px; padding: 2px 7px;">🎒 ${this.studentName || 'Student'}</span>
+                <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-hero-change-password" style="font-size: 10px; padding: 2px 7px; cursor: pointer;" title="Change Account Password">🔑 Change Password</button>
               </div>
               <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
                 <span id="hero-carbon-val" style="font-size: 32px; font-weight: bold; color: var(--c-eco-leaf); text-shadow: 2px 2px 0 var(--c-forest-deep);">
@@ -272,6 +273,14 @@ class StudentDashboardView {
     const btnScanLocal = document.getElementById("btn-scan-local");
     const btnRevoke = document.getElementById("btn-revoke-scan");
     const btnCheer = document.getElementById("btn-tree-celebrate");
+    const btnChangePw = document.getElementById("btn-hero-change-password");
+
+    if (btnChangePw) {
+      btnChangePw.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        this.openChangePasswordModal();
+      });
+    }
 
     const isIPad = /iPad/i.test(navigator.userAgent) || 
       (navigator.maxTouchPoints > 1 && (navigator.platform === 'MacIntel' || navigator.userAgent.includes('Macintosh')));
@@ -1331,7 +1340,180 @@ class StudentDashboardView {
       };
     }
   }
+
+  openChangePasswordModal() {
+    const existing = document.getElementById("modal-student-password");
+    if (existing) existing.remove();
+
+    const studentName = this.studentName || localStorage.getItem("d2d_student_name") || "Student";
+    const studentId = this.userId || localStorage.getItem("d2d_user_id") || "STU-001";
+
+    const modalHtml = `
+      <div class="retro-modal-backdrop" id="modal-student-password" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 99999; backdrop-filter: blur(2px);">
+        <div class="retro-modal-window" style="width: 420px; max-width: 92vw; background: #fdfbf7; border: 3px solid #b07542; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; animation: popIn 0.15s ease-out;">
+          
+          <!-- Header -->
+          <div class="retro-modal-header" style="background: linear-gradient(180deg, #5c381e, #3e2210); color: #f5efe6; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b07542;">
+            <div style="font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+              <span>🔑</span>
+              <span>Change Account Password</span>
+            </div>
+            <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-pw-modal-close" style="padding: 2px 8px; font-weight: bold; cursor: pointer;">✕</button>
+          </div>
+
+          <!-- Body -->
+          <div class="retro-modal-body" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; background: #fff9ed;">
+            
+            <div style="font-size: 12px; color: #5c381e; background: #f5efe6; border: 1.5px solid #d4c8b8; border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Logged in as: <strong>${studentName}</strong></span>
+              <span class="retro-tag retro-tag-clean" style="font-size: 10px;">${studentId}</span>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Current Password / Class Code</label>
+              <input type="password" id="input-pw-current" class="retro-input" placeholder="Enter current password or grade" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 8px 10px; border: 1.5px solid #a27848; border-radius: 4px; background: #fff;" />
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">New Password *</label>
+              <input type="password" id="input-pw-new" class="retro-input" placeholder="Enter new password (min. 3 characters)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 8px 10px; border: 1.5px solid #a27848; border-radius: 4px; background: #fff;" />
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Confirm New Password *</label>
+              <input type="password" id="input-pw-confirm" class="retro-input" placeholder="Re-type new password" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 8px 10px; border: 1.5px solid #a27848; border-radius: 4px; background: #fff;" />
+            </div>
+
+            <div id="pw-modal-feedback" style="display: none; font-size: 11.5px; font-weight: bold; padding: 8px 12px; border-radius: 6px; line-height: 1.4;"></div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+              <button type="button" class="retro-btn retro-btn-wood" id="btn-pw-modal-cancel" style="padding: 7px 14px; font-size: 12px; cursor: pointer;">Cancel</button>
+              <button type="button" class="retro-btn retro-btn-green" id="btn-pw-modal-submit" style="padding: 7px 16px; font-size: 12px; font-weight: bold; cursor: pointer;">💾 Update Password</button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    const modal = document.getElementById("modal-student-password");
+
+    const closeModal = () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      modal?.remove();
+    };
+
+    document.getElementById("btn-pw-modal-close")?.addEventListener("click", closeModal);
+    document.getElementById("btn-pw-modal-cancel")?.addEventListener("click", closeModal);
+
+    const btnSubmit = document.getElementById("btn-pw-modal-submit");
+    const feedback = document.getElementById("pw-modal-feedback");
+    const inputCurrent = document.getElementById("input-pw-current");
+    const inputNew = document.getElementById("input-pw-new");
+    const inputConfirm = document.getElementById("input-pw-confirm");
+
+    btnSubmit?.addEventListener("click", async () => {
+      const currentPw = (inputCurrent?.value || "").trim();
+      const newPw = (inputNew?.value || "").trim();
+      const confirmPw = (inputConfirm?.value || "").trim();
+
+      if (!newPw) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#fde8e8";
+          feedback.style.color = "#c0392b";
+          feedback.style.border = "1.5px solid #c0392b";
+          feedback.textContent = "Please enter a new password.";
+        }
+        inputNew?.focus();
+        return;
+      }
+
+      if (newPw.length < 3) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#fde8e8";
+          feedback.style.color = "#c0392b";
+          feedback.style.border = "1.5px solid #c0392b";
+          feedback.textContent = "Password must be at least 3 characters.";
+        }
+        inputNew?.focus();
+        return;
+      }
+
+      if (newPw !== confirmPw) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#fde8e8";
+          feedback.style.color = "#c0392b";
+          feedback.style.border = "1.5px solid #c0392b";
+          feedback.textContent = "Passwords do not match. Please re-enter.";
+        }
+        inputConfirm?.focus();
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "⏳ Saving...";
+
+      try {
+        const token = localStorage.getItem("d2d_session_token") || "";
+        const res = await fetch("/api/student/password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            student_id: studentId,
+            current_password: currentPw,
+            new_password: newPw
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === "ok") {
+          if (this.audioSynth) this.audioSynth.playCoinDing();
+          if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "#e8f8f5";
+            feedback.style.color = "#27ae60";
+            feedback.style.border = "1.5px solid #27ae60";
+            feedback.textContent = "✓ Password updated successfully! Use your new password on your next login.";
+          }
+          localStorage.setItem("d2d_pin", newPw);
+          setTimeout(() => {
+            modal?.remove();
+          }, 1400);
+        } else {
+          if (this.audioSynth) this.audioSynth.playGamingBuzzer();
+          if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "#fde8e8";
+            feedback.style.color = "#c0392b";
+            feedback.style.border = "1.5px solid #c0392b";
+            feedback.textContent = data.message || "Failed to update password.";
+          }
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = "💾 Update Password";
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#fde8e8";
+          feedback.style.color = "#c0392b";
+          feedback.style.border = "1.5px solid #c0392b";
+          feedback.textContent = `Network error: ${err.message}`;
+        }
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = "💾 Update Password";
+      }
+    });
+  }
 }
 
 // Global Student View Singleton
 window.StudentView = new StudentDashboardView();
+window.StudentDashboard = window.StudentView;
