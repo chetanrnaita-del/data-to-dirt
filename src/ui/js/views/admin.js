@@ -539,7 +539,12 @@ class AdminEcoFundView {
                   <span>📋 Registered Teacher Directory</span>
                   <span id="adm-tch-count-badge" class="retro-tag retro-tag-clean" style="font-size: 10px;">0 Teachers</span>
                 </div>
-                <input type="text" id="input-adm-tch-search" class="retro-input" placeholder="Search teacher or class..." style="font-size: 11px; padding: 3px 6px; width: 170px;" />
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <button type="button" id="btn-adm-delete-all-teachers" class="retro-btn retro-btn-danger retro-btn-sm" style="font-size: 10px; padding: 3px 8px; font-weight: bold; cursor: pointer;">
+                    🗑️ Delete All
+                  </button>
+                  <input type="text" id="input-adm-tch-search" class="retro-input" placeholder="Search teacher or class..." style="font-size: 11px; padding: 3px 6px; width: 140px;" />
+                </div>
               </div>
 
               <!-- Directory Table -->
@@ -594,11 +599,54 @@ class AdminEcoFundView {
       }
     };
 
+    // Delete All Teachers Button Binding
+    document.getElementById("btn-adm-delete-all-teachers")?.addEventListener("click", async () => {
+      if (!allTeachers || allTeachers.length === 0) {
+        alert("There are no teacher accounts to delete.");
+        return;
+      }
+      if (!confirm(`Are you sure you want to delete ALL ${allTeachers.length} teacher accounts? This action cannot be undone.`)) {
+        return;
+      }
+      const btn = document.getElementById("btn-adm-delete-all-teachers");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Deleting...";
+      }
+      try {
+        const token = localStorage.getItem("d2d_session_token") || "";
+        const res = await fetch("/api/admin/teachers/delete_all", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ""
+          }
+        });
+        const d = await res.json();
+        if (d.status === "deleted_all") {
+          allTeachers = [];
+          renderTable([]);
+          const badge = document.getElementById("adm-tch-count-badge");
+          if (badge) badge.textContent = "0 Teachers";
+          alert("✓ All teacher accounts have been deleted successfully.");
+        } else {
+          alert(`Failed to delete teachers: ${d.message || "Unknown error"}`);
+        }
+      } catch (err) {
+        alert("Network error while deleting teachers: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "🗑️ Delete All";
+        }
+      }
+    });
+
     const renderTable = (list) => {
       const tbody = document.getElementById("adm-tch-table-body");
       if (!tbody) return;
       if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 16px; color: #636e72;">No teacher accounts found matching filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #636e72;">✨ No teacher accounts yet. Use the form above to enroll your first teacher!</td></tr>`;
         return;
       }
       tbody.innerHTML = list.map((t) => {
@@ -615,12 +663,7 @@ class AdminEcoFundView {
         };
         const cCode = formatGrade(t.class_code || "all");
         const tid = t.teacher_id || t.user_id || "";
-        const isBuiltIn = [
-          "teacher_grade5", "teacher_grade6", "teacher_grade7", "teacher_grade8",
-          "teacher_grade9", "teacher_grade10", "teacher_grade11", "teacher_grade12",
-          "teacher_bio101", "teacher_env201", "teacher_cs301", "teacher_chem102", "teacher_earth204"
-        ].includes(tid.toLowerCase());
-        const actionHtml = isBuiltIn ? `<span style="font-size: 10px; color: #b2bec3;">System</span>` : `
+        const actionHtml = `
           <button type="button" class="btn-delete-teacher" data-tid="${tid}" style="background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
             🗑️ Delete
           </button>
@@ -631,7 +674,7 @@ class AdminEcoFundView {
             <td style="padding: 6px 8px; font-family: monospace; color: #2d6a36;"><code>${tid}</code></td>
             <td style="padding: 6px 8px;"><span class="retro-tag retro-tag-clean" style="font-size: 9.5px; padding: 1px 5px;">${cCode}</span></td>
             <td style="padding: 6px 8px; font-family: monospace; color: #636e72;">${t.pin || "teacher123"}</td>
-            <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${t.created_at_iso || "Pre-installed"}</td>
+            <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${t.created_at_iso || "Registered"}</td>
             <td style="padding: 6px 8px; text-align: right;">${actionHtml}</td>
           </tr>
         `;
