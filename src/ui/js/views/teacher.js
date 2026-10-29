@@ -908,7 +908,16 @@ class TeacherConfirmationView {
                 </div>
                 <div>
                   <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Grade / Class Code *</label>
-                  <input type="text" id="stu-input-class" class="retro-input" value="${defaultClassCode === 'all' ? 'grade5' : defaultClassCode}" placeholder="e.g. grade5" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
+                  <select id="stu-input-class" class="retro-select" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px; background: #fff; font-weight: bold; color: #4a2e18; cursor: pointer;">
+                    <option value="grade5" ${defaultClassCode === 'grade5' || defaultClassCode === 'all' || defaultClassCode === 'bio101' ? 'selected' : ''}>🎒 Grade 5</option>
+                    <option value="grade6" ${defaultClassCode === 'grade6' || defaultClassCode === 'env201' ? 'selected' : ''}>🎒 Grade 6</option>
+                    <option value="grade7" ${defaultClassCode === 'grade7' || defaultClassCode === 'cs301' ? 'selected' : ''}>🎒 Grade 7</option>
+                    <option value="grade8" ${defaultClassCode === 'grade8' || defaultClassCode === 'chem102' ? 'selected' : ''}>🎒 Grade 8</option>
+                    <option value="grade9" ${defaultClassCode === 'grade9' || defaultClassCode === 'earth204' ? 'selected' : ''}>🎓 Grade 9</option>
+                    <option value="grade10" ${defaultClassCode === 'grade10' ? 'selected' : ''}>🎓 Grade 10</option>
+                    <option value="grade11" ${defaultClassCode === 'grade11' ? 'selected' : ''}>🎓 Grade 11</option>
+                    <option value="grade12" ${defaultClassCode === 'grade12' ? 'selected' : ''}>🎓 Grade 12</option>
+                  </select>
                 </div>
               </div>
 
@@ -1164,10 +1173,15 @@ class TeacherConfirmationView {
     // Filter input binding
     document.getElementById("stu-search-filter")?.addEventListener("input", renderTable);
 
-    // Class dropdown binding
+    // Class dropdown binding - synchronize with enrollment form dropdown
     document.getElementById("stu-class-filter-select")?.addEventListener("change", (e) => {
       if (this.audioSynth) this.audioSynth.playBlip();
-      loadStudents(e.target.value);
+      const val = e.target.value;
+      const classInput = document.getElementById("stu-input-class");
+      if (classInput && val && val !== "all") {
+        classInput.value = val;
+      }
+      loadStudents(val);
     });
 
     // Refresh directory binding
@@ -1297,7 +1311,7 @@ class TeacherConfirmationView {
           msgEl.style.display = "block";
           msgEl.style.background = "#e8f8f5";
           msgEl.style.color = "#27ae60";
-          msgEl.textContent = `✓ Student ${name} (${studentId}) enrolled in ${classCode.toUpperCase()}!`;
+          msgEl.textContent = `✓ Student ${name} (${studentId}) enrolled in ${this.formatGradeLabel(classCode)}!`;
         }
 
         this.showToast(result.message || `Student ID ${studentId} saved!`, "success");
@@ -1306,8 +1320,15 @@ class TeacherConfirmationView {
         if (nameInput) nameInput.value = "";
         if (idInput) idInput.value = genId();
 
-        // Refresh directory for this class
+        // Switch directory dropdown to enrolled class so new student is instantly visible
+        const selectEl = document.getElementById("stu-class-filter-select");
+        if (selectEl) {
+          selectEl.value = classCode;
+        }
+
+        // Refresh directory for this class & update teacher queue
         await loadStudents(classCode);
+        this.fetchData();
       } catch (e) {
         if (msgEl) {
           msgEl.style.display = "block";

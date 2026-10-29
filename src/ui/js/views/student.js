@@ -57,6 +57,7 @@ class StudentDashboardView {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
     this.userId = localStorage.getItem("d2d_user_id") || "STU-001";
+    this.studentName = localStorage.getItem("d2d_student_name") || this.userId;
     this.classCode = localStorage.getItem("d2d_class_code") || "grade5";
     this.renderLayout();
     this.fetchData();
@@ -90,8 +91,9 @@ class StudentDashboardView {
           <!-- Carbon Footprint Hero Card -->
           <div class="retro-card" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold; letter-spacing: 0.5px;">
-                Verified Carbon Footprint Offset
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--c-ink-muted); font-weight: bold; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                <span>Verified Carbon Footprint Offset</span>
+                <span class="retro-tag retro-tag-clean" id="hero-student-name" style="font-size: 10px; padding: 2px 7px;">🎒 ${this.studentName || 'Student'}</span>
               </div>
               <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
                 <span id="hero-carbon-val" style="font-size: 32px; font-weight: bold; color: var(--c-eco-leaf); text-shadow: 2px 2px 0 var(--c-forest-deep);">
@@ -406,6 +408,15 @@ class StudentDashboardView {
       ]);
 
       this.stats = statsRes;
+      if (statsRes && (statsRes.name || statsRes.student_name)) {
+        const freshName = statsRes.name || statsRes.student_name;
+        if (freshName && !freshName.toLowerCase().startsWith("guest") && !freshName.toLowerCase().startsWith("personal")) {
+          this.studentName = freshName;
+          localStorage.setItem("d2d_student_name", freshName);
+          const nameBadge = document.getElementById("hero-student-name");
+          if (nameBadge) nameBadge.textContent = `🎒 ${freshName}`;
+        }
+      }
       if (statsRes && statsRes.class_code) {
         this.classCode = statsRes.class_code;
         localStorage.setItem("d2d_class_code", statsRes.class_code);

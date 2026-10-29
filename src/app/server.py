@@ -312,10 +312,13 @@ def normalize_teacher_name_key(name: str) -> str:
 
 
 def normalize_grade(c: Any) -> str:
-    """Normalizes class/grade codes into Grade format, mapping legacy subject classes to grades."""
+    """Normalizes class/grade codes into Grade format, mapping legacy subject classes and user formats to grades."""
     if not c:
         return "grade5"
     c_low = str(c).strip().lower()
+    if c_low in ["all", "*", "any"]:
+        return "all"
+    c_clean = re.sub(r'[\s\-_]', '', c_low)
     legacy_map = {
         "bio101": "grade5",
         "env201": "grade6",
@@ -323,7 +326,15 @@ def normalize_grade(c: Any) -> str:
         "chem102": "grade8",
         "earth204": "grade9"
     }
-    return legacy_map.get(c_low, c_low)
+    if c_clean in legacy_map:
+        return legacy_map[c_clean]
+    if c_clean.startswith("grade") or c_clean.startswith("gr"):
+        num = re.sub(r'[^0-9]', '', c_clean)
+        if num:
+            return f"grade{num}"
+    elif c_clean.isdigit():
+        return f"grade{c_clean}"
+    return legacy_map.get(c_clean, legacy_map.get(c_low, c_clean))
 
 
 def get_default_state() -> Dict[str, Any]:
@@ -1853,9 +1864,11 @@ def create_flask_app():
                     ex_id = str(ex.get("student_id") or ex.get("user_id") or "").strip().lower()
                     ex_name = str(ex.get("name") or "").strip()
                     ex_email = str(ex.get("email") or "").strip().lower()
-                    if (s_id and ex_id and s_id == ex_id) or \
-                       (s_email and ex_email and s_email == ex_email) or \
-                       (s_name and ex_name and fuzzy_name_match(s_name, ex_name)):
+                    same_id = bool(s_id and ex_id and s_id == ex_id)
+                    same_email = bool(s_email and ex_email and s_email == ex_email)
+                    # Only merge by name if one is an OAuth temporary ID linking to a named roster record, never two distinct enrolled student accounts
+                    is_oauth_merge = (s_id.startswith("google-") or ex_id.startswith("google-")) and bool(s_name and ex_name and fuzzy_name_match(s_name, ex_name))
+                    if same_id or same_email or is_oauth_merge:
                         existing_match = ex
                         break
                 
@@ -4338,28 +4351,29 @@ def create_flask_app():
                 s["class_code"] = "grade5"
 
         if class_filter:
-            if class_filter.startswith("grade"):
-                results = [s for s in results if normalize_grade(s.get("class_code", "")) == class_filter]
+            clean_filter = class_filter.lower().replace(" ", "").replace("-", "")
+            if clean_filter.startswith("grade") or clean_filter.isdigit():
+                norm_target = normalize_grade(clean_filter)
+                results = [s for s in results if normalize_grade(s.get("class_code", "")) == norm_target]
             else:
                 results = [s for s in results if s.get("class_code", "").strip().lower() == class_filter]
 
-        # Deduplicate students by fuzzy name and email
-        deduped = []
+        # Deduplicate students by unique student_id so distinct enrolled students are NEVER merged/lost
+        merged_by_id = {}
         for s in results:
-            s_name = (s.get("name") or "").strip()
-            s_email = (s.get("email") or "").strip().lower()
-            ex = next((d for d in deduped if 
-                       (s_email and (d.get("email") or "").strip().lower() == s_email) or 
-                       (s_name and fuzzy_name_match(s_name, d.get("name", "")))), None)
-            if ex:
+            sid = str(s.get("student_id") or s.get("user_id") or "").strip().upper()
+            if not sid:
+                continue
+            if sid not in merged_by_id:
+                merged_by_id[sid] = dict(s)
+            else:
+                ex = merged_by_id[sid]
                 ex["bytes_cleared"] = max(ex.get("bytes_cleared", 0), s.get("bytes_cleared", 0))
                 ex["eco_points"] = max(ex.get("eco_points", 0), s.get("eco_points", 0))
                 ex["trees"] = max(ex.get("trees", 0) or 0, s.get("trees", 0) or 0)
-                if len(s_name) > 0 and s_name[0].isupper() and (not ex.get("name") or not ex["name"][0].isupper()):
-                    ex["name"] = s_name
-            else:
-                deduped.append(s)
-        results = deduped
+                if s.get("name") and (not ex.get("name") or not ex["name"][0].isupper()):
+                    ex["name"] = s["name"]
+        results = list(merged_by_id.values())
 
         # Sort newest students first so new students immediately appear at the top
         results.sort(
@@ -4387,13 +4401,19 @@ def create_flask_app():
             
         data = request.get_json() or {}
         name = (data.get("name") or "").strip()
-        class_code = (data.get("class_code") or "").strip().lower()
+        raw_class = (data.get("class_code") or "").strip()
         student_id = (data.get("student_id") or "").strip()
 
         if not name:
             return jsonify({"status": "error", "message": "Student name is required"}), 400
-        if not class_code:
+        if not raw_class:
             return jsonify({"status": "error", "message": "Class code is required"}), 400
+
+        clean_c = raw_class.lower().replace(" ", "").replace("-", "")
+        if clean_c.startswith("grade") or clean_c.startswith("gr") or clean_c.isdigit():
+            class_code = normalize_grade(raw_class)
+        else:
+            class_code = raw_class.lower()
             
         if not student_id:
             import uuid

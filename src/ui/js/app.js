@@ -205,12 +205,16 @@ class DataToDirtApp {
     this.loginView.render(mainView);
   }
 
-  completeLogin(role, userId, pin, classCode = "") {
+  completeLogin(role, userId, pin, classCode = "", displayName = "") {
     if (this.audioSynth) this.audioSynth.playCoinDing();
     this.userId = userId;
     this.pin = pin;
     this.classCode = classCode || localStorage.getItem("d2d_class_code") || "";
     this.authenticatedRole = role;
+    if (displayName) {
+      this.authenticatedName = displayName;
+      localStorage.setItem("d2d_student_name", displayName);
+    }
     localStorage.setItem("d2d_role", role);
     localStorage.setItem("d2d_user_id", userId);
     if (pin) localStorage.setItem("d2d_pin", pin);
@@ -387,7 +391,15 @@ class DataToDirtApp {
       if (btnStudent) btnStudent.style.display = "none";
       if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
-        userRoleBadge.textContent = "🎒 STUDENT";
+        const studentName = localStorage.getItem("d2d_student_name") || this.authenticatedName || "";
+        const studentId = this.userId || localStorage.getItem("d2d_user_id") || "";
+        let label = "🎒 STUDENT";
+        if (studentName && !studentName.toLowerCase().startsWith("guest") && !studentName.toLowerCase().startsWith("personal")) {
+          label = `🎒 ${studentName}`;
+        } else if (studentId) {
+          label = `🎒 ${studentId}`;
+        }
+        userRoleBadge.textContent = label;
         userRoleBadge.style.background = "linear-gradient(135deg, #2d6a36, #439352)";
       }
     } else if (this.authenticatedRole === "teacher") {
@@ -395,7 +407,12 @@ class DataToDirtApp {
       if (btnTeacher) btnTeacher.style.display = "none";
       if (btnAnalytics) btnAnalytics.style.display = "none";
       if (userRoleBadge) {
-        userRoleBadge.textContent = "📋 TEACHER";
+        const teacherName = localStorage.getItem("d2d_teacher_name") || localStorage.getItem("d2d_student_name") || this.authenticatedName || "";
+        let label = "🧑‍🏫 TEACHER";
+        if (teacherName && teacherName.toLowerCase() !== "teacher") {
+          label = `🧑‍🏫 ${teacherName}`;
+        }
+        userRoleBadge.textContent = label;
         userRoleBadge.style.background = "linear-gradient(135deg, #7c481e, #9e5f2a)";
       }
     } else if (this.authenticatedRole === "admin") {

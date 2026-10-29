@@ -408,11 +408,12 @@ class LoginView {
           if (data.class_code) {
             localStorage.setItem("d2d_class_code", data.class_code);
           }
-          if (data.student_name || data.teacher_name || data.name) {
-            localStorage.setItem("d2d_student_name", data.student_name || data.teacher_name || data.name);
+          const effectiveDisplayName = data.student_name || data.teacher_name || data.name || user;
+          if (effectiveDisplayName) {
+            localStorage.setItem("d2d_student_name", effectiveDisplayName);
           }
           // Instruct app to switch to the main interface for this role
-          this.app.completeLogin(targetRole, effectiveUserId, pass, data.class_code || "all");
+          this.app.completeLogin(targetRole, effectiveUserId, pass, data.class_code || "all", effectiveDisplayName);
         } else {
           // Check if safety lock triggered or active
           if (data.error_code === "safety_lock" || (data.lockout_seconds && data.lockout_seconds > 0)) {
