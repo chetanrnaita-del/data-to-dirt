@@ -15,11 +15,29 @@ class StudentDashboardView {
     this.selectedFileForDeletion = null;
   }
 
+  formatGradeLabel(code) {
+    if (!code) return "Grade 5";
+    const low = String(code).trim().toLowerCase();
+    if (low.startsWith("grade") || low.startsWith("gr")) {
+      const num = low.replace(/[^0-9]/g, "");
+      return num ? `Grade ${num}` : code.toUpperCase();
+    }
+    const legacyMap = {
+      "bio101": "Grade 5",
+      "env201": "Grade 6",
+      "cs301": "Grade 7",
+      "chem102": "Grade 8",
+      "earth204": "Grade 9"
+    };
+    if (legacyMap[low]) return legacyMap[low];
+    return code.toUpperCase();
+  }
+
   mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
     this.userId = localStorage.getItem("d2d_user_id") || "STU-001";
-    this.classCode = localStorage.getItem("d2d_class_code") || "bio101";
+    this.classCode = localStorage.getItem("d2d_class_code") || "grade5";
     this.renderLayout();
     this.fetchData();
 
@@ -175,7 +193,7 @@ class StudentDashboardView {
               <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border);">
                 🏆 Classroom Eco-Leaderboard
               </div>
-              <span class="retro-tag retro-tag-clean" id="student-class-badge">Class: ${(this.classCode || "BIO101").toUpperCase()}</span>
+              <span class="retro-tag retro-tag-clean" id="student-class-badge">${this.formatGradeLabel(this.classCode)}</span>
             </div>
 
             <div class="retro-inset" style="padding: 4px; flex: 1; overflow-y: auto;">
@@ -330,7 +348,7 @@ class StudentDashboardView {
     try {
       const token = localStorage.getItem("d2d_session_token");
       const userId = localStorage.getItem("d2d_user_id");
-      const classCode = this.classCode || localStorage.getItem("d2d_class_code") || "bio101";
+      const classCode = this.classCode || localStorage.getItem("d2d_class_code") || "grade5";
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
       const userParam = `?student_id=${encodeURIComponent(userId || "")}&class_code=${encodeURIComponent(classCode)}`;
       const [statsRes, lbRes] = await Promise.all([
@@ -343,7 +361,7 @@ class StudentDashboardView {
         this.classCode = statsRes.class_code;
         localStorage.setItem("d2d_class_code", statsRes.class_code);
         const badgeEl = document.getElementById("student-class-badge");
-        if (badgeEl) badgeEl.textContent = `Class: ${statsRes.class_code.toUpperCase()}`;
+        if (badgeEl) badgeEl.textContent = this.formatGradeLabel(statsRes.class_code);
       }
       this.leaderboard = lbRes.leaderboard || [];
       this.updateStatsUI();

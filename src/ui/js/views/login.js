@@ -36,16 +36,13 @@ class LoginView {
           <div style="color: #6d5b4a; font-size: 13px; margin-bottom: 22px;">Choose your role to access your eco dashboard</div>
           
           <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
-            <button class="role-btn active" data-role="student" style="flex: 1; min-width: 90px; padding: 12px 6px; border: 2px solid #2d6a36; border-radius: 10px; background: #eef6ef; color: #1e4a23; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+            <button class="role-btn active" data-role="student" style="flex: 1; min-width: 100px; padding: 12px 6px; border: 2px solid #2d6a36; border-radius: 10px; background: #eef6ef; color: #1e4a23; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
               <span style="font-size: 18px;">🧑‍🎓</span> Student
             </button>
-            <button class="role-btn" data-role="teacher" style="flex: 1; min-width: 90px; padding: 12px 6px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+            <button class="role-btn" data-role="teacher" style="flex: 1; min-width: 100px; padding: 12px 6px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
               <span style="font-size: 18px;">👨‍🏫</span> Staff
             </button>
-            <button class="role-btn" data-role="personal" id="role-btn-personal" style="flex: 1; min-width: 100px; padding: 12px 6px; border: 1.5px solid #b07542; border-radius: 10px; background: #fffdfa; color: #784824; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
-              <span style="font-size: 18px;">🌐</span> Personal
-            </button>
-            <button class="role-btn" data-role="admin" style="flex: 1; min-width: 80px; padding: 12px 6px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+            <button class="role-btn" data-role="admin" style="flex: 1; min-width: 90px; padding: 12px 6px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
               <span style="font-size: 18px;">⚙️</span> Admin
             </button>
           </div>
@@ -76,24 +73,27 @@ class LoginView {
           <div style="margin-bottom: 18px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <label style="font-size: 13px; font-weight: 700; color: #2b1f14;">
-                <span id="label-pass">Class Code or Password</span> <span style="color: #c0392b;">*</span>
+                <span id="label-pass">Grade or Password</span> <span style="color: #c0392b;">*</span>
               </label>
             </div>
-            <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
+            <input type="password" id="login-pass" placeholder="Enter grade (e.g., grade5, grade6) or password" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
             <div id="hint-pass" style="font-size: 11px; color: #6d5b4a; margin-top: 4px;">
-              💡 Enter class code (e.g. bio101, cs301) or password.
+              💡 Select your Grade below or enter your password.
             </div>
           </div>
 
           <!-- Quick Select Shortcuts for Students -->
           <div id="student-quick-select" style="display: block; margin-bottom: 18px;">
-            <div style="font-size: 11px; font-weight: bold; color: #5c4e3f; margin-bottom: 6px;">Quick Class Presets:</div>
+            <div style="font-size: 11px; font-weight: bold; color: #5c4e3f; margin-bottom: 6px;">Select Your Grade:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              <button type="button" class="stu-class-pill" data-class="bio101" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🌿 Bio 101</button>
-              <button type="button" class="stu-class-pill" data-class="cs301" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">💻 CS 301</button>
-              <button type="button" class="stu-class-pill" data-class="env201" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🌍 Env 201</button>
-              <button type="button" class="stu-class-pill" data-class="chem102" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🧪 Chem 102</button>
-              <button type="button" class="stu-class-pill" data-class="earth204" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">⛰️ Earth 204</button>
+              <button type="button" class="stu-class-pill" data-class="grade5" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎒 Grade 5</button>
+              <button type="button" class="stu-class-pill" data-class="grade6" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎒 Grade 6</button>
+              <button type="button" class="stu-class-pill" data-class="grade7" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎒 Grade 7</button>
+              <button type="button" class="stu-class-pill" data-class="grade8" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎒 Grade 8</button>
+              <button type="button" class="stu-class-pill" data-class="grade9" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎓 Grade 9</button>
+              <button type="button" class="stu-class-pill" data-class="grade10" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎓 Grade 10</button>
+              <button type="button" class="stu-class-pill" data-class="grade11" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎓 Grade 11</button>
+              <button type="button" class="stu-class-pill" data-class="grade12" style="font-size: 11px; padding: 5px 9px; border: 1.5px solid #d4c8b8; border-radius: 6px; background: #f5efe6; color: #3b2f23; cursor: pointer; font-weight: 600;">🎓 Grade 12</button>
             </div>
           </div>
           
@@ -256,11 +256,11 @@ class LoginView {
         if (this.selectedRole === 'student') {
           labelUser.textContent = "Student ID or Name";
           inputUser.placeholder = "Enter Student ID or Full Name";
-          labelPass.textContent = "Class Code or Password";
-          inputPass.placeholder = "Enter class code (e.g., cs301) or password";
+          labelPass.textContent = "Grade Code or Password";
+          inputPass.placeholder = "Enter grade (e.g., grade5, grade6) or password";
           inputPass.value = "";
           if (hintUser) hintUser.textContent = "💡 Enter your registered Student Full Name or Student ID.";
-          if (hintPass) hintPass.textContent = "💡 Enter your Class Code (e.g. cs301, bio101) or password.";
+          if (hintPass) hintPass.textContent = "💡 Select your Grade above (e.g. Grade 5, Grade 6) or enter password.";
           if (studentPills) studentPills.style.display = 'block';
         } else if (this.selectedRole === 'teacher') {
           labelUser.textContent = "Teacher Account / Name / ID";
@@ -268,17 +268,8 @@ class LoginView {
           labelPass.textContent = "Teacher Password / PIN";
           inputPass.placeholder = "Enter teacher password or PIN";
           inputPass.value = "";
-          if (hintUser) hintUser.textContent = "💡 Enter your Full Name, Teacher ID, or assigned Class Code.";
+          if (hintUser) hintUser.textContent = "💡 Enter your Full Name, Teacher ID, or assigned Grade (e.g. grade5).";
           if (hintPass) hintPass.textContent = "💡 Enter your teacher password or custom PIN.";
-          if (studentPills) studentPills.style.display = 'none';
-        } else if (this.selectedRole === 'personal') {
-          labelUser.textContent = "Your Name or Email (Optional)";
-          inputUser.placeholder = "e.g. Alex or alex@gmail.com";
-          labelPass.textContent = "Account Mode";
-          inputPass.placeholder = "Guest / Personal (No password required)";
-          inputPass.value = "student123";
-          if (hintUser) hintUser.textContent = "💡 Outside Lighthouse? No school registration required.";
-          if (hintPass) hintPass.textContent = "💡 Click 'Proceed →' to continue as guest or use Google Sign-in below.";
           if (studentPills) studentPills.style.display = 'none';
         } else {
           labelUser.textContent = "Admin ID";

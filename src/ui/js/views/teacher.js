@@ -22,6 +22,25 @@ class TeacherConfirmationView {
     this.teacherLastScanType = null;
   }
 
+  formatGradeLabel(code) {
+    if (!code) return "Grade 5";
+    const low = String(code).trim().toLowerCase();
+    if (low === "all") return "All Grades";
+    if (low.startsWith("grade") || low.startsWith("gr")) {
+      const num = low.replace(/[^0-9]/g, "");
+      return num ? `Grade ${num}` : code.toUpperCase();
+    }
+    const legacyMap = {
+      "bio101": "Grade 5",
+      "env201": "Grade 6",
+      "cs301": "Grade 7",
+      "chem102": "Grade 8",
+      "earth204": "Grade 9"
+    };
+    if (legacyMap[low]) return legacyMap[low];
+    return code.toUpperCase();
+  }
+
   mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
@@ -29,7 +48,7 @@ class TeacherConfirmationView {
     const role = (window.DataToDirt?.authenticatedRole || localStorage.getItem("d2d_role") || "").toLowerCase();
     if (role === "teacher") {
       const u = (window.DataToDirt?.userId || localStorage.getItem("d2d_user_id") || "").toLowerCase();
-      for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
+      for (const c of ["grade5", "grade6", "grade7", "grade8", "grade9", "grade10", "grade11", "grade12", "bio101", "env201", "cs301", "chem102", "earth204"]) {
         if (u.includes(c) || teacherClass.includes(c)) {
           teacherClass = c;
           break;
@@ -37,7 +56,7 @@ class TeacherConfirmationView {
       }
     }
     if (!teacherClass || (teacherClass === "all" && role === "teacher")) {
-      teacherClass = "bio101";
+      teacherClass = "grade5";
     }
     this.selectedClassCode = teacherClass;
     this.renderLayout();
@@ -54,7 +73,7 @@ class TeacherConfirmationView {
           <div>
             <div style="font-weight: bold; font-size: 16px; color: var(--c-wood-border); display: flex; align-items: center; gap: 8px;">
               <span>👨‍🏫 Teacher Confirmation Queue</span>
-              <span class="retro-tag retro-tag-clean" id="t-class-badge" style="font-size: 11px;">Class: ${(this.selectedClassCode || "BIO101").toUpperCase()}</span>
+              <span class="retro-tag retro-tag-clean" id="t-class-badge" style="font-size: 11px;">${this.formatGradeLabel(this.selectedClassCode)}</span>
               <span class="retro-tag retro-tag-stale" id="t-queue-badge">0 PENDING</span>
             </div>
             <div style="font-size: 11px; color: var(--c-ink-muted); margin-top: 2px;">
@@ -114,12 +133,15 @@ class TeacherConfirmationView {
             <!-- Search & Sort -->
             <div style="display: flex; align-items: center; gap: 8px;">
               <select id="t-class-filter-select" class="retro-input" style="padding: 4px 6px; font-size: 11px; cursor: pointer;">
-                ${role === 'admin' ? '<option value="all">🌐 All Classes</option>' : ''}
-                <option value="bio101" ${this.selectedClassCode === 'bio101' ? 'selected' : ''}>🌿 Bio 101</option>
-                <option value="cs301" ${this.selectedClassCode === 'cs301' ? 'selected' : ''}>💻 CS 301</option>
-                <option value="env201" ${this.selectedClassCode === 'env201' ? 'selected' : ''}>🌍 Env 201</option>
-                <option value="chem102" ${this.selectedClassCode === 'chem102' ? 'selected' : ''}>🧪 Chem 102</option>
-                <option value="earth204" ${this.selectedClassCode === 'earth204' ? 'selected' : ''}>⛰️ Earth 204</option>
+                ${role === 'admin' ? '<option value="all">🌐 All Grades</option>' : ''}
+                <option value="grade5" ${this.selectedClassCode === 'grade5' || this.selectedClassCode === 'bio101' ? 'selected' : ''}>🎒 Grade 5</option>
+                <option value="grade6" ${this.selectedClassCode === 'grade6' || this.selectedClassCode === 'env201' ? 'selected' : ''}>🎒 Grade 6</option>
+                <option value="grade7" ${this.selectedClassCode === 'grade7' || this.selectedClassCode === 'cs301' ? 'selected' : ''}>🎒 Grade 7</option>
+                <option value="grade8" ${this.selectedClassCode === 'grade8' || this.selectedClassCode === 'chem102' ? 'selected' : ''}>🎒 Grade 8</option>
+                <option value="grade9" ${this.selectedClassCode === 'grade9' || this.selectedClassCode === 'earth204' ? 'selected' : ''}>🎓 Grade 9</option>
+                <option value="grade10" ${this.selectedClassCode === 'grade10' ? 'selected' : ''}>🎓 Grade 10</option>
+                <option value="grade11" ${this.selectedClassCode === 'grade11' ? 'selected' : ''}>🎓 Grade 11</option>
+                <option value="grade12" ${this.selectedClassCode === 'grade12' ? 'selected' : ''}>🎓 Grade 12</option>
               </select>
               <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
                 ⚡ Approve All Pending
@@ -421,17 +443,17 @@ class TeacherConfirmationView {
     const elClassBadge = document.getElementById("t-class-badge");
 
     if (elClassBadge) {
-      let cName = (window.DataToDirt?.classCode || "").toUpperCase();
+      let cName = this.selectedClassCode || window.DataToDirt?.classCode || "";
       if (!cName) {
         const u = (window.DataToDirt?.userId || "").toLowerCase();
-        for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
+        for (const c of ["grade5", "grade6", "grade7", "grade8", "grade9", "grade10", "grade11", "grade12", "bio101", "env201", "cs301", "chem102", "earth204"]) {
           if (u.includes(c)) {
-            cName = c.toUpperCase();
+            cName = c;
             break;
           }
         }
       }
-      elClassBadge.textContent = cName ? `Class: ${cName}` : "Class: BIO101";
+      elClassBadge.textContent = this.formatGradeLabel(cName || "grade5");
     }
 
     if (this.analytics) {
@@ -772,14 +794,14 @@ class TeacherConfirmationView {
     const role = (window.DataToDirt?.authenticatedRole || localStorage.getItem("d2d_role") || "").toLowerCase();
     if (role === "teacher") {
       const u = (window.DataToDirt?.userId || localStorage.getItem("d2d_user_id") || "").toLowerCase();
-      for (const c of ["bio101", "env201", "cs301", "chem102", "earth204"]) {
+      for (const c of ["grade5", "grade6", "grade7", "grade8", "grade9", "grade10", "grade11", "grade12", "bio101", "env201", "cs301", "chem102", "earth204"]) {
         if (u.includes(c) || defaultClassCode.includes(c)) {
           defaultClassCode = c;
           break;
         }
       }
       if (!defaultClassCode || defaultClassCode === "all") {
-        defaultClassCode = "bio101";
+        defaultClassCode = "grade5";
       }
     } else if (!defaultClassCode || defaultClassCode.startsWith("admin") || role === "admin") {
       defaultClassCode = "all";
@@ -814,8 +836,8 @@ class TeacherConfirmationView {
                   <input type="text" id="stu-input-name" class="retro-input" placeholder="Enter Student Full Name" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
                 </div>
                 <div>
-                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Class Code *</label>
-                  <input type="text" id="stu-input-class" class="retro-input" value="${defaultClassCode === 'all' ? 'bio101' : defaultClassCode}" placeholder="e.g. bio101" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
+                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #4a2e18;">Grade / Class Code *</label>
+                  <input type="text" id="stu-input-class" class="retro-input" value="${defaultClassCode === 'all' ? 'grade5' : defaultClassCode}" placeholder="e.g. grade5" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; border: 1.5px solid #a27848; border-radius: 4px;" />
                 </div>
               </div>
 
@@ -826,7 +848,7 @@ class TeacherConfirmationView {
                   <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-stu-autogen" title="Generate New Random ID">🎲 Auto-Gen</button>
                 </div>
                 <div style="font-size: 10px; color: #7f8c8d; margin-top: 4px;">
-                  💡 Tip: Students can sign in using this ID with their Class Code.
+                  💡 Tip: Students can sign in using this ID with their Grade (e.g. grade5).
                 </div>
               </div>
 
@@ -848,12 +870,15 @@ class TeacherConfirmationView {
                 </div>
                 <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                   <select id="stu-class-filter-select" class="retro-select" style="font-size: 11px; padding: 4px 8px; border: 1.5px solid #8b5a2b; border-radius: 4px; background: #fff; font-weight: bold; color: #4a2e18; cursor: pointer;">
-                    ${role === 'admin' ? `<option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Classes</option>` : ''}
-                    <option value="bio101" ${defaultClassCode === 'bio101' ? 'selected' : ''}>🌿 Bio 101 (Dr. Reed)</option>
-                    <option value="cs301" ${defaultClassCode === 'cs301' ? 'selected' : ''}>💻 CS 301 (Ms. Patel)</option>
-                    <option value="env201" ${defaultClassCode === 'env201' ? 'selected' : ''}>🌍 Env 201 (Prof. Green)</option>
-                    <option value="chem102" ${defaultClassCode === 'chem102' ? 'selected' : ''}>🧪 Chem 102 (Dr. Thorne)</option>
-                    <option value="earth204" ${defaultClassCode === 'earth204' ? 'selected' : ''}>⛰️ Earth 204 (Mr. Woods)</option>
+                    ${role === 'admin' ? `<option value="all" ${defaultClassCode === 'all' ? 'selected' : ''}>🌟 All Grades</option>` : ''}
+                    <option value="grade5" ${defaultClassCode === 'grade5' || defaultClassCode === 'bio101' ? 'selected' : ''}>🎒 Grade 5</option>
+                    <option value="grade6" ${defaultClassCode === 'grade6' || defaultClassCode === 'env201' ? 'selected' : ''}>🎒 Grade 6</option>
+                    <option value="grade7" ${defaultClassCode === 'grade7' || defaultClassCode === 'cs301' ? 'selected' : ''}>🎒 Grade 7</option>
+                    <option value="grade8" ${defaultClassCode === 'grade8' || defaultClassCode === 'chem102' ? 'selected' : ''}>🎒 Grade 8</option>
+                    <option value="grade9" ${defaultClassCode === 'grade9' || defaultClassCode === 'earth204' ? 'selected' : ''}>🎓 Grade 9</option>
+                    <option value="grade10" ${defaultClassCode === 'grade10' ? 'selected' : ''}>🎓 Grade 10</option>
+                    <option value="grade11" ${defaultClassCode === 'grade11' ? 'selected' : ''}>🎓 Grade 11</option>
+                    <option value="grade12" ${defaultClassCode === 'grade12' ? 'selected' : ''}>🎓 Grade 12</option>
                   </select>
                   <input type="text" id="stu-search-filter" class="retro-input" placeholder="Search by name, ID..." style="font-size: 11px; padding: 4px 8px; width: 140px; border: 1px solid #ccc; border-radius: 4px;" />
                   <button type="button" class="retro-btn retro-btn-wood retro-btn-sm" id="btn-stu-refresh-list" title="Refresh Directory">🔄</button>
@@ -867,7 +892,7 @@ class TeacherConfirmationView {
                     <tr>
                       <th style="padding: 7px 10px; color: #3e2210;">Student ID</th>
                       <th style="padding: 7px 10px; color: #3e2210;">Name</th>
-                      <th style="padding: 7px 10px; color: #3e2210;">Class</th>
+                      <th style="padding: 7px 10px; color: #3e2210;">Grade</th>
                       <th style="padding: 7px 10px; color: #3e2210; text-align: right;">Points</th>
                       <th style="padding: 7px 10px; color: #3e2210; text-align: center;">Actions</th>
                     </tr>
@@ -942,7 +967,7 @@ class TeacherConfirmationView {
       tbody.innerHTML = filtered.map((s) => {
         const sid = s.student_id || s.user_id || "—";
         const name = s.name || sid;
-        const classCode = (s.class_code || "—").toUpperCase();
+        const classCode = this.formatGradeLabel(s.class_code || "grade5");
         const points = s.eco_points || 0;
         const isNew = sid === recentlyEnrolledStudentId;
         const rowBg = isNew ? "background: #e8f8f5; border: 2px solid #27ae60;" : "border-bottom: 1px solid #f0e6d6;";

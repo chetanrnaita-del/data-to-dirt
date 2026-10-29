@@ -503,14 +503,17 @@ class AdminEcoFundView {
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                 <div>
-                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Assigned Class Code *</label>
+                  <label style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #3e2714;">Assigned Grade / Class Code *</label>
                   <select id="select-adm-tch-class" class="retro-input" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; cursor: pointer;">
-                    <option value="all">🌐 All Classes (School-Wide)</option>
-                    <option value="bio101">🌿 Bio 101</option>
-                    <option value="cs301">💻 CS 301</option>
-                    <option value="env201">🌍 Env 201</option>
-                    <option value="chem102">🧪 Chem 102</option>
-                    <option value="earth204">⛰️ Earth 204</option>
+                    <option value="all">🌐 All Grades (School-Wide)</option>
+                    <option value="grade5">🎒 Grade 5</option>
+                    <option value="grade6">🎒 Grade 6</option>
+                    <option value="grade7">🎒 Grade 7</option>
+                    <option value="grade8">🎒 Grade 8</option>
+                    <option value="grade9">🎓 Grade 9</option>
+                    <option value="grade10">🎓 Grade 10</option>
+                    <option value="grade11">🎓 Grade 11</option>
+                    <option value="grade12">🎓 Grade 12</option>
                     <option value="custom">✏️ Other / Custom Class Code...</option>
                   </select>
                   <input type="text" id="input-adm-tch-custom-class" class="retro-input" placeholder="Enter custom class code (e.g. phys201)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px; margin-top: 4px; display: none;" />
@@ -599,9 +602,24 @@ class AdminEcoFundView {
         return;
       }
       tbody.innerHTML = list.map((t) => {
-        const cCode = (t.class_code || "all").toUpperCase();
+        const formatGrade = (c) => {
+          if (!c) return "All Grades";
+          const low = String(c).trim().toLowerCase();
+          if (low === "all") return "All Grades";
+          if (low.startsWith("grade") || low.startsWith("gr")) {
+            const num = low.replace(/[^0-9]/g, "");
+            return num ? `Grade ${num}` : c.toUpperCase();
+          }
+          const m = { "bio101": "Grade 5", "env201": "Grade 6", "cs301": "Grade 7", "chem102": "Grade 8", "earth204": "Grade 9" };
+          return m[low] || c.toUpperCase();
+        };
+        const cCode = formatGrade(t.class_code || "all");
         const tid = t.teacher_id || t.user_id || "";
-        const isBuiltIn = ["teacher_bio101", "teacher_env201", "teacher_cs301", "teacher_chem102", "teacher_earth204"].includes(tid.toLowerCase());
+        const isBuiltIn = [
+          "teacher_grade5", "teacher_grade6", "teacher_grade7", "teacher_grade8",
+          "teacher_grade9", "teacher_grade10", "teacher_grade11", "teacher_grade12",
+          "teacher_bio101", "teacher_env201", "teacher_cs301", "teacher_chem102", "teacher_earth204"
+        ].includes(tid.toLowerCase());
         const actionHtml = isBuiltIn ? `<span style="font-size: 10px; color: #b2bec3;">System</span>` : `
           <button type="button" class="btn-delete-teacher" data-tid="${tid}" style="background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
             🗑️ Delete
