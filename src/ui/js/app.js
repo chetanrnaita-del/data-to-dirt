@@ -54,6 +54,10 @@ class DataToDirtApp {
     if (tokenFromUrl) {
       localStorage.setItem("d2d_google_access_token", tokenFromUrl);
     }
+    const refreshTokenFromUrl = urlParams.get("refresh_token");
+    if (refreshTokenFromUrl) {
+      localStorage.setItem("d2d_google_refresh_token", refreshTokenFromUrl);
+    }
     const providerFromUrl = urlParams.get("provider");
     if (providerFromUrl) {
       localStorage.setItem("d2d_google_provider", providerFromUrl);

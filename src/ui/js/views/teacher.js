@@ -1153,6 +1153,11 @@ class TeacherConfirmationView {
         if (effectiveOAuth) {
           payload.oauth_token = effectiveOAuth;
         }
+        const refTok = localStorage.getItem("d2d_google_refresh_token");
+        if (refTok) {
+          payload.refresh_token = refTok;
+        }
+        payload.provider = localStorage.getItem("d2d_google_provider") || "personal";
       }
 
       const response = await fetch("/api/scan/request", {
@@ -1168,29 +1173,49 @@ class TeacherConfirmationView {
         res = {};
       }
 
+      if (res.new_access_token) {
+        localStorage.setItem("d2d_google_access_token", res.new_access_token);
+      }
+
       if (response.status === 401 && res.status === "needs_auth") {
         localStorage.removeItem("d2d_google_access_token");
-        const errorMsg = res.error || "Google Drive connection required or expired.";
+        const activeProvider = localStorage.getItem("d2d_google_provider") || res.provider || "personal";
+        const isPersonal = activeProvider === "personal";
+        const providerName = isPersonal ? "Personal Account (@gmail.com)" : "School Account (@billabonghighschool.com)";
         if (banner) {
           banner.style.borderColor = "var(--c-amber-border, #d97706)";
           banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";
           banner.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-              <span style="color: var(--c-amber-dark, #b45309); font-weight: bold;">⚠️ ${errorMsg}</span>
-              <div style="display: flex; gap: 6px;">
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-gold" id="btn-tch-banner-connect-drive" style="padding: 4px 10px; font-size: 11px;">🔑 Connect Google Drive</button>
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-tch-banner-picker" style="padding: 4px 10px; font-size: 11px;">📁 Google Picker</button>
+              <span style="color: var(--c-amber-dark, #b45309); font-weight: bold;">
+                ⚠️ Google Drive connection expired for ${providerName} (tokens expire after 1 hour). Please reconnect:
+              </span>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-gold" id="btn-tch-banner-reconnect-personal" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
+                  🌐 Reconnect Personal Drive
+                </button>
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-wood" id="btn-tch-banner-reconnect-school" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
+                  🏫 School Drive
+                </button>
+                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-tch-banner-picker" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
+                  📁 Google Picker
+                </button>
               </div>
             </div>
           `;
-          banner.querySelector("#btn-tch-banner-connect-drive")?.addEventListener("click", () => {
-            this.showTeacherGoogleDriveModal();
+          banner.querySelector("#btn-tch-banner-reconnect-personal")?.addEventListener("click", () => {
+            localStorage.setItem("d2d_google_provider", "personal");
+            window.location.href = "/auth/google/login?provider=personal";
+          });
+          banner.querySelector("#btn-tch-banner-reconnect-school")?.addEventListener("click", () => {
+            localStorage.setItem("d2d_google_provider", "school");
+            window.location.href = "/auth/google/login?provider=school";
           });
           banner.querySelector("#btn-tch-banner-picker")?.addEventListener("click", () => {
             this.openTeacherGooglePicker();
           });
         }
-        this.renderTeacherScannedFiles(errorMsg);
+        this.renderTeacherScannedFiles("Google Drive authorization expired. Please click 'Reconnect Personal Drive' or 'School Drive' above.");
         return;
       }
 

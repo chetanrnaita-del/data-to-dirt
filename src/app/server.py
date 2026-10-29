@@ -75,6 +75,33 @@ def get_google_client_secret(provider: str = "school") -> str:
         return os.environ.get("GOOGLE_CLIENT_SECRET_PERSONAL", "")
     return os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
+def refresh_google_access_token(provider: str = "school", refresh_token: Optional[str] = None) -> Optional[str]:
+    if not refresh_token:
+        return None
+    cid = get_google_client_id(provider)
+    sec = get_google_client_secret(provider)
+    if not cid or not sec:
+        return None
+    try:
+        import urllib.request, urllib.parse, json
+        data = urllib.parse.urlencode({
+            "client_id": cid,
+            "client_secret": sec,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token"
+        }).encode("utf-8")
+        req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+        req.add_header("User-Agent", "DataToDirt/1.1")
+        with urllib.request.urlopen(req, timeout=8, context=get_ssl_context()) as resp:
+            info = json.loads(resp.read().decode())
+            new_tok = info.get("access_token")
+            if new_tok:
+                print(f"[OAUTH DEBUG] Successfully refreshed Google access token for {provider}")
+                return new_tok
+    except Exception as e:
+        print(f"[OAUTH WARN] Token refresh attempt for {provider} failed: {e}")
+    return None
+
 from src.app.config import (
     DEFAULT_PORT,
     DEFAULT_HOST,
@@ -1063,7 +1090,8 @@ def create_flask_app():
                     session_tok = oauth_sess.get("token", "")
                 except Exception as ex:
                     print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}")
+                cached_ref = session.get("google_refresh_token") or ""
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&refresh_token={urllib.parse.quote(cached_ref)}")
 
         if not redirect_uri:
             redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
@@ -1084,8 +1112,12 @@ def create_flask_app():
             with urllib.request.urlopen(req, context=get_ssl_context()) as resp:
                 token_info = json.loads(resp.read().decode())
                 tok = token_info.get("access_token", "")
+                ref_tok = token_info.get("refresh_token", "")
                 session["google_access_token"] = tok
                 session["oauth_provider"] = provider
+                if ref_tok:
+                    session["google_refresh_token"] = ref_tok
+                    session[f"google_refresh_token_{provider}"] = ref_tok
                 if code:
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
                 session_user_id = f"GOOGLE-PERSONAL-{int(now_ts)}" if provider == "personal" else f"GOOGLE-SCHOOL-{int(now_ts)}"
@@ -1096,7 +1128,7 @@ def create_flask_app():
                     session_tok = oauth_sess.get("token", "")
                 except Exception as ex:
                     print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&refresh_token={urllib.parse.quote(ref_tok)}")
         except urllib.error.HTTPError as e:
             error_body = ""
             try:
@@ -1451,6 +1483,8 @@ def create_flask_app():
             scan_type = "drive"
         
         access_token = data.get("oauth_token") or session.get("google_access_token")
+        scan_provider = (data.get("provider") or session.get("oauth_provider") or "school").lower().strip()
+        refresh_token = data.get("refresh_token") or session.get(f"google_refresh_token_{scan_provider}") or session.get("google_refresh_token")
         if access_token and not session.get("google_access_token"):
             session["google_access_token"] = access_token
 
@@ -2100,25 +2134,133 @@ def create_flask_app():
                     print(f"[!] Live Google Drive access skipped ({live_err}); error: {live_err}")
                     live_success = False
 
-            # 2. Require authentic Google Drive connection - zero synthetic mock injections
+            # 2. If access token expired (401), attempt automatic refresh using refresh_token
+            refreshed_access_token = None
+            if not live_success and last_http_code == 401 and refresh_token:
+                print(f"[OAUTH INFO] Access token expired, attempting automatic refresh for {scan_provider}...")
+                new_tok = refresh_google_access_token(scan_provider, refresh_token)
+                if new_tok:
+                    refreshed_access_token = new_tok
+                    session["google_access_token"] = new_tok
+                    access_token = new_tok
+                    try:
+                        query = urllib.parse.quote("'me' in owners and trashed=false")
+                        page_token = None
+                        drive_items = []
+                        drive_by_md5 = {}
+                        excluded_shared_count = 0
+                        while True:
+                            url = f"https://www.googleapis.com/drive/v3/files?q={query}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=nextPageToken,files(id,name,size,quotaBytesUsed,mimeType,md5Checksum,modifiedTime,shared,ownedByMe,owners(me,displayName,emailAddress))&pageSize=100"
+                            if page_token:
+                                url += f"&pageToken={page_token}"
+                            req = urllib.request.Request(url)
+                            req.add_header("Authorization", f"Bearer {access_token}")
+                            req.add_header("User-Agent", "DataToDirt/1.1")
+                            with urllib.request.urlopen(req, timeout=8, context=get_ssl_context()) as resp:
+                                resp_data = json.loads(resp.read().decode())
+                                files = resp_data.get("files", [])
+                                for f in files:
+                                    mime = f.get("mimeType", "")
+                                    if mime == "application/vnd.google-apps.folder":
+                                        continue
+                                    if f.get("ownedByMe") is False:
+                                        excluded_shared_count += 1
+                                        continue
+                                    owners = f.get("owners") or []
+                                    if owners and not any(o.get("me") is True for o in owners):
+                                        excluded_shared_count += 1
+                                        continue
+                                    sz = int(f.get("size") or f.get("quotaBytesUsed") or 0)
+                                    fn = f.get("name", "Untitled")
+                                    md5 = f.get("md5Checksum")
+                                    mtime_str = f.get("modifiedTime")
+                                    epoch_s = now
+                                    if mtime_str:
+                                        try:
+                                            dt = datetime.fromisoformat(mtime_str.replace("Z", "+00:00"))
+                                            epoch_s = dt.timestamp()
+                                        except Exception:
+                                            epoch_s = now
+                                    item = {
+                                        "file_id": f["id"],
+                                        "file_name": fn,
+                                        "raw_file_name": fn,
+                                        "absolute_path": f"Google Drive/{fn}",
+                                        "size_bytes": sz,
+                                        "size_formatted": format_bytes(sz),
+                                        "last_modified_epoch_s": epoch_s,
+                                        "mime_category": mime,
+                                        "md5": md5,
+                                        "is_drive": True,
+                                        "shared_with_me": False
+                                    }
+                                    drive_items.append(item)
+                                    if md5:
+                                        drive_by_md5.setdefault(md5, []).append(item)
+                            page_token = resp_data.get("nextPageToken")
+                            if not page_token or len(drive_items) >= 500:
+                                break
+                        for item in drive_items:
+                            age_seconds = now - item["last_modified_epoch_s"]
+                            age_days = max(0, int(age_seconds / 86400))
+                            item["age_days"] = age_days
+                            sz = item["size_bytes"]
+                            fn = item["file_name"]
+                            fn_low = fn.lower()
+                            mime = item.get("mime_category", "").lower()
+                            reasons = []
+                            if age_days >= 60:
+                                reasons.append(f"Stale cloud file ({age_days}d untouched)")
+                            elif age_days >= 30:
+                                reasons.append(f"Inactive cloud document ({age_days}d idle)")
+                            if sz >= 15 * 1024 * 1024:
+                                reasons.append(f"Heavy storage hog ({item['size_formatted']})")
+                            elif sz >= 4 * 1024 * 1024:
+                                reasons.append(f"Large document payload ({item['size_formatted']})")
+                            if any(k in fn_low for k in ["copy", "(1)", "(2)", "(3)", "draft", "backup", "untitled", "old", "temp", "final_final", "v1", "v2"]):
+                                reasons.append("Potential redundant draft or duplicate copy")
+                            elif item["md5"] and len(drive_by_md5[item["md5"]]) > 1:
+                                if item["file_id"] != drive_by_md5[item["md5"]][0]["file_id"]:
+                                    reasons.append("Exact duplicate content across Drive")
+                            if any(fn_low.endswith(ext) for ext in [".zip", ".tar", ".gz", ".rar", ".7z", ".dmg", ".pkg", ".iso"]):
+                                reasons.append("Archive bundle / installer bloat")
+                            if any(fn_low.endswith(ext) for ext in [".mov", ".mp4", ".avi", ".mkv", ".webm", ".wav", ".zoom", ".m4a"]) or "video" in mime:
+                                reasons.append("High-bitrate media capture")
+                            if not reasons:
+                                reasons.append("Candidate for cloud waste reduction & green audit")
+                            item["is_dark_data_candidate"] = True
+                            item["dark_data_reason"] = " | ".join(reasons)
+                            item["category"] = "heavy_media" if (sz >= 20 * 1024 * 1024 or "video" in mime) else ("duplicate" if "duplicate" in item["dark_data_reason"].lower() else "transient_trash")
+                            item["dark_data_tag"] = item["dark_data_reason"]
+                        scanned_items = drive_items
+                        live_success = True
+                        last_http_code = None
+                    except Exception as ref_err:
+                        print(f"[!] Live Google Drive scan retry after refresh failed: {ref_err}")
+
+            # 3. Require authentic Google Drive connection - zero synthetic mock injections
             if not live_success:
+                prov_label = "Personal Account (@gmail.com)" if scan_provider == "personal" else "School Account (@billabonghighschool.com)"
                 if not access_token:
                     return jsonify({
                         "status": "needs_auth",
-                        "error": "Google Drive authentication required. Please connect your Google account.",
-                        "auth_url": "/auth/google/login"
+                        "provider": scan_provider,
+                        "error": f"Google Drive connection required for {prov_label}. Please connect your account.",
+                        "auth_url": f"/auth/google/login?provider={scan_provider}"
                     }), 401
                 elif last_http_code == 401:
                     return jsonify({
                         "status": "needs_auth",
-                        "error": f"Google Drive authorization expired: {last_google_error or '401 Unauthorized'}. Please reconnect your account.",
-                        "auth_url": "/auth/google/login"
+                        "provider": scan_provider,
+                        "error": f"Google Drive authorization expired for {prov_label} (tokens expire after 1 hour). Please reconnect your account.",
+                        "auth_url": f"/auth/google/login?provider={scan_provider}"
                     }), 401
                 else:
                     return jsonify({
                         "status": "error",
+                        "provider": scan_provider,
                         "error": f"Google Drive API Notice: {last_google_error or 'Could not retrieve Drive files'}. Please verify the Google Drive API is enabled in your Google Cloud Console, or use '📁 Google Drive Picker' / '📱 Device'.",
-                        "auth_url": "/auth/google/login"
+                        "auth_url": f"/auth/google/login?provider={scan_provider}"
                     }), 400
             
             # Sort by size descending
@@ -2138,7 +2280,7 @@ def create_flask_app():
             if excluded_shared_count > 0:
                 note_msg = f"Excluded {excluded_shared_count} shared file(s) owned by other accounts (0 personal quota used)."
 
-            return jsonify({
+            res_payload = {
                 "status": "completed",
                 "folder": "Google Drive",
                 "total_scanned": len(scanned_items),
@@ -2147,7 +2289,10 @@ def create_flask_app():
                 "note": note_msg,
                 "files": scanned_items,
                 "session_only": True
-            })
+            }
+            if refreshed_access_token:
+                res_payload["new_access_token"] = refreshed_access_token
+            return jsonify(res_payload)
     
     @app.route("/api/scan/revoke", methods=["POST"])
     def api_scan_revoke():
