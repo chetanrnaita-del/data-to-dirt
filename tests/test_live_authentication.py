@@ -1,6 +1,6 @@
 import unittest
 import json
-from src.app.server import app, load_state, save_state
+from src.app.server import app, load_state, save_state, reset_all_auth_lockouts
 from src.services.auth import default_auth_service
 
 class TestLiveAuthentication(unittest.TestCase):
@@ -8,6 +8,7 @@ class TestLiveAuthentication(unittest.TestCase):
         self.app = app
         self.client = self.app.test_client()
         self.orig_state = load_state()
+        reset_all_auth_lockouts()
         state = load_state()
         if not any(s.get("student_id") == "STU-001" for s in state.get("students", [])):
             state.setdefault("students", []).append({
@@ -20,6 +21,7 @@ class TestLiveAuthentication(unittest.TestCase):
 
     def tearDown(self):
         save_state(self.orig_state)
+        reset_all_auth_lockouts()
 
     def test_student_unknown_username_rejected(self):
         """Any random student username is rejected with 401."""
@@ -176,6 +178,110 @@ class TestLiveAuthentication(unittest.TestCase):
         data = res.get_json()
         self.assertEqual(data["status"], "authenticated")
         self.assertEqual(data["role"], "admin")
+
+    def test_safety_lock_activates_after_three_wrong_passwords(self):
+        """Entering 3 wrong passwords activates a 10-second safety lockout."""
+        # Attempt 1: wrong password
+        r1 = self.client.post("/api/auth/login", json={
+            "role": "student",
+            "user_id": "STU-001",
+            "pin": "wrong1"
+        })
+        self.assertEqual(r1.status_code, 401)
+        self.assertEqual(r1.get_json().get("failed_attempts"), 1)
+
+        # Attempt 2: wrong password
+        r2 = self.client.post("/api/auth/login", json={
+            "role": "student",
+            "user_id": "STU-001",
+            "pin": "wrong2"
+        })
+        self.assertEqual(r2.status_code, 401)
+        self.assertEqual(r2.get_json().get("failed_attempts"), 2)
+
+        # Attempt 3: 3rd wrong password triggers safety lock of 10s
+        r3 = self.client.post("/api/auth/login", json={
+            "role": "student",
+            "user_id": "STU-001",
+            "pin": "wrong3"
+        })
+        self.assertEqual(r3.status_code, 401)
+        d3 = r3.get_json()
+        self.assertEqual(d3.get("error_code"), "safety_lock")
+        self.assertEqual(d3.get("failed_attempts"), 3)
+        self.assertEqual(d3.get("lockout_seconds"), 10)
+        self.assertIn("safety lock active", d3.get("message", "").lower())
+
+        # Attempt while locked out is blocked even with correct password
+        r_blocked = self.client.post("/api/auth/login", json={
+            "role": "student",
+            "user_id": "STU-001",
+            "pin": "bio101"
+        })
+        self.assertEqual(r_blocked.status_code, 401)
+        self.assertEqual(r_blocked.get_json().get("error_code"), "safety_lock")
+
+    def test_safety_lock_time_increases_with_further_wrong_passwords(self):
+        """Each additional wrong password after the 3rd increases lockout duration (+10s per extra attempt)."""
+        # Fail 3 times -> 10s
+        for i in range(1, 4):
+            self.client.post("/api/auth/login", json={
+                "role": "teacher",
+                "user_id": "teacher_bio101",
+                "pin": f"bad_{i}"
+            })
+
+        # 4th wrong password -> increases lockout to 20s
+        import time
+        from src.app.server import _auth_failed_attempts, get_lockout_key, _auth_lockout_lock
+        # Fast-forward lockout expiry so 4th attempt can be made
+        key = get_lockout_key("teacher", "teacher_bio101", "127.0.0.1")
+        with _auth_lockout_lock:
+            if key in _auth_failed_attempts:
+                _auth_failed_attempts[key]["lockout_until"] = time.time() - 1
+
+        r4 = self.client.post("/api/auth/login", json={
+            "role": "teacher",
+            "user_id": "teacher_bio101",
+            "pin": "bad_4"
+        })
+        self.assertEqual(r4.status_code, 401)
+        d4 = r4.get_json()
+        self.assertEqual(d4.get("error_code"), "safety_lock")
+        self.assertEqual(d4.get("failed_attempts"), 4)
+        self.assertEqual(d4.get("lockout_seconds"), 20)
+
+        # Fast-forward lockout expiry again
+        with _auth_lockout_lock:
+            if key in _auth_failed_attempts:
+                _auth_failed_attempts[key]["lockout_until"] = time.time() - 1
+
+        # 5th wrong password -> increases lockout to 30s
+        r5 = self.client.post("/api/auth/login", json={
+            "role": "teacher",
+            "user_id": "teacher_bio101",
+            "pin": "bad_5"
+        })
+        self.assertEqual(r5.status_code, 401)
+        d5 = r5.get_json()
+        self.assertEqual(d5.get("error_code"), "safety_lock")
+        self.assertEqual(d5.get("failed_attempts"), 5)
+        self.assertEqual(d5.get("lockout_seconds"), 30)
+
+        # Successful login clears the lockout
+        with _auth_lockout_lock:
+            if key in _auth_failed_attempts:
+                _auth_failed_attempts[key]["lockout_until"] = time.time() - 1
+
+        r_ok = self.client.post("/api/auth/login", json={
+            "role": "teacher",
+            "user_id": "teacher_bio101",
+            "pin": "teacher123"
+        })
+        self.assertEqual(r_ok.status_code, 200)
+        self.assertEqual(r_ok.get_json().get("status"), "authenticated")
+        with _auth_lockout_lock:
+            self.assertNotIn(key, _auth_failed_attempts)
 
 if __name__ == "__main__":
     unittest.main()

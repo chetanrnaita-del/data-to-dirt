@@ -15,6 +15,7 @@ import hashlib
 import hmac
 import re
 import difflib
+import math
 from datetime import datetime
 import urllib.request
 import urllib.parse
@@ -157,6 +158,95 @@ def fuzzy_name_match(entered: str, candidate: str) -> bool:
             return True
 
     return False
+
+
+# =========================================================================
+# Security System: Progressive Authentication Safety Lock & Rate Limiter
+# 3 wrong attempts -> 10s lockout. Each subsequent wrong attempt increases lockout (+10s per extra attempt).
+# =========================================================================
+_auth_lockout_lock = threading.Lock()
+# Key: f"{role}:{clean_user_id}:{client_ip}"
+# Value: {"count": int, "lockout_until": float, "last_attempt": float}
+_auth_failed_attempts: Dict[str, Dict[str, Any]] = {}
+
+def get_client_ip() -> str:
+    """Extracts client IP address respecting reverse proxies (Render / Cloudflare)."""
+    try:
+        from flask import request
+        xff = request.headers.get("X-Forwarded-For")
+        if xff:
+            return xff.split(",")[0].strip()
+        return request.remote_addr or "127.0.0.1"
+    except Exception:
+        return "127.0.0.1"
+
+def get_lockout_key(role: str, user_id: str, ip: str) -> str:
+    clean_role = (role or "student").lower().strip()
+    clean_user = re.sub(r'[^a-zA-Z0-9]', '', (user_id or "anonymous").lower())
+    clean_ip = (ip or "").strip()
+    return f"{clean_role}:{clean_user}:{clean_ip}"
+
+def check_auth_lockout(role: str, user_id: str, ip: str) -> tuple[bool, int, int]:
+    """
+    Returns (is_locked, remaining_seconds, failed_count).
+    Safety lock activates after 3 wrong passwords:
+      Attempt 3: 10s lockout
+      Attempt 4: 20s lockout
+      Attempt 5: 30s lockout
+      Attempt N: 10 + (N - 3) * 10 seconds
+    """
+    now = time.time()
+    key = get_lockout_key(role, user_id, ip)
+    with _auth_lockout_lock:
+        record = _auth_failed_attempts.get(key)
+        if not record:
+            return False, 0, 0
+        
+        lockout_until = record.get("lockout_until", 0)
+        failed_count = record.get("count", 0)
+        
+        if now < lockout_until:
+            remaining = int(math.ceil(lockout_until - now))
+            return True, max(1, remaining), failed_count
+        
+        return False, 0, failed_count
+
+def record_failed_auth(role: str, user_id: str, ip: str) -> tuple[bool, int, int]:
+    """
+    Records an incorrect password attempt.
+    Returns (is_locked, lockout_seconds, total_failed_count).
+    """
+    now = time.time()
+    key = get_lockout_key(role, user_id, ip)
+    with _auth_lockout_lock:
+        record = _auth_failed_attempts.setdefault(key, {"count": 0, "lockout_until": 0, "last_attempt": now})
+        
+        # Reset failed count if last attempt was over 15 minutes ago
+        if record.get("last_attempt") and (now - record["last_attempt"] > 900):
+            record["count"] = 0
+            
+        record["count"] += 1
+        record["last_attempt"] = now
+        count = record["count"]
+        
+        if count >= 3:
+            # 3 wrong -> 10s. Each further wrong attempt increases lockout (+10s per extra attempt)
+            lockout_sec = 10 + (count - 3) * 10
+            record["lockout_until"] = now + lockout_sec
+            return True, lockout_sec, count
+        else:
+            return False, 0, count
+
+def clear_auth_lockout(role: str, user_id: str, ip: str):
+    """Resets failed count on successful authentication."""
+    key = get_lockout_key(role, user_id, ip)
+    with _auth_lockout_lock:
+        _auth_failed_attempts.pop(key, None)
+
+def reset_all_auth_lockouts():
+    """Resets all lockout records across all clients."""
+    with _auth_lockout_lock:
+        _auth_failed_attempts.clear()
 
 
 def is_test_teacher_account(teacher_id: str, name: str) -> bool:
@@ -2278,6 +2368,20 @@ def create_flask_app():
         if role not in ["student", "teacher", "admin"]:
             return jsonify({"status": "error", "message": f"Invalid role '{role}'. Must be student, teacher, or admin."}), 400
 
+        # Check safety lock status before processing credentials
+        client_ip = get_client_ip()
+        lock_id = user_id or "anonymous"
+        is_locked, remaining_seconds, failed_count = check_auth_lockout(role, lock_id, client_ip)
+        if is_locked:
+            return jsonify({
+                "status": "error",
+                "error_code": "safety_lock",
+                "failed_attempts": failed_count,
+                "lockout_seconds": remaining_seconds,
+                "remaining_seconds": remaining_seconds,
+                "message": f"🔒 Safety lock active: Too many incorrect attempts ({failed_count}). Please wait {remaining_seconds}s before retrying."
+            }), 401
+
         # ==========================================
         # 1. ADMIN AUTHENTICATION
         # ==========================================
@@ -2293,8 +2397,25 @@ def create_flask_app():
             # Validate admin PIN strictly (admin2026 or admin123)
             admin_pin_expected = state.get("auth", {}).get("admin_pin", default_auth_service.admin_pin)
             if not (hmac.compare_digest(pin, "admin2026") or hmac.compare_digest(pin, "admin123") or hmac.compare_digest(pin, admin_pin_expected)):
-                return jsonify({"status": "error", "message": "Invalid administrator passcode."}), 401
+                is_locked, lockout_sec, count = record_failed_auth("admin", lock_id, client_ip)
+                if is_locked:
+                    return jsonify({
+                        "status": "error",
+                        "error_code": "safety_lock",
+                        "failed_attempts": count,
+                        "lockout_seconds": lockout_sec,
+                        "remaining_seconds": lockout_sec,
+                        "message": f"🔒 Safety lock active: {count} incorrect passcode attempts. Account locked for {lockout_sec}s."
+                    }), 401
+                return jsonify({
+                    "status": "error",
+                    "error_code": "invalid_credentials",
+                    "failed_attempts": count,
+                    "attempts_left": 3 - count,
+                    "message": f"Invalid administrator passcode. ({count}/3 attempts before 10s safety lock)"
+                }), 401
 
+            clear_auth_lockout("admin", lock_id, client_ip)
             try:
                 session = default_auth_service.login(role="admin", pin=pin, user_id="admin")
                 state["auth"]["current_role"] = "admin"
@@ -2431,6 +2552,16 @@ def create_flask_app():
                     print(f"[!] Firestore teacher check error: {fe}")
 
             if not is_valid_teacher:
+                is_locked, lockout_sec, count = record_failed_auth("teacher", lock_id, client_ip)
+                if is_locked:
+                    return jsonify({
+                        "status": "error",
+                        "error_code": "safety_lock",
+                        "failed_attempts": count,
+                        "lockout_seconds": lockout_sec,
+                        "remaining_seconds": lockout_sec,
+                        "message": f"🔒 Safety lock active: {count} incorrect attempts. Account locked for {lockout_sec}s."
+                    }), 401
                 return jsonify({"status": "error", "message": f"Teacher account '{user_id}' not found. Please enter a valid Teacher Name, ID, or class code."}), 401
 
             # Validate teacher password strictly (case-insensitive for convenience, plus default teacher123 fallback)
@@ -2446,8 +2577,25 @@ def create_flask_app():
                 pwd_valid = True
 
             if not pwd_valid:
-                return jsonify({"status": "error", "message": "Invalid teacher password."}), 401
+                is_locked, lockout_sec, count = record_failed_auth("teacher", lock_id, client_ip)
+                if is_locked:
+                    return jsonify({
+                        "status": "error",
+                        "error_code": "safety_lock",
+                        "failed_attempts": count,
+                        "lockout_seconds": lockout_sec,
+                        "remaining_seconds": lockout_sec,
+                        "message": f"🔒 Safety lock active: {count} incorrect password attempts. Account locked for {lockout_sec}s."
+                    }), 401
+                return jsonify({
+                    "status": "error",
+                    "error_code": "invalid_credentials",
+                    "failed_attempts": count,
+                    "attempts_left": 3 - count,
+                    "message": f"Invalid teacher password. ({count}/3 attempts before 10s safety lock)"
+                }), 401
 
+            clear_auth_lockout("teacher", lock_id, client_ip)
             if not teacher_class_code:
                 teacher_class_code = "all"
 
@@ -2581,12 +2729,26 @@ def create_flask_app():
                 password_matches = True
 
             if not password_matches:
+                is_locked, lockout_sec, count = record_failed_auth("student", lock_id, client_ip)
                 student_display_name = matched_student.get("name") or matched_student.get("student_id") or entered_ident
+                if is_locked:
+                    return jsonify({
+                        "status": "error",
+                        "error_code": "safety_lock",
+                        "failed_attempts": count,
+                        "lockout_seconds": lockout_sec,
+                        "remaining_seconds": lockout_sec,
+                        "message": f"🔒 Safety lock active: {count} incorrect password attempts for student '{student_display_name}'. Account locked for {lockout_sec}s."
+                    }), 401
                 return jsonify({
                     "status": "error",
-                    "message": f"Incorrect class code or password for student '{student_display_name}'. Please enter class code '{expected_class_code.upper()}' or default password."
+                    "error_code": "invalid_credentials",
+                    "failed_attempts": count,
+                    "attempts_left": 3 - count,
+                    "message": f"Incorrect class code or password for student '{student_display_name}'. ({count}/3 attempts before 10s safety lock)"
                 }), 401
 
+            clear_auth_lockout("student", lock_id, client_ip)
             # Both Username & Password verified!
             actual_student_id = matched_student.get("student_id") or matched_student.get("user_id") or entered_ident
             actual_student_name = matched_student.get("name") or actual_student_id

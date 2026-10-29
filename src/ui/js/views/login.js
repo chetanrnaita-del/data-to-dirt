@@ -2,6 +2,10 @@ class LoginView {
   constructor(app) {
     this.app = app;
     this.selectedRole = 'student';
+    this._lockoutInterval = null;
+    try {
+      localStorage.removeItem("d2d_last_created_student");
+    } catch (_) {}
   }
 
   async render(container) {
@@ -43,11 +47,16 @@ class LoginView {
             </button>
           </div>
 
-          <!-- Recently Created Banner (if available) -->
-          <div id="recent-account-banner" style="display: none; margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; background: #eef6ef; border: 1.5px solid #2d6a36; font-size: 12px; color: #1e4a23;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span id="recent-account-text" style="font-weight: 600;">⭐ Recent Account</span>
-              <button type="button" id="btn-use-recent" style="background: #2d6a36; color: #fff; border: none; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; cursor: pointer;">⚡ Auto-Fill</button>
+          <!-- Security System: Progressive Safety Lock Alert -->
+          <div id="safety-lock-banner" style="display: none; margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; background: rgba(192, 57, 43, 0.10); border: 1.5px solid #c0392b; font-size: 12.5px; color: #962d22; line-height: 1.45;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 4px; font-size: 13.5px; color: #c0392b;">
+              <span style="font-size: 18px;">🔒</span> Security System: Safety Lock Active
+            </div>
+            <div id="safety-lock-desc">
+              Too many incorrect password attempts. Login is temporarily locked for <strong id="safety-lock-timer" style="font-size: 14px; color: #c0392b;">10s</strong>.
+            </div>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 4px;">
+              ⏱️ Safety lock duration increases with each single wrong password.
             </div>
           </div>
 
@@ -55,7 +64,7 @@ class LoginView {
             <label style="display: block; font-size: 13px; font-weight: 700; color: #2b1f14; margin-bottom: 6px;">
               <span id="label-user">Student ID / Name</span> <span style="color: #c0392b;">*</span>
             </label>
-            <input type="text" id="login-user" placeholder="Enter Student ID or Full Name" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
+            <input type="text" id="login-user" placeholder="Enter Student ID or Full Name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
             <div id="hint-user" style="font-size: 11px; color: #6d5b4a; margin-top: 4px;">
               💡 Enter your registered Student Full Name or Student ID.
             </div>
@@ -67,9 +76,9 @@ class LoginView {
                 <span id="label-pass">Class Code or Password</span> <span style="color: #c0392b;">*</span>
               </label>
             </div>
-            <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
+            <input type="password" id="login-pass" placeholder="Enter class code (e.g., bio101)" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="width: 100%; padding: 13px 15px; border: 1.5px solid #d4c8b8; border-radius: 8px; font-size: 14px; background: #ffffff; color: #2b1f14; outline: none; transition: border-color 0.2s; box-sizing: border-box;" />
             <div id="hint-pass" style="font-size: 11px; color: #6d5b4a; margin-top: 4px;">
-              💡 Enter class code (e.g. bio101, cs301) or student123.
+              💡 Enter class code (e.g. bio101, cs301) or password.
             </div>
           </div>
 
@@ -85,7 +94,7 @@ class LoginView {
             </div>
           </div>
           
-          <div id="login-error" style="color: #c0392b; font-size: 13px; margin-bottom: 15px; display: none; font-weight: 600;"></div>
+          <div id="login-error" style="color: #c0392b; font-size: 13px; margin-bottom: 15px; display: none; font-weight: 600; line-height: 1.4;"></div>
 
           <button id="btn-proceed" style="width: 100%; padding: 14px; background: #2d6a36; color: #ffffff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: background 0.2s, transform 0.1s; box-shadow: 0 4px 12px rgba(45, 106, 54, 0.28);">
             Proceed →
@@ -103,33 +112,92 @@ class LoginView {
     `;
 
     this.bindEvents(container);
-    this.loadRecentAccounts(container);
+    this.checkExistingSafetyLock(container);
   }
 
-  loadRecentAccounts(container) {
-    const banner = container.querySelector('#recent-account-banner');
-    const textEl = container.querySelector('#recent-account-text');
-    const btnUse = container.querySelector('#btn-use-recent');
+  checkExistingSafetyLock(container) {
+    const rawUntil = sessionStorage.getItem('d2d_safety_lock_until');
+    if (rawUntil) {
+      const until = parseInt(rawUntil, 10);
+      const now = Date.now();
+      if (until > now) {
+        const remaining = Math.ceil((until - now) / 1000);
+        const attempts = parseInt(sessionStorage.getItem('d2d_safety_lock_attempts') || '3', 10);
+        this.startSafetyLock(remaining, attempts, container);
+        return true;
+      } else {
+        sessionStorage.removeItem('d2d_safety_lock_until');
+      }
+    }
+    return false;
+  }
+
+  startSafetyLock(seconds, failedCount, container) {
+    const lockBanner = container.querySelector('#safety-lock-banner');
+    const lockTimerEl = container.querySelector('#safety-lock-timer');
+    const lockDescEl = container.querySelector('#safety-lock-desc');
     const inputUser = container.querySelector('#login-user');
     const inputPass = container.querySelector('#login-pass');
-    if (!banner || !textEl || !btnUse) return;
+    const btnProceed = container.querySelector('#btn-proceed');
+    const errorEl = container.querySelector('#login-error');
 
-    if (this.selectedRole === 'student') {
-      try {
-        const lastStuRaw = localStorage.getItem('d2d_last_created_student');
-        if (lastStuRaw) {
-          const s = JSON.parse(lastStuRaw);
-          textEl.textContent = `⭐ Newly Enrolled: ${s.name} (${s.student_id} / ${s.class_code.toUpperCase()})`;
-          banner.style.display = 'block';
-          btnUse.onclick = () => {
-            inputUser.value = s.student_id || s.name;
-            inputPass.value = s.class_code || 'bio101';
-          };
-          return;
-        }
-      } catch (_) {}
+    if (!lockBanner || !lockTimerEl || !btnProceed) return;
+
+    if (this._lockoutInterval) {
+      clearInterval(this._lockoutInterval);
+      this._lockoutInterval = null;
     }
-    banner.style.display = 'none';
+
+    const lockoutUntil = Date.now() + (seconds * 1000);
+    sessionStorage.setItem('d2d_safety_lock_until', String(lockoutUntil));
+    sessionStorage.setItem('d2d_safety_lock_attempts', String(failedCount));
+
+    if (inputUser) inputUser.disabled = true;
+    if (inputPass) inputPass.disabled = true;
+    btnProceed.disabled = true;
+    btnProceed.style.opacity = '0.6';
+    btnProceed.style.cursor = 'not-allowed';
+
+    if (errorEl) errorEl.style.display = 'none';
+
+    lockBanner.style.display = 'block';
+    if (lockDescEl) {
+      lockDescEl.innerHTML = `Too many incorrect attempts (${failedCount}). Security lockout active for <strong id="safety-lock-timer" style="font-size: 14px; color: #c0392b;">${seconds}s</strong>.`;
+    }
+
+    let remaining = seconds;
+    btnProceed.textContent = `🔒 Locked (${remaining}s)`;
+
+    this._lockoutInterval = setInterval(() => {
+      remaining -= 1;
+      const currentTimer = container.querySelector('#safety-lock-timer');
+      if (currentTimer) currentTimer.textContent = `${remaining}s`;
+      btnProceed.textContent = `🔒 Locked (${remaining}s)`;
+
+      if (remaining <= 0) {
+        clearInterval(this._lockoutInterval);
+        this._lockoutInterval = null;
+        sessionStorage.removeItem('d2d_safety_lock_until');
+
+        lockBanner.style.display = 'none';
+        if (inputUser) inputUser.disabled = false;
+        if (inputPass) {
+          inputPass.disabled = false;
+          inputPass.value = '';
+          inputPass.focus();
+        }
+        btnProceed.disabled = false;
+        btnProceed.style.opacity = '';
+        btnProceed.style.cursor = 'pointer';
+        btnProceed.textContent = 'Proceed →';
+
+        if (errorEl) {
+          errorEl.style.display = 'block';
+          errorEl.style.color = '#2d6a36';
+          errorEl.textContent = '🔓 Safety lock released. You may now enter your password.';
+        }
+      }
+    }, 1000);
   }
 
   bindEvents(container) {
@@ -140,6 +208,7 @@ class LoginView {
     const hintPass = container.querySelector('#hint-pass');
     const inputUser = container.querySelector('#login-user');
     const inputPass = container.querySelector('#login-pass');
+    const errorEl = container.querySelector('#login-error');
     
     roleBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -170,7 +239,7 @@ class LoginView {
           inputPass.placeholder = "Enter class code (e.g., cs301) or password";
           inputPass.value = "";
           if (hintUser) hintUser.textContent = "💡 Enter your registered Student Full Name or Student ID.";
-          if (hintPass) hintPass.textContent = "💡 Enter your Class Code (e.g. cs301, bio101) or default password student123.";
+          if (hintPass) hintPass.textContent = "💡 Enter your Class Code (e.g. cs301, bio101) or password.";
           if (studentPills) studentPills.style.display = 'block';
         } else if (this.selectedRole === 'teacher') {
           labelUser.textContent = "Teacher Account / Name / ID";
@@ -192,31 +261,37 @@ class LoginView {
           if (studentPills) studentPills.style.display = 'none';
         }
 
-        this.loadRecentAccounts(container);
+        if (errorEl && errorEl.style.display !== 'none' && !this._lockoutInterval) {
+          errorEl.style.display = 'none';
+        }
       });
     });
 
     // Bind student class quick pills
     container.querySelectorAll('.stu-class-pill').forEach(pill => {
       pill.addEventListener('click', () => {
+        if (inputPass.disabled) return;
         inputPass.value = pill.dataset.class;
         inputPass.focus();
       });
     });
 
     const btnProceed = container.querySelector('#btn-proceed');
-    const errorEl = container.querySelector('#login-error');
     
     const handleEnter = (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        btnProceed.click();
+        if (!btnProceed.disabled) {
+          btnProceed.click();
+        }
       }
     };
     inputUser.addEventListener("keydown", handleEnter);
     inputPass.addEventListener("keydown", handleEnter);
     
     btnProceed.addEventListener('click', async () => {
+      if (this._lockoutInterval) return;
+
       const user = inputUser.value.trim();
       const pass = inputPass.value.trim();
       
@@ -226,6 +301,7 @@ class LoginView {
           : (this.selectedRole === 'teacher' 
             ? "Please enter your Teacher Name, Account, or Class Code." 
             : "Please enter your Admin ID.");
+        errorEl.style.color = "#c0392b";
         errorEl.style.display = "block";
         inputUser.focus();
         return;
@@ -237,6 +313,7 @@ class LoginView {
           : (this.selectedRole === 'teacher' 
             ? "Please enter your teacher password to proceed." 
             : "Please enter the administrator passcode to proceed.");
+        errorEl.style.color = "#c0392b";
         errorEl.style.display = "block";
         inputPass.focus();
         return;
@@ -260,6 +337,13 @@ class LoginView {
         const data = await res.json();
         if (res.ok && data.status === "authenticated") {
           errorEl.style.display = "none";
+          sessionStorage.removeItem('d2d_safety_lock_until');
+          sessionStorage.removeItem('d2d_safety_lock_attempts');
+          if (this._lockoutInterval) {
+            clearInterval(this._lockoutInterval);
+            this._lockoutInterval = null;
+          }
+
           if (data.token) {
             localStorage.setItem("d2d_session_token", data.token);
           }
@@ -277,17 +361,28 @@ class LoginView {
           // Instruct app to switch to the main interface for this role
           this.app.completeLogin(this.selectedRole, effectiveUserId, pass, data.class_code);
         } else {
-          errorEl.textContent = data.message || "Invalid credentials.";
-          errorEl.style.display = "block";
-          inputPass.focus();
+          // Check if safety lock triggered or active
+          if (data.error_code === "safety_lock" || (data.lockout_seconds && data.lockout_seconds > 0)) {
+            const sec = data.remaining_seconds || data.lockout_seconds || 10;
+            const attempts = data.failed_attempts || 3;
+            this.startSafetyLock(sec, attempts, container);
+          } else {
+            errorEl.textContent = data.message || "Invalid credentials.";
+            errorEl.style.color = "#c0392b";
+            errorEl.style.display = "block";
+            inputPass.focus();
+          }
         }
       } catch (e) {
         console.error("Login exception:", e);
         errorEl.textContent = `Error: ${e.message}`;
+        errorEl.style.color = "#c0392b";
         errorEl.style.display = "block";
       } finally {
-        btnProceed.disabled = false;
-        btnProceed.innerHTML = originalText;
+        if (!this._lockoutInterval) {
+          btnProceed.disabled = false;
+          btnProceed.innerHTML = originalText;
+        }
       }
     });
 

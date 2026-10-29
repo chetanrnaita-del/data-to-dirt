@@ -1065,13 +1065,6 @@ class TeacherConfirmationView {
 
         // Success!
         recentlyEnrolledStudentId = studentId;
-        try {
-          localStorage.setItem("d2d_last_created_student", JSON.stringify({
-            student_id: studentId,
-            name: name,
-            class_code: classCode
-          }));
-        } catch (_) {}
 
         if (this.audioSynth) this.audioSynth.playCoinDing();
         if (this.particleEngine) this.particleEngine.emitConfetti();

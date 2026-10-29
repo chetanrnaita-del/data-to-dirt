@@ -462,8 +462,8 @@ class DataToDirtApp {
                 : `Enter the passcode to access the <strong>${roleTitle}</strong>.`}
             </p>
             <div class="retro-inset">
-              <label style="display: block; font-weight: bold; margin-bottom: 6px;">Administrator Passcode / PIN:</label>
-              <input type="text" id="input-role-pin" class="retro-input" value="${defaultPin}" placeholder="Default: ${defaultPin}" autocomplete="off" autocorrect="off" autocapitalize="none" autofocus />
+              <label style="display: block; font-weight: bold; margin-bottom: 6px;">Passcode / PIN:</label>
+              <input type="password" id="input-role-pin" class="retro-input" placeholder="Enter passcode" autocomplete="new-password" autocorrect="off" autocapitalize="none" autofocus />
             </div>
             <div id="pin-error-msg" style="color: var(--c-danger-bright); font-size: 12px; margin-top: 8px; display: none;"></div>
           </div>
