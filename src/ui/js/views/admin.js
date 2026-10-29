@@ -44,6 +44,13 @@ class AdminEcoFundView {
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-manage-students" title="View & Delete Enrolled Students">
               👥 Manage Students
             </button>
+            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-adm-export-backup" title="Export complete database backup as JSON">
+              💾 Backup Data
+            </button>
+            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-import-backup" title="Restore database from JSON backup file">
+              📥 Restore Data
+            </button>
+            <input type="file" id="adm-import-file-input" accept=".json" style="display: none;" />
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-adm-refresh">
               🔄 Refresh
             </button>
@@ -243,6 +250,69 @@ class AdminEcoFundView {
     document.getElementById("btn-adm-refresh")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       this.fetchData();
+    });
+
+    // Backup & Restore
+    document.getElementById("btn-adm-export-backup")?.addEventListener("click", async () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      try {
+        const token = localStorage.getItem("d2d_session_token") || "";
+        const res = await fetch("/api/admin/export_data", {
+          headers: token ? { "Authorization": `Bearer ${token}` } : {}
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `datatodirt_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        this.showToast("Database backup downloaded successfully!", "success");
+      } catch (e) {
+        alert("Failed to export backup: " + e.message);
+      }
+    });
+
+    const fileInput = document.getElementById("adm-import-file-input");
+    document.getElementById("btn-adm-import-backup")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      if (fileInput) fileInput.click();
+    });
+
+    fileInput?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!confirm(`Are you sure you want to restore database from '${file.name}'? Existing database records will be merged and updated.`)) {
+        fileInput.value = "";
+        return;
+      }
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const token = localStorage.getItem("d2d_session_token") || "";
+        const res = await fetch("/api/admin/import_data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ""
+          },
+          body: JSON.stringify(parsed)
+        });
+        const d = await res.json();
+        if (res.ok && d.status === "restored") {
+          alert(`✓ Database restored successfully! (${d.total_students} students, ${d.total_teachers} teachers)`);
+          this.fetchData();
+        } else {
+          alert("Failed to restore: " + (d.message || "Unknown error"));
+        }
+      } catch (err) {
+        alert("Error reading backup file: " + err.message);
+      } finally {
+        fileInput.value = "";
+      }
     });
 
     // Logout
@@ -602,6 +672,16 @@ class AdminEcoFundView {
         });
         const data = await res.json();
         allTeachers = data.teachers || [];
+        if (allTeachers && Array.isArray(allTeachers)) {
+          try {
+            const stored = JSON.parse(localStorage.getItem("d2d_directory_teachers") || "[]");
+            const deleted = JSON.parse(localStorage.getItem("d2d_deleted_teachers") || "[]");
+            const map = {};
+            stored.forEach(t => { const id = t.teacher_id || t.user_id; if (id && !deleted.includes(id)) map[id] = t; });
+            allTeachers.forEach(t => { const id = t.teacher_id || t.user_id; if (id && !deleted.includes(id)) map[id] = { ...map[id], ...t }; });
+            localStorage.setItem("d2d_directory_teachers", JSON.stringify(Object.values(map)));
+          } catch (e) {}
+        }
         renderTable(allTeachers);
         if (badge) badge.textContent = `${allTeachers.length} Teachers`;
       } catch (e) {
@@ -635,6 +715,9 @@ class AdminEcoFundView {
         const d = await res.json();
         if (d.status === "deleted_all") {
           allTeachers = [];
+          try {
+            localStorage.setItem("d2d_directory_teachers", JSON.stringify([]));
+          } catch (e) {}
           renderTable([]);
           const badge = document.getElementById("adm-tch-count-badge");
           if (badge) badge.textContent = "0 Teachers";
@@ -708,6 +791,15 @@ class AdminEcoFundView {
             });
             const d = await res.json();
             if (d.status === 'deleted') {
+              try {
+                const stored = JSON.parse(localStorage.getItem("d2d_directory_teachers") || "[]");
+                localStorage.setItem("d2d_directory_teachers", JSON.stringify(stored.filter(t => (t.teacher_id || t.user_id) !== tid)));
+                const delStored = JSON.parse(localStorage.getItem("d2d_deleted_teachers") || "[]");
+                if (!delStored.includes(tid)) {
+                  delStored.push(tid);
+                  localStorage.setItem("d2d_deleted_teachers", JSON.stringify(delStored));
+                }
+              } catch (e) {}
               loadTeachers();
             } else {
               alert(d.message || 'Failed to delete teacher.');
@@ -828,6 +920,24 @@ class AdminEcoFundView {
         }
 
         // Success!
+        try {
+          const stored = JSON.parse(localStorage.getItem("d2d_directory_teachers") || "[]");
+          const createdTeacher = {
+            teacher_id: data.teacher?.teacher_id || teacherId,
+            user_id: data.teacher?.teacher_id || teacherId,
+            name: name,
+            class_code: classCode || "all",
+            pin: pin,
+            role: "teacher"
+          };
+          const filtered = stored.filter(t => (t.teacher_id || t.user_id) !== createdTeacher.teacher_id);
+          filtered.push(createdTeacher);
+          localStorage.setItem("d2d_directory_teachers", JSON.stringify(filtered));
+
+          const delStored = JSON.parse(localStorage.getItem("d2d_deleted_teachers") || "[]");
+          localStorage.setItem("d2d_deleted_teachers", JSON.stringify(delStored.filter(id => id !== createdTeacher.teacher_id)));
+        } catch (e) {}
+
         if (feedback) {
           feedback.style.display = "block";
           feedback.style.background = "#e8f8f5";

@@ -1119,6 +1119,15 @@ class TeacherConfirmationView {
             });
             const data = await res.json();
             if (res.ok && (data.status === "deleted" || data.status === "ok")) {
+              try {
+                const stored = JSON.parse(localStorage.getItem("d2d_directory_students") || "[]");
+                localStorage.setItem("d2d_directory_students", JSON.stringify(stored.filter(s => (s.student_id || s.user_id) !== sid)));
+                const delStored = JSON.parse(localStorage.getItem("d2d_deleted_students") || "[]");
+                if (!delStored.includes(sid)) {
+                  delStored.push(sid);
+                  localStorage.setItem("d2d_deleted_students", JSON.stringify(delStored));
+                }
+              } catch (e) {}
               this.showToast(`Student '${sname}' (${sid}) deleted successfully.`, "success");
               await loadStudents();
               this.fetchData();
@@ -1150,6 +1159,17 @@ class TeacherConfirmationView {
         const data = await res.json();
         currentStudents = data.students || [];
 
+        if (data.students && Array.isArray(data.students)) {
+          try {
+            const stored = JSON.parse(localStorage.getItem("d2d_directory_students") || "[]");
+            const deleted = JSON.parse(localStorage.getItem("d2d_deleted_students") || "[]");
+            const map = {};
+            stored.forEach(s => { const id = s.student_id || s.user_id; if (id && !deleted.includes(id)) map[id] = s; });
+            data.students.forEach(s => { const id = s.student_id || s.user_id; if (id && !deleted.includes(id)) map[id] = { ...map[id], ...s }; });
+            localStorage.setItem("d2d_directory_students", JSON.stringify(Object.values(map)));
+          } catch (e) {}
+        }
+
         const cloudBadge = document.getElementById("stu-cloud-status");
         if (cloudBadge) {
           if (data.cloud_sync) {
@@ -1157,7 +1177,7 @@ class TeacherConfirmationView {
             cloudBadge.className = "retro-tag retro-tag-clean";
             cloudBadge.style.color = "#27ae60";
           } else {
-            cloudBadge.textContent = "💾 Local Storage Ready";
+            cloudBadge.innerHTML = `💾 Local Container Storage &bull; <a href="https://console.cloud.google.com/iam-admin/projects?pendingDeletion=true" target="_blank" style="color: #e67e22; text-decoration: underline; font-weight: bold;">Undelete Google Cloud Project</a>`;
             cloudBadge.className = "retro-tag retro-tag-stale";
           }
         }
@@ -1226,6 +1246,15 @@ class TeacherConfirmationView {
         });
         const data = await res.json();
         if (res.ok) {
+          try {
+            const stored = JSON.parse(localStorage.getItem("d2d_directory_students") || "[]");
+            const normTarget = this.normalizeGrade(activeClass);
+            const kept = stored.filter(s => {
+              if (normTarget === "all") return false;
+              return this.normalizeGrade(s.class_code) !== normTarget;
+            });
+            localStorage.setItem("d2d_directory_students", JSON.stringify(kept));
+          } catch (e) {}
           this.showToast(`Deleted ${data.deleted_count || count} student(s) from ${gradeLabel}.`, "success");
           await loadStudents(activeClass);
           this.fetchData();
@@ -1318,6 +1347,24 @@ class TeacherConfirmationView {
 
         // Success!
         recentlyEnrolledStudentId = studentId;
+        try {
+          const stored = JSON.parse(localStorage.getItem("d2d_directory_students") || "[]");
+          const createdStudent = {
+            student_id: studentId,
+            user_id: studentId,
+            name: name,
+            class_code: classCode,
+            bytes_cleared: 0,
+            eco_points: 0,
+            trees: 0
+          };
+          const filtered = stored.filter(s => (s.student_id || s.user_id) !== studentId);
+          filtered.push(createdStudent);
+          localStorage.setItem("d2d_directory_students", JSON.stringify(filtered));
+
+          const delStored = JSON.parse(localStorage.getItem("d2d_deleted_students") || "[]");
+          localStorage.setItem("d2d_deleted_students", JSON.stringify(delStored.filter(id => id !== studentId)));
+        } catch (e) {}
 
         if (this.audioSynth) this.audioSynth.playCoinDing();
         if (this.particleEngine) this.particleEngine.emitConfetti();

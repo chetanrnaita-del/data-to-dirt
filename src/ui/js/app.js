@@ -40,10 +40,94 @@ class DataToDirtApp {
     return window.normalizeGrade(code);
   }
 
+  async syncClientDirectory() {
+    try {
+      let storedStudents = [];
+      let storedTeachers = [];
+      let storedPasswords = {};
+      let deletedStudents = [];
+      let deletedTeachers = [];
+
+      try {
+        storedStudents = JSON.parse(localStorage.getItem("d2d_directory_students") || "[]");
+      } catch (e) {}
+      try {
+        storedTeachers = JSON.parse(localStorage.getItem("d2d_directory_teachers") || "[]");
+      } catch (e) {}
+      try {
+        storedPasswords = JSON.parse(localStorage.getItem("d2d_student_passwords") || "{}");
+      } catch (e) {}
+      try {
+        deletedStudents = JSON.parse(localStorage.getItem("d2d_deleted_students") || "[]");
+      } catch (e) {}
+      try {
+        deletedTeachers = JSON.parse(localStorage.getItem("d2d_deleted_teachers") || "[]");
+      } catch (e) {}
+
+      // If active session has student info, ensure it is included
+      const activeRole = localStorage.getItem("d2d_role");
+      const activeUser = localStorage.getItem("d2d_user_id");
+      const activePin = localStorage.getItem("d2d_pin");
+      const activeName = localStorage.getItem("d2d_student_name");
+      const activeClass = localStorage.getItem("d2d_class_code");
+
+      if (activeRole === "student" && activeUser && !deletedStudents.includes(activeUser)) {
+        if (!storedStudents.some(s => (s.student_id || s.user_id) === activeUser)) {
+          storedStudents.push({
+            student_id: activeUser,
+            user_id: activeUser,
+            name: activeName || activeUser,
+            class_code: activeClass || "grade5"
+          });
+          localStorage.setItem("d2d_directory_students", JSON.stringify(storedStudents));
+        }
+        if (activePin) {
+          storedPasswords[activeUser] = activePin;
+          localStorage.setItem("d2d_student_passwords", JSON.stringify(storedPasswords));
+        }
+      }
+
+      if (storedStudents.length > 0 || storedTeachers.length > 0 || Object.keys(storedPasswords).length > 0 || deletedStudents.length > 0 || deletedTeachers.length > 0) {
+        const res = await fetch("/api/sync/rehydrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            students: storedStudents,
+            teachers: storedTeachers,
+            passwords: storedPasswords,
+            deleted_student_ids: deletedStudents,
+            deleted_teacher_ids: deletedTeachers
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status === "ok") {
+            // Update local storage mirror with any new records returned from server
+            if (data.students && Array.isArray(data.students)) {
+              const mergedStu = {};
+              storedStudents.forEach(s => { const id = s.student_id || s.user_id; if (id) mergedStu[id] = s; });
+              data.students.forEach(s => { const id = s.student_id || s.user_id; if (id && !deletedStudents.includes(id)) mergedStu[id] = { ...mergedStu[id], ...s }; });
+              localStorage.setItem("d2d_directory_students", JSON.stringify(Object.values(mergedStu)));
+            }
+            if (data.teachers && Array.isArray(data.teachers)) {
+              const mergedTch = {};
+              storedTeachers.forEach(t => { const id = t.teacher_id || t.user_id; if (id) mergedTch[id] = t; });
+              data.teachers.forEach(t => { const id = t.teacher_id || t.user_id; if (id && !deletedTeachers.includes(id)) mergedTch[id] = { ...mergedTch[id], ...t }; });
+              localStorage.setItem("d2d_directory_teachers", JSON.stringify(Object.values(mergedTch)));
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Client directory auto-rehydration notice:", err);
+    }
+  }
+
   async init() {
     console.log("[+] Initializing Data-to-Dirt Retro Desktop Engine...");
     this.bindGlobalControls();
     this.startClock();
+    this.syncClientDirectory();
 
     // Intercept fetch to add Authorization and Localtunnel bypass headers automatically
     const originalFetch = window.fetch;

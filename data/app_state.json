@@ -37,7 +37,16 @@
     "current_role": "student",
     "teacher_pin": "teacher123",
     "admin_pin": "admin123",
-    "teacher_passwords": {}
+    "teacher_passwords": {
+      "teacher_grade5": "teacher123",
+      "teacher_grade6": "teacher123",
+      "teacher_grade7": "teacher123",
+      "teacher_grade8": "teacher123",
+      "teacher_grade9": "teacher123",
+      "teacher_grade10": "teacher123",
+      "teacher_grade11": "teacher123",
+      "teacher_grade12": "teacher123"
+    }
   },
   "students": [
     {
@@ -478,16 +487,80 @@
     },
     "waste_categories": {}
   },
-  "teachers": [],
-  "deleted_teacher_ids": [
-    "teacher_grade5",
-    "teacher_grade6",
-    "teacher_grade7",
-    "teacher_grade8",
-    "teacher_grade9",
-    "teacher_grade10",
-    "teacher_grade11",
-    "teacher_grade12"
+  "teachers": [
+    {
+      "teacher_id": "teacher_grade5",
+      "user_id": "teacher_grade5",
+      "name": "Grade 5 Lead Teacher",
+      "class_code": "grade5",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade6",
+      "user_id": "teacher_grade6",
+      "name": "Grade 6 Lead Teacher",
+      "class_code": "grade6",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade7",
+      "user_id": "teacher_grade7",
+      "name": "Grade 7 Lead Teacher",
+      "class_code": "grade7",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade8",
+      "user_id": "teacher_grade8",
+      "name": "Grade 8 Lead Teacher",
+      "class_code": "grade8",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade9",
+      "user_id": "teacher_grade9",
+      "name": "Grade 9 Lead Teacher",
+      "class_code": "grade9",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade10",
+      "user_id": "teacher_grade10",
+      "name": "Grade 10 Lead Teacher",
+      "class_code": "grade10",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade11",
+      "user_id": "teacher_grade11",
+      "name": "Grade 11 Lead Teacher",
+      "class_code": "grade11",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    },
+    {
+      "teacher_id": "teacher_grade12",
+      "user_id": "teacher_grade12",
+      "name": "Grade 12 Lead Teacher",
+      "class_code": "grade12",
+      "role": "teacher",
+      "pin": "teacher123",
+      "created_by": "System"
+    }
   ],
-  "teachers_cleared": true
+  "deleted_teacher_ids": [],
+  "teachers_cleared": false
 }

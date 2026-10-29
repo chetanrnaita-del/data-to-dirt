@@ -403,22 +403,25 @@ _state_lock = threading.RLock()
 
 def load_state() -> Dict[str, Any]:
     with _state_lock:
-        if STATE_FILE.exists():
-            for attempt in range(3):
-                try:
-                    with open(STATE_FILE, "r", encoding="utf-8") as f:
-                        state = json.load(f)
-                        if "students" not in state:
-                            state["students"] = get_default_state().get("students", [])
-                        if "analytics" not in state or not isinstance(state.get("analytics"), dict):
-                            state["analytics"] = get_default_state().get("analytics", {})
-                        return state
-                except Exception as e:
-                    if attempt < 2:
-                        time.sleep(0.01 * (attempt + 1))
-                        continue
-                    print(f"[!] Warning: Failed to load state from {STATE_FILE}: {e}")
-            return get_default_state()
+        target_files = [STATE_FILE, STATE_FILE.parent / "app_state_backup.json"]
+        for tf in target_files:
+            if tf.exists():
+                for attempt in range(3):
+                    try:
+                        with open(tf, "r", encoding="utf-8") as f:
+                            state = json.load(f)
+                            if "students" not in state:
+                                state["students"] = get_default_state().get("students", [])
+                            if "teachers" not in state:
+                                state["teachers"] = []
+                            if "analytics" not in state or not isinstance(state.get("analytics"), dict):
+                                state["analytics"] = get_default_state().get("analytics", {})
+                            return state
+                    except Exception as e:
+                        if attempt < 2:
+                            time.sleep(0.01 * (attempt + 1))
+                            continue
+                        print(f"[!] Warning: Failed to load state from {tf}: {e}")
         state = get_default_state()
         save_state(state)
         return state
@@ -432,6 +435,14 @@ def save_state(state: Dict[str, Any]) -> None:
             with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2)
             os.replace(tmp_file, STATE_FILE)
+
+            # Secondary persistent backup
+            try:
+                backup_file = STATE_FILE.parent / "app_state_backup.json"
+                with open(backup_file, "w", encoding="utf-8") as bf:
+                    json.dump(state, bf, indent=2)
+            except Exception:
+                pass
         except Exception as e:
             print(f"[!] Warning: Failed to persist state: {e}")
 
@@ -4924,10 +4935,164 @@ def create_flask_app():
             "deleted_count": deleted_fb_count
         })
 
+    @app.route("/api/cloud/status", methods=["GET"])
+    def api_cloud_status():
+        firestore_db.maybe_reconnect()
         return jsonify({
-            "status": "deleted_all",
-            "message": f"All teacher accounts ({deleted_fb_count} from cloud) have been successfully deleted.",
-            "deleted_count": deleted_fb_count
+            "status": "ok",
+            "cloud_sync": firestore_db.is_connected,
+            "firebase_project": "data-to-dirt-f6ef7",
+            "is_deleted": not firestore_db.is_connected,
+            "restore_url": "https://console.cloud.google.com/iam-admin/projects?pendingDeletion=true",
+            "message": "Connected to Cloud Firestore" if firestore_db.is_connected else "Cloud Firestore offline: Google Cloud project data-to-dirt-f6ef7 is pending deletion in Google Cloud Console. Click Restore in Cloud Console to activate multi-device cloud syncing."
+        })
+
+    @app.route("/api/sync/rehydrate", methods=["POST"])
+    def api_sync_rehydrate():
+        """
+        Receives client-side persisted directory (students, teachers, passwords)
+        and ensures they are never lost across ephemeral container restarts.
+        Merges seamlessly without duplicating IDs or overwriting higher eco-points.
+        """
+        firestore_db.maybe_reconnect()
+        data = request.get_json(silent=True) or {}
+        client_students = data.get("students") or []
+        client_teachers = data.get("teachers") or []
+        client_passwords = data.get("passwords") or {}
+        deleted_student_ids = set((x or "").lower() for x in data.get("deleted_student_ids", []))
+        deleted_teacher_ids = set((x or "").lower() for x in data.get("deleted_teacher_ids", []))
+
+        state = load_state()
+        modified = False
+
+        # Merge students
+        current_students = state.setdefault("students", [])
+        existing_stu_map = {
+            (s.get("student_id") or s.get("user_id") or "").lower(): s
+            for s in current_students if (s.get("student_id") or s.get("user_id"))
+        }
+
+        for cs in client_students:
+            if not isinstance(cs, dict):
+                continue
+            sid = (cs.get("student_id") or cs.get("user_id") or "").strip().lower()
+            if not sid or sid in deleted_student_ids:
+                continue
+            if sid in existing_stu_map:
+                existing = existing_stu_map[sid]
+                if int(cs.get("eco_points") or 0) > int(existing.get("eco_points") or 0):
+                    existing["eco_points"] = int(cs.get("eco_points") or 0)
+                    existing["bytes_cleared"] = int(cs.get("bytes_cleared") or 0)
+                    modified = True
+                if cs.get("pin") and not existing.get("pin"):
+                    existing["pin"] = cs.get("pin")
+                    existing["password"] = cs.get("pin")
+                    modified = True
+            else:
+                current_students.append(cs)
+                existing_stu_map[sid] = cs
+                modified = True
+                if firestore_db.is_connected:
+                    try:
+                        firestore_db.create_student_record(
+                            student_id=cs.get("student_id") or cs.get("user_id"),
+                            name=cs.get("name", "Student"),
+                            class_code=cs.get("class_code", "grade5"),
+                            created_by=cs.get("created_by", "Rehydrated")
+                        )
+                    except Exception:
+                        pass
+
+        # Merge teachers
+        current_teachers = state.setdefault("teachers", [])
+        existing_tch_map = {
+            (t.get("teacher_id") or t.get("user_id") or "").lower(): t
+            for t in current_teachers if (t.get("teacher_id") or t.get("user_id"))
+        }
+
+        for ct in client_teachers:
+            if not isinstance(ct, dict):
+                continue
+            tid = (ct.get("teacher_id") or ct.get("user_id") or "").strip().lower()
+            if not tid or tid in deleted_teacher_ids:
+                continue
+            if tid not in existing_tch_map:
+                current_teachers.append(ct)
+                existing_tch_map[tid] = ct
+                clean_pin = ct.get("pin") or ct.get("password") or "teacher123"
+                state.setdefault("auth", {}).setdefault("teacher_passwords", {})[tid] = clean_pin
+                modified = True
+                if firestore_db.is_connected:
+                    try:
+                        firestore_db.create_teacher_record(
+                            teacher_id=tid,
+                            name=ct.get("name", "Teacher"),
+                            class_code=ct.get("class_code", "all"),
+                            pin=clean_pin,
+                            created_by=ct.get("created_by", "Rehydrated")
+                        )
+                    except Exception:
+                        pass
+
+        # Merge student passwords
+        if client_passwords and isinstance(client_passwords, dict):
+            pw_map = state.setdefault("student_passwords", {})
+            for k, v in client_passwords.items():
+                if k and v and k.lower() not in pw_map:
+                    pw_map[k.lower()] = v
+                    pw_map[k.upper()] = v
+                    modified = True
+
+        if modified:
+            save_state(state)
+
+        return jsonify({
+            "status": "ok",
+            "rehydrated": modified,
+            "students": state.get("students", []),
+            "teachers": state.get("teachers", []),
+            "cloud_sync": firestore_db.is_connected
+        })
+
+    @app.route("/api/admin/export_data", methods=["GET"])
+    @default_auth_service.require_role("teacher")
+    def api_admin_export_data():
+        """Exports complete database backup as JSON download."""
+        state = load_state()
+        from flask import Response
+        dump_str = json.dumps(state, indent=2)
+        filename = f"datatodirt_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        return Response(
+            dump_str,
+            mimetype="application/json",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+
+    @app.route("/api/admin/import_data", methods=["POST"])
+    @default_auth_service.require_role("teacher")
+    def api_admin_import_data():
+        """Restores complete database from uploaded JSON backup."""
+        data = request.get_json(silent=True) or {}
+        if not data or not isinstance(data, dict):
+            return jsonify({"status": "error", "message": "Invalid JSON backup payload"}), 400
+        
+        state = load_state()
+        if "students" in data and isinstance(data["students"], list):
+            state["students"] = data["students"]
+        if "teachers" in data and isinstance(data["teachers"], list):
+            state["teachers"] = data["teachers"]
+            state["teachers_cleared"] = False
+        if "student_passwords" in data and isinstance(data["student_passwords"], dict):
+            state["student_passwords"] = data["student_passwords"]
+        if "ecofund" in data and isinstance(data["ecofund"], dict):
+            state["ecofund"] = data["ecofund"]
+            
+        save_state(state)
+        return jsonify({
+            "status": "restored",
+            "message": "Database restored successfully from backup!",
+            "total_students": len(state.get("students", [])),
+            "total_teachers": len(state.get("teachers", []))
         })
 
     @app.route("/api/analytics/track", methods=["POST"])

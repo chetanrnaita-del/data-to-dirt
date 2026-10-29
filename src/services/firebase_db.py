@@ -31,7 +31,17 @@ class FirestoreDB:
     def __init__(self):
         self.db = None
         self.is_connected = False
+        self._last_reconnect_attempt = 0
         self._init_firebase()
+
+    def maybe_reconnect(self):
+        """Attempts to reconnect if currently disconnected and at least 30s have elapsed."""
+        if self.is_connected:
+            return
+        now = time.time()
+        if now - getattr(self, "_last_reconnect_attempt", 0) > 30:
+            self._last_reconnect_attempt = now
+            self._init_firebase()
 
     def _init_firebase(self):
         if os.environ.get("TEST_MODE") == "1" or "unittest" in sys.modules or "pytest" in sys.modules:
@@ -208,6 +218,7 @@ class FirestoreDB:
 
     def create_student_record(self, student_id: str, name: str, class_code: str, created_by: str = "Teacher") -> Dict[str, Any]:
         """Creates and stores a new student record in Firebase Firestore and class directory."""
+        self.maybe_reconnect()
         clean_id = (student_id or "").strip()
         clean_name = (name or "").strip() or clean_id
         clean_class = (class_code or "").strip().lower() or "general"
@@ -300,6 +311,7 @@ class FirestoreDB:
 
     def create_teacher_record(self, teacher_id: str, name: str, class_code: str, pin: str = "teacher123", created_by: str = "Admin") -> Dict[str, Any]:
         """Creates and stores a new teacher record in Firebase Firestore."""
+        self.maybe_reconnect()
         clean_id = (teacher_id or "").strip()
         clean_name = (name or "").strip() or clean_id
         clean_class = (class_code or "").strip().lower() or "all"
@@ -339,6 +351,7 @@ class FirestoreDB:
 
     def get_teachers_list(self, limit: int = 250) -> List[Dict[str, Any]]:
         """Retrieves registered teacher directory from Cloud Firestore."""
+        self.maybe_reconnect()
         if not self.is_connected:
             return []
 
@@ -480,6 +493,7 @@ class FirestoreDB:
 
     def get_class_leaderboard(self, class_code: str = "", limit: int = 25) -> List[Dict[str, Any]]:
         """Returns leaderboard sorted by eco_points for a specific class or global."""
+        self.maybe_reconnect()
         if not self.is_connected:
             return []
 
