@@ -113,7 +113,7 @@ class StudentDashboardView {
                 <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-gdrive-personal" title="Clean Personal Google Drive (@gmail.com or Outside School)">
                   🌐 Personal Drive
                 </button>
-                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Clean School Google Drive (@billabonghighschool.com)">
+                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Clean School Google Drive (Lighthouse Email)">
                   🏫 School Drive
                 </button>
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
@@ -426,7 +426,7 @@ class StudentDashboardView {
     document.getElementById("modal-gdrive-options")?.remove();
     const existingToken = localStorage.getItem("d2d_google_access_token");
     const activeProvider = localStorage.getItem("d2d_google_provider") || "school";
-    const providerLabel = activeProvider === "personal" ? "Personal / Outside Account" : "School Account (@bh05.billabonghighschool.com)";
+    const providerLabel = activeProvider === "personal" ? "Personal / Outside Account" : "School Account (Lighthouse Email)";
 
     const modal = document.createElement("div");
     modal.className = "retro-modal-backdrop";
@@ -463,9 +463,9 @@ class StudentDashboardView {
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <button class="retro-btn retro-btn-gold" id="btn-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>🏫 Connect School Drive (@billabonghighschool.com)</strong>
+            <strong>🏫 Connect School Drive (Lighthouse Email)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              For Billabong High School student and teacher Google accounts.
+              For Lighthouse student and teacher Google accounts.
             </div>
           </button>
 
@@ -799,7 +799,7 @@ class StudentDashboardView {
         localStorage.removeItem("d2d_google_access_token");
         const activeProvider = localStorage.getItem("d2d_google_provider") || res.provider || "personal";
         const isPersonal = activeProvider === "personal";
-        const providerName = isPersonal ? "Personal Account (@gmail.com)" : "School Account (@billabonghighschool.com)";
+        const providerName = isPersonal ? "Personal Account (@gmail.com)" : "School Account (Lighthouse Email)";
         if (banner) {
           banner.style.borderColor = "var(--c-amber-border, #d97706)";
           banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";

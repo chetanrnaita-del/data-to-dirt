@@ -135,7 +135,7 @@ class TeacherConfirmationView {
               <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-teacher-scan-gdrive-personal" title="Personal Google Drive (@gmail.com / Outside Account)">
                 🌐 Personal Drive
               </button>
-              <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-teacher-scan-gdrive" title="School Google Drive (@billabonghighschool.com)">
+              <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-teacher-scan-gdrive" title="School Google Drive (Lighthouse Email)">
                 🏫 School Drive
               </button>
               <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-teacher-scan-local">
@@ -1181,7 +1181,7 @@ class TeacherConfirmationView {
         localStorage.removeItem("d2d_google_access_token");
         const activeProvider = localStorage.getItem("d2d_google_provider") || res.provider || "personal";
         const isPersonal = activeProvider === "personal";
-        const providerName = isPersonal ? "Personal Account (@gmail.com)" : "School Account (@billabonghighschool.com)";
+        const providerName = isPersonal ? "Personal Account (@gmail.com)" : "School Account (Lighthouse Email)";
         if (banner) {
           banner.style.borderColor = "var(--c-amber-border, #d97706)";
           banner.style.backgroundColor = "rgba(217, 119, 6, 0.12)";
@@ -1594,7 +1594,7 @@ class TeacherConfirmationView {
     document.getElementById("modal-teacher-gdrive")?.remove();
     const existingToken = localStorage.getItem("d2d_google_access_token");
     const activeProvider = localStorage.getItem("d2d_google_provider") || "school";
-    const providerLabel = activeProvider === "personal" ? "Personal / Outside Account" : "School Account (@bh05.billabonghighschool.com)";
+    const providerLabel = activeProvider === "personal" ? "Personal / Outside Account" : "School Account (Lighthouse Email)";
 
     const modal = document.createElement("div");
     modal.className = "retro-modal-backdrop";
@@ -1631,9 +1631,9 @@ class TeacherConfirmationView {
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <button class="retro-btn retro-btn-gold" id="btn-tch-gdrive-school" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>🏫 Connect School Drive (@billabonghighschool.com)</strong>
+            <strong>🏫 Connect School Drive (Lighthouse Email)</strong>
             <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              For official Billabong High School teacher and faculty accounts.
+              For official Lighthouse teacher and faculty accounts.
             </div>
           </button>
 

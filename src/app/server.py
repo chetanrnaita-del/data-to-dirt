@@ -2263,7 +2263,7 @@ def create_flask_app():
 
             # 3. Require authentic Google Drive connection - zero synthetic mock injections
             if not live_success:
-                prov_label = "Personal Account (@gmail.com)" if scan_provider == "personal" else "School Account (@billabonghighschool.com)"
+                prov_label = "Personal Account (@gmail.com)" if scan_provider == "personal" else "School Account (Lighthouse Email)"
                 if not access_token:
                     return jsonify({
                         "status": "needs_auth",

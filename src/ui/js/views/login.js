@@ -117,7 +117,7 @@ class LoginView {
             </a>
 
             <a href="/auth/google/login?provider=school" class="retro-btn" id="btn-login-google-school" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; background: #eef6ef; border: 1.5px solid #2d6a36; border-radius: 10px; color: #1e4a23; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.2s;">
-              <span>🏫 Sign In with School Google Account (@billabonghighschool.com)</span>
+              <span>🏫 Sign In with Lighthouse Email</span>
             </a>
           </div>
 
@@ -277,7 +277,7 @@ class LoginView {
           labelPass.textContent = "Account Mode";
           inputPass.placeholder = "Guest / Personal (No password required)";
           inputPass.value = "student123";
-          if (hintUser) hintUser.textContent = "💡 Outside Billabong High School? No school registration required.";
+          if (hintUser) hintUser.textContent = "💡 Outside Lighthouse? No school registration required.";
           if (hintPass) hintPass.textContent = "💡 Click 'Proceed →' to continue as guest or use Google Sign-in below.";
           if (studentPills) studentPills.style.display = 'none';
         } else {
