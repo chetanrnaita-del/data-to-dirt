@@ -1055,7 +1055,15 @@ def create_flask_app():
                 print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
                 session["google_access_token"] = cached_token
                 session["oauth_provider"] = provider
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}")
+                session_user_id = f"GOOGLE-PERSONAL-{int(now_ts)}" if provider == "personal" else f"GOOGLE-SCHOOL-{int(now_ts)}"
+                session_user_name = "Personal Account" if provider == "personal" else "School Account"
+                session_tok = ""
+                try:
+                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code="all", name=session_user_name)
+                    session_tok = oauth_sess.get("token", "")
+                except Exception as ex:
+                    print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}")
 
         if not redirect_uri:
             redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
@@ -1080,7 +1088,15 @@ def create_flask_app():
                 session["oauth_provider"] = provider
                 if code:
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}")
+                session_user_id = f"GOOGLE-PERSONAL-{int(now_ts)}" if provider == "personal" else f"GOOGLE-SCHOOL-{int(now_ts)}"
+                session_user_name = "Personal Account" if provider == "personal" else "School Account"
+                session_tok = ""
+                try:
+                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code="all", name=session_user_name)
+                    session_tok = oauth_sess.get("token", "")
+                except Exception as ex:
+                    print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}")
         except urllib.error.HTTPError as e:
             error_body = ""
             try:
@@ -2365,8 +2381,8 @@ def create_flask_app():
 
         state = load_state()
 
-        if role not in ["student", "teacher", "admin"]:
-            return jsonify({"status": "error", "message": f"Invalid role '{role}'. Must be student, teacher, or admin."}), 400
+        if role not in ["student", "teacher", "admin", "personal"]:
+            return jsonify({"status": "error", "message": f"Invalid role '{role}'. Must be student, teacher, admin, or personal."}), 400
 
         # Check safety lock status before processing credentials
         client_ip = get_client_ip()
@@ -2621,17 +2637,39 @@ def create_flask_app():
                 return jsonify({"status": "error", "message": str(e)}), 401
 
         # ==========================================
-        # 3. STUDENT AUTHENTICATION
+        # 3. STUDENT & PERSONAL ACCOUNT AUTHENTICATION
         # ==========================================
-        if role == "student":
+        if role in ["student", "personal"]:
+            entered_ident = user_id.strip() if user_id else ""
+            clean_ident = entered_ident.lower()
+            clean_ident_alphanum = re.sub(r'[^a-zA-Z0-9]', '', clean_ident)
+
+            # Support Personal / Outside / Guest participants directly without rigid school rosters
+            if role == "personal" or clean_ident in ["guest", "personal", "guest_personal", "external", "participant", "visitor", "outside"] or clean_ident.startswith("guest"):
+                disp_name = user_id.strip() if (user_id and clean_ident not in ["guest", "personal", "guest_personal", "external", "outside", "visitor"]) else "Personal Account"
+                session = default_auth_service.create_session(
+                    role="student",
+                    user_id=f"PERSONAL-{clean_ident_alphanum[:8] or 'GUEST'}",
+                    class_code="all",
+                    name=disp_name
+                )
+                state["auth"]["current_role"] = "student"
+                save_state(state)
+                clear_auth_lockout(role, lock_id, client_ip)
+                return jsonify({
+                    "status": "authenticated",
+                    "role": "student",
+                    "user_id": f"PERSONAL-{clean_ident_alphanum[:8] or 'GUEST'}",
+                    "name": disp_name,
+                    "class_code": "all",
+                    "token": session["token"],
+                    "expires_at": session["expires_at"]
+                })
+
             if not user_id:
                 return jsonify({"status": "error", "message": "Student ID or Name is required."}), 401
             if not pin:
                 return jsonify({"status": "error", "message": "Class code or password is required."}), 401
-
-            entered_ident = user_id.strip()
-            clean_ident = entered_ident.lower()
-            clean_ident_alphanum = re.sub(r'[^a-zA-Z0-9]', '', clean_ident)
 
             matched_student = None
 

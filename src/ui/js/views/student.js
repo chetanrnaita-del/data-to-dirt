@@ -109,8 +109,11 @@ class StudentDashboardView {
                 🤖 AI Data Cleaner
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Google Drive: Live API & Folder Picker">
-                  ☁️ Drive
+                <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-scan-gdrive-personal" title="Clean Personal Google Drive (@gmail.com or Outside School)">
+                  🌐 Personal Drive
+                </button>
+                <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-scan-gdrive" title="Clean School Google Drive (@billabonghighschool.com)">
+                  🏫 School Drive
                 </button>
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
                   <span id="btn-scan-local-text">📱 Device</span>
@@ -252,9 +255,25 @@ class StudentDashboardView {
       }
     }
 
+    const btnScanDrivePersonal = document.getElementById("btn-scan-gdrive-personal");
+    if (btnScanDrivePersonal) {
+      btnScanDrivePersonal.addEventListener("click", () => {
+        if (window.RetroAudio) window.RetroAudio.playBlip();
+        localStorage.setItem("d2d_google_provider", "personal");
+        const existingToken = localStorage.getItem("d2d_google_access_token");
+        const activeProvider = localStorage.getItem("d2d_google_provider");
+        if (existingToken && activeProvider === "personal") {
+          this.executeScan("__google_drive__", true, "drive", [], existingToken);
+        } else {
+          this.showGoogleDriveModal();
+        }
+      });
+    }
+
     if (btnScanDrive) {
       btnScanDrive.addEventListener("click", () => {
         if (window.RetroAudio) window.RetroAudio.playBlip();
+        localStorage.setItem("d2d_google_provider", "school");
         this.showGoogleDriveModal();
       });
     }

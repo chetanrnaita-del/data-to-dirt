@@ -35,15 +35,18 @@ class LoginView {
           <h2 style="color: #2b1f14; font-size: 20px; font-weight: 700; margin-bottom: 6px;">Sign In to Account</h2>
           <div style="color: #6d5b4a; font-size: 13px; margin-bottom: 22px;">Choose your role to access your eco dashboard</div>
           
-          <div style="display: flex; gap: 10px; margin-bottom: 24px;">
-            <button class="role-btn active" data-role="student" style="flex: 1; padding: 12px 10px; border: 2px solid #2d6a36; border-radius: 10px; background: #eef6ef; color: #1e4a23; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
-              <span style="font-size: 20px;">🧑‍🎓</span> Student
+          <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+            <button class="role-btn active" data-role="student" style="flex: 1; min-width: 90px; padding: 12px 6px; border: 2px solid #2d6a36; border-radius: 10px; background: #eef6ef; color: #1e4a23; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span style="font-size: 18px;">🧑‍🎓</span> Student
             </button>
-            <button class="role-btn" data-role="teacher" style="flex: 1; padding: 12px 10px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
-              <span style="font-size: 20px;">👨‍🏫</span> Staff
+            <button class="role-btn" data-role="teacher" style="flex: 1; min-width: 90px; padding: 12px 6px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span style="font-size: 18px;">👨‍🏫</span> Staff
             </button>
-            <button class="role-btn" data-role="admin" style="flex: 1; padding: 12px 10px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
-              <span style="font-size: 20px;">⚙️</span> Admin
+            <button class="role-btn" data-role="personal" id="role-btn-personal" style="flex: 1; min-width: 100px; padding: 12px 6px; border: 1.5px solid #b07542; border-radius: 10px; background: #fffdfa; color: #784824; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span style="font-size: 18px;">🌐</span> Personal
+            </button>
+            <button class="role-btn" data-role="admin" style="flex: 1; min-width: 80px; padding: 12px 6px; border: 1.5px solid #ded4c5; border-radius: 10px; background: #ffffff; color: #6d5b4a; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span style="font-size: 18px;">⚙️</span> Admin
             </button>
           </div>
 
@@ -99,6 +102,24 @@ class LoginView {
           <button id="btn-proceed" style="width: 100%; padding: 14px; background: #2d6a36; color: #ffffff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: background 0.2s, transform 0.1s; box-shadow: 0 4px 12px rgba(45, 106, 54, 0.28);">
             Proceed →
           </button>
+
+          <!-- Outside & Personal Google Account Connection Section -->
+          <div style="display: flex; align-items: center; margin: 20px 0 14px 0; gap: 10px;">
+            <div style="flex: 1; height: 1px; background: #e2d7c5;"></div>
+            <span style="font-size: 11px; font-weight: bold; color: #8c7b6c; text-transform: uppercase; letter-spacing: 0.5px;">Or Sign In With Google</span>
+            <div style="flex: 1; height: 1px; background: #e2d7c5;"></div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 9px;">
+            <a href="/auth/google/login?provider=personal" class="retro-btn" id="btn-login-google-personal" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 14px; background: #ffffff; border: 2px solid #b07542; border-radius: 10px; color: #784824; font-weight: 700; font-size: 13.5px; box-shadow: 0 2px 8px rgba(176, 117, 66, 0.15); cursor: pointer; transition: all 0.2s;">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+              <span>🌐 <strong>Sign In with Personal Account</strong> (@gmail.com)</span>
+            </a>
+
+            <a href="/auth/google/login?provider=school" class="retro-btn" id="btn-login-google-school" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; background: #eef6ef; border: 1.5px solid #2d6a36; border-radius: 10px; color: #1e4a23; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.2s;">
+              <span>🏫 Sign In with School Google Account (@billabonghighschool.com)</span>
+            </a>
+          </div>
 
           <!-- PWA Install Option on Login -->
           <div style="margin-top: 16px; text-align: center; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
@@ -250,6 +271,15 @@ class LoginView {
           if (hintUser) hintUser.textContent = "💡 Enter your Full Name, Teacher ID, or assigned Class Code.";
           if (hintPass) hintPass.textContent = "💡 Enter your teacher password or custom PIN.";
           if (studentPills) studentPills.style.display = 'none';
+        } else if (this.selectedRole === 'personal') {
+          labelUser.textContent = "Your Name or Email (Optional)";
+          inputUser.placeholder = "e.g. Alex or alex@gmail.com";
+          labelPass.textContent = "Account Mode";
+          inputPass.placeholder = "Guest / Personal (No password required)";
+          inputPass.value = "student123";
+          if (hintUser) hintUser.textContent = "💡 Outside Billabong High School? No school registration required.";
+          if (hintPass) hintPass.textContent = "💡 Click 'Proceed →' to continue as guest or use Google Sign-in below.";
+          if (studentPills) studentPills.style.display = 'none';
         } else {
           labelUser.textContent = "Admin ID";
           inputUser.placeholder = "Enter Admin ID";
@@ -292,10 +322,11 @@ class LoginView {
     btnProceed.addEventListener('click', async () => {
       if (this._lockoutInterval) return;
 
-      const user = inputUser.value.trim();
-      const pass = inputPass.value.trim();
+      const isPersonal = this.selectedRole === 'personal';
+      const user = inputUser.value.trim() || (isPersonal ? "Personal User" : "");
+      const pass = inputPass.value.trim() || (isPersonal ? "student123" : "");
       
-      if (!user) {
+      if (!user && !isPersonal) {
         errorEl.textContent = this.selectedRole === 'student' 
           ? "Please enter your Student ID or Full Name." 
           : (this.selectedRole === 'teacher' 
@@ -307,7 +338,7 @@ class LoginView {
         return;
       }
 
-      if (!pass) {
+      if (!pass && !isPersonal) {
         errorEl.textContent = this.selectedRole === 'student' 
           ? "Please enter your Class Code or password to proceed." 
           : (this.selectedRole === 'teacher' 
@@ -348,18 +379,22 @@ class LoginView {
             localStorage.setItem("d2d_session_token", data.token);
           }
           // Save credentials for session restore after OAuth redirect / server restart
-          localStorage.setItem("d2d_role", this.selectedRole);
+          const targetRole = this.selectedRole === 'personal' ? 'student' : this.selectedRole;
+          localStorage.setItem("d2d_role", targetRole);
+          if (this.selectedRole === 'personal') {
+            localStorage.setItem("d2d_google_provider", "personal");
+          }
           const effectiveUserId = data.user_id || user;
           localStorage.setItem("d2d_user_id", effectiveUserId);
           localStorage.setItem("d2d_pin", pass);
           if (data.class_code) {
             localStorage.setItem("d2d_class_code", data.class_code);
           }
-          if (data.student_name || data.teacher_name) {
-            localStorage.setItem("d2d_student_name", data.student_name || data.teacher_name);
+          if (data.student_name || data.teacher_name || data.name) {
+            localStorage.setItem("d2d_student_name", data.student_name || data.teacher_name || data.name);
           }
           // Instruct app to switch to the main interface for this role
-          this.app.completeLogin(this.selectedRole, effectiveUserId, pass, data.class_code);
+          this.app.completeLogin(targetRole, effectiveUserId, pass, data.class_code || "all");
         } else {
           // Check if safety lock triggered or active
           if (data.error_code === "safety_lock" || (data.lockout_seconds && data.lockout_seconds > 0)) {
@@ -385,6 +420,21 @@ class LoginView {
         }
       }
     });
+
+    const btnGooglePersonal = container.querySelector('#btn-login-google-personal');
+    if (btnGooglePersonal) {
+      btnGooglePersonal.addEventListener('click', () => {
+        localStorage.setItem("d2d_google_provider", "personal");
+        localStorage.setItem("d2d_role", "student");
+      });
+    }
+
+    const btnGoogleSchool = container.querySelector('#btn-login-google-school');
+    if (btnGoogleSchool) {
+      btnGoogleSchool.addEventListener('click', () => {
+        localStorage.setItem("d2d_google_provider", "school");
+      });
+    }
 
     const btnInstall = container.querySelector('#btn-login-install');
     if (btnInstall) {

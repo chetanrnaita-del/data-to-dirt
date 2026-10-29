@@ -132,8 +132,11 @@ class TeacherConfirmationView {
               🤖 My Data Cleaner — Direct Delete (No Approval Needed)
             </div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-              <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-teacher-scan-gdrive" title="Google Drive: Live API">
-                ☁️ Drive
+              <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-teacher-scan-gdrive-personal" title="Personal Google Drive (@gmail.com / Outside Account)">
+                🌐 Personal Drive
+              </button>
+              <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-teacher-scan-gdrive" title="School Google Drive (@billabonghighschool.com)">
+                🏫 School Drive
               </button>
               <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-teacher-scan-local">
                 <span id="btn-teacher-scan-local-text">📱 Device</span>
@@ -287,13 +290,29 @@ class TeacherConfirmationView {
     });
 
     // Teacher scan buttons
+    const btnTeacherScanDrivePersonal = document.getElementById("btn-teacher-scan-gdrive-personal");
     const btnTeacherScanDrive = document.getElementById("btn-teacher-scan-gdrive");
     const btnTeacherScanLocal = document.getElementById("btn-teacher-scan-local");
     const btnTeacherRevoke = document.getElementById("btn-teacher-revoke-scan");
 
+    if (btnTeacherScanDrivePersonal) {
+      btnTeacherScanDrivePersonal.addEventListener("click", () => {
+        if (this.audioSynth) this.audioSynth.playBlip();
+        localStorage.setItem("d2d_google_provider", "personal");
+        const existingToken = localStorage.getItem("d2d_google_access_token");
+        const activeProvider = localStorage.getItem("d2d_google_provider");
+        if (existingToken && activeProvider === "personal") {
+          this.executeTeacherScan("__google_drive__", true, "drive", [], existingToken);
+        } else {
+          this.showTeacherGoogleDriveModal();
+        }
+      });
+    }
+
     if (btnTeacherScanDrive) {
       btnTeacherScanDrive.addEventListener("click", () => {
         if (this.audioSynth) this.audioSynth.playBlip();
+        localStorage.setItem("d2d_google_provider", "school");
         this.showTeacherGoogleDriveModal();
       });
     }
