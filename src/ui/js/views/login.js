@@ -284,6 +284,19 @@ class LoginView {
       });
     });
 
+    // Helper to update Google school button link with selected grade and student hint
+    const updateGoogleSchoolBtnHref = () => {
+      const schoolBtn = container.querySelector('#btn-login-google-school');
+      if (!schoolBtn) return;
+      const selectedGrade = inputPass.value.trim() || localStorage.getItem("d2d_class_code") || "grade5";
+      const userHint = inputUser.value.trim() || localStorage.getItem("d2d_student_name") || localStorage.getItem("d2d_user_id") || "";
+      let href = `/auth/google/login?provider=school&grade=${encodeURIComponent(selectedGrade)}`;
+      if (userHint && !userHint.toLowerCase().startsWith("guest") && !userHint.toLowerCase().startsWith("personal")) {
+        href += `&student_hint=${encodeURIComponent(userHint)}`;
+      }
+      schoolBtn.href = href;
+    };
+
     // Bind student class quick pills
     container.querySelectorAll('.stu-class-pill').forEach(pill => {
       pill.addEventListener('click', () => {
@@ -291,10 +304,7 @@ class LoginView {
         const selectedGrade = pill.dataset.class;
         inputPass.value = selectedGrade;
         localStorage.setItem("d2d_class_code", selectedGrade);
-        const schoolBtn = container.querySelector('#btn-login-google-school');
-        if (schoolBtn) {
-          schoolBtn.href = `/auth/google/login?provider=school&grade=${encodeURIComponent(selectedGrade)}`;
-        }
+        updateGoogleSchoolBtnHref();
         container.querySelectorAll('.stu-class-pill').forEach(p => {
           p.style.background = "#f5efe6";
           p.style.borderColor = "#d4c8b8";
@@ -305,8 +315,13 @@ class LoginView {
       });
     });
 
+    inputUser.addEventListener('input', updateGoogleSchoolBtnHref);
+    inputPass.addEventListener('input', updateGoogleSchoolBtnHref);
+    updateGoogleSchoolBtnHref();
+
     container.querySelector('#btn-login-google-school')?.addEventListener('click', () => {
       localStorage.setItem("d2d_google_provider", "school");
+      updateGoogleSchoolBtnHref();
     });
 
     const btnProceed = container.querySelector('#btn-proceed');

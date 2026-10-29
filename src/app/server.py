@@ -150,16 +150,31 @@ else:
     STATE_FILE = DATA_DIR / "app_state.json"
 
 
+def is_id_token(token: str) -> bool:
+    t = (token or "").lower().strip()
+    if not t:
+        return False
+    if any(t.startswith(prefix) for prefix in ("stu-", "stu_", "teacher-", "teacher_", "google-school-", "test-", "user-", "admin-")):
+        return True
+    return False
+
+
 def fuzzy_name_match(entered: str, candidate: str) -> bool:
     """
     Tolerates minor spelling differences (e.g. agarwal vs agarawal),
     case differences, single-word or last-name matches, and common typos.
+    Never fuzzy matches structured system IDs.
     """
     ent = (entered or "").lower().strip()
     cand = (candidate or "").lower().strip()
     if not ent or not cand:
         return False
-    if ent == cand or ent in cand or cand in ent:
+    if ent == cand:
+        return True
+    # Structured system IDs must never be fuzzy matched
+    if is_id_token(ent) or is_id_token(cand):
+        return False
+    if ent in cand or cand in ent:
         return True
     
     # Overall similarity ratio (handles 1-2 character typos or alternate spellings)
@@ -410,8 +425,8 @@ def save_state(state: Dict[str, Any]) -> None:
             print(f"[!] Warning: Failed to persist state: {e}")
 
 
-def _resolve_google_user_profile(access_token: str, provider: str = "school", target_grade: str = "grade5") -> Dict[str, Any]:
-    """Fetches verified Google user profile and returns stable user_id, real name, email, and class_code."""
+def _resolve_google_user_profile(access_token: str, provider: str = "school", target_grade: str = "grade5", student_hint: str = "") -> Dict[str, Any]:
+    """Fetches verified Google user profile and unifies with existing student records using fuzzy matching, email, and ID."""
     user_info = {}
     if access_token:
         try:
@@ -426,8 +441,10 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
     google_name = (user_info.get("name") or "").strip()
     google_email = (user_info.get("email") or "").strip().lower()
     google_sub = (user_info.get("sub") or "").strip()
+    clean_hint = (student_hint or "").strip()
 
-    # Stable, deterministic student ID
+    # Stable, deterministic fallback student ID
+    clean_email_part = ""
     if google_email:
         clean_email_part = re.sub(r'[^a-zA-Z0-9]', '', google_email.split("@")[0]).upper()[:12]
         stable_id = f"STU-{clean_email_part}"
@@ -439,44 +456,173 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
     display_name = google_name
     if not display_name and google_email:
         display_name = google_email.split("@")[0].replace(".", " ").title()
+    if not display_name and clean_hint and not clean_hint.upper().startswith("STU-"):
+        display_name = clean_hint
     if not display_name:
         display_name = "Student"
 
     norm_grade = normalize_grade(target_grade) or "grade5"
+    email_user_guess = re.sub(r'[^a-zA-Z0-9]', ' ', google_email.split("@")[0]).strip() if google_email else ""
+
+    state = load_state()
+    students_list = state.get("students", [])
+    default_stu = state.get("student")
+
+    # Helper function to check if candidate student matches Google user
+    def matches_candidate(cand: Dict[str, Any]) -> bool:
+        if not isinstance(cand, dict):
+            return False
+        cid = str(cand.get("student_id") or cand.get("user_id") or "").strip().lower()
+        cname = str(cand.get("name") or "").strip()
+        cemail = str(cand.get("email") or "").strip().lower()
+
+        # 1. Exact email match
+        if google_email and cemail and cemail == google_email:
+            return True
+
+        # 2. Exact student ID match
+        if cid and cid in (stable_id.lower(), f"stu-{clean_email_part}".lower() if clean_email_part else ""):
+            return True
+
+        # 3. Match via student_hint (from login prompt)
+        if clean_hint:
+            h_low = clean_hint.lower()
+            if cid == h_low or cname.lower() == h_low:
+                return True
+            if fuzzy_name_match(clean_hint, cname):
+                return True
+
+        # 4. Exact or fuzzy name match with Google profile name
+        if display_name and display_name.lower() != "student":
+            if cname.lower() == display_name.lower() or fuzzy_name_match(display_name, cname):
+                return True
+
+        # 5. Fuzzy match with Google email username prefix
+        if email_user_guess and len(email_user_guess) >= 3:
+            if fuzzy_name_match(email_user_guess, cname):
+                return True
+
+        return False
 
     existing_record = None
+
+    # Check Firestore users if connected
     if firestore_db.is_connected:
         try:
+            # Check by stable_id
             doc = firestore_db.db.collection("users").document(stable_id).get()
             if doc.exists:
                 existing_record = doc.to_dict()
+            # Check by email
             elif google_email:
                 matches = list(firestore_db.db.collection("users").where("email", "==", google_email).limit(1).stream())
                 if matches:
                     existing_record = matches[0].to_dict()
-                    stable_id = existing_record.get("student_id") or existing_record.get("user_id") or stable_id
+            # Scan students in Firestore for candidate match
+            if not existing_record:
+                for qd in firestore_db.db.collection("users").where("role", "==", "student").stream():
+                    d = qd.to_dict()
+                    if matches_candidate(d):
+                        existing_record = d
+                        break
         except Exception as fe:
             print(f"[OAUTH WARN] Firestore lookup notice: {fe}")
 
-    state = load_state()
+    # Check local state students
     if not existing_record:
-        for s in state.get("students", []):
-            if s.get("student_id") == stable_id or (google_email and s.get("email") == google_email):
-                existing_record = s
-                break
+        # Check default student first
+        if default_stu and matches_candidate(default_stu):
+            existing_record = default_stu
+        else:
+            for s in students_list:
+                if matches_candidate(s):
+                    existing_record = s
+                    break
 
     if existing_record:
+        canonical_id = existing_record.get("student_id") or existing_record.get("user_id") or stable_id
         student_class = existing_record.get("class_code") or norm_grade
-        if display_name and display_name != "Student":
-            existing_record["name"] = display_name
-            if firestore_db.is_connected:
-                try:
-                    firestore_db.db.collection("users").document(stable_id).set({"name": display_name}, merge=True)
-                except Exception:
-                    pass
+
+        # Link Google email and sub
+        if google_email:
+            existing_record["email"] = google_email
+        if google_sub:
+            existing_record["google_sub"] = google_sub
+
+        # Preserve authentic display name if already human-readable
+        existing_name = (existing_record.get("name") or "").strip()
+        if existing_name and not existing_name.upper().startswith("STU-") and existing_name.lower() != "student" and not existing_name.upper().startswith("GOOGLE-SCHOOL-"):
+            final_name = existing_name
+        else:
+            final_name = display_name
+            existing_record["name"] = final_name
+
+        # Merge points / bytes and eliminate any ghost duplicates in state
+        all_stus = state.get("students", [])
+        cleaned_stus = []
+        max_bytes = existing_record.get("bytes_cleared", 0)
+        max_points = existing_record.get("eco_points", 0)
+        max_streak = existing_record.get("streak_days", 1)
+        max_trees = existing_record.get("trees", 0) or 0
+
+        for s in all_stus:
+            s_id = str(s.get("student_id") or s.get("user_id") or "")
+            if s is existing_record or s_id == canonical_id:
+                continue
+            if matches_candidate(s):
+                # Duplicate entry found - fold its stats into existing_record
+                max_bytes = max(max_bytes, s.get("bytes_cleared", 0))
+                max_points = max(max_points, s.get("eco_points", 0))
+                max_streak = max(max_streak, s.get("streak_days", 1))
+                max_trees = max(max_trees, s.get("trees", 0) or 0)
+            else:
+                cleaned_stus.append(s)
+
+        existing_record["bytes_cleared"] = max_bytes
+        existing_record["eco_points"] = max_points
+        existing_record["streak_days"] = max_streak
+        existing_record["trees"] = max_trees
+        existing_record["student_id"] = canonical_id
+        existing_record["user_id"] = canonical_id
+        existing_record["class_code"] = student_class
+
+        cleaned_stus.append(existing_record)
+        state["students"] = cleaned_stus
+
+        # Also update state["student"] if it refers to this user
+        if default_stu and (default_stu.get("student_id") == canonical_id or matches_candidate(default_stu)):
+            default_stu["student_id"] = canonical_id
+            default_stu["user_id"] = canonical_id
+            default_stu["name"] = final_name
+            default_stu["email"] = google_email
+            default_stu["bytes_cleared"] = max_bytes
+            default_stu["eco_points"] = max_points
+            default_stu["streak_days"] = max_streak
+            default_stu["trees"] = max_trees
+            default_stu["class_code"] = student_class
+
+        save_state(state)
+
+        if firestore_db.is_connected:
+            try:
+                firestore_db.db.collection("users").document(canonical_id).set({
+                    "student_id": canonical_id,
+                    "user_id": canonical_id,
+                    "name": final_name,
+                    "email": google_email,
+                    "class_code": student_class,
+                    "bytes_cleared": max_bytes,
+                    "eco_points": max_points,
+                    "streak_days": max_streak,
+                    "trees": max_trees
+                }, merge=True)
+            except Exception as fe:
+                print(f"[OAUTH WARN] Could not update Firestore user {canonical_id}: {fe}")
+
         return {
-            "student_id": stable_id,
-            "name": display_name or existing_record.get("name") or "Student",
+            "student_id": canonical_id,
+            "user_id": canonical_id,
+            "name": final_name,
             "class_code": student_class,
             "email": google_email,
             "existing": True
@@ -494,7 +640,7 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
             "trees": 0,
             "streak_days": 1,
             "daily_deletions_today": 0,
-            "daily_deletion_limit": 5,
+            "daily_deletion_limit": DAILY_DELETION_LIMIT,
             "created_at_iso": time.strftime("%Y-%m-%d %H:%M:%S")
         }
         if firestore_db.is_connected:
@@ -511,6 +657,7 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
 
         return {
             "student_id": stable_id,
+            "user_id": stable_id,
             "name": display_name,
             "class_code": norm_grade,
             "email": google_email,
@@ -545,9 +692,8 @@ def cleanup_ghost_users():
 def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = None) -> Dict[str, Any]:
     """Resolves and returns the student record in state matching student_id.
     
-    Guarantees strict isolation of daily deletion limits and statistics per individual student.
-    If student_id matches state['student']['student_id'] or name, returns state['student'].
-    Otherwise looks up student in state['students']. If not found, creates and appends an isolated record.
+    Guarantees strict isolation of daily deletion limits and statistics per individual student,
+    while unifying profiles using exact ID, email, and fuzzy name matching.
     """
     default_stu = state.setdefault("student", get_default_state()["student"])
     today = time.strftime("%Y-%m-%d")
@@ -559,16 +705,40 @@ def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = 
         return default_stu
 
     clean_id = str(student_id).strip()
-    if clean_id.lower() in (default_stu.get("student_id", "").strip().lower(), default_stu.get("name", "").strip().lower()):
+    def_name = (default_stu.get("name") or "").strip()
+    def_id = (default_stu.get("student_id") or default_stu.get("user_id") or "").strip()
+    def_email = (default_stu.get("email") or "").strip().lower()
+
+    if (clean_id.lower() in (def_id.lower(), def_name.lower()) or
+        (def_email and clean_id.lower() == def_email) or
+        (not is_id_token(clean_id) and def_name and not is_id_token(def_name) and fuzzy_name_match(clean_id, def_name))):
         return default_stu
 
     students_list = state.setdefault("students", [])
-    matched = next((s for s in students_list if s.get("student_id", "").strip().lower() == clean_id.lower() or s.get("name", "").strip().lower() == clean_id.lower()), None)
+
+    # 1. Exact ID, name, or email match
+    matched = next((s for s in students_list if 
+                   str(s.get("student_id") or s.get("user_id") or "").strip().lower() == clean_id.lower() or 
+                   str(s.get("name") or "").strip().lower() == clean_id.lower() or
+                   (s.get("email") and str(s.get("email")).strip().lower() == clean_id.lower())), None)
+
+    # 2. Fuzzy name match (only for non-ID human names)
+    if not matched and not is_id_token(clean_id):
+        matched = next((s for s in students_list if 
+                        not is_id_token(str(s.get("name") or "")) and 
+                        fuzzy_name_match(clean_id, str(s.get("name") or ""))), None)
+
+    # 3. Email username prefix match
+    if not matched and "@" in clean_id:
+        prefix = clean_id.split("@")[0].replace(".", " ").replace("_", " ").strip()
+        matched = next((s for s in students_list if fuzzy_name_match(prefix, str(s.get("name") or ""))), None)
+
     if not matched:
         matched = {
             "student_id": clean_id,
+            "user_id": clean_id,
             "name": clean_id,
-            "class_code": "bio101",
+            "class_code": "grade5",
             "bytes_cleared": 0,
             "eco_points": 0,
             "trees": 0,
@@ -1194,6 +1364,7 @@ def create_flask_app():
             provider = "school"
 
         target_grade = normalize_grade(request.args.get("grade") or request.args.get("class_code") or "grade5")
+        student_hint = request.args.get("student_hint", "").strip()
 
         client_id = get_google_client_id(provider)
         if not client_id:
@@ -1203,13 +1374,14 @@ def create_flask_app():
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
         session["oauth_provider"] = provider
-        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}")
+        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}, student_hint = {student_hint}")
 
-        # Pack redirect_uri, provider, grade, and timestamp into signed state parameter
+        # Pack redirect_uri, provider, grade, student_hint, and timestamp into signed state parameter
         state_payload = {
             "redirect_uri": redirect_uri,
             "provider": provider,
             "grade": target_grade,
+            "student_hint": student_hint,
             "ts": time.time()
         }
         state_str = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
@@ -1238,17 +1410,19 @@ def create_flask_app():
             print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
 
-        # 1. Extract verified redirect_uri, provider, and grade from state parameter
+        # 1. Extract verified redirect_uri, provider, grade, and student_hint from state parameter
         redirect_uri = None
         provider = "school"
         target_grade = "grade5"
+        student_hint = ""
         if state_param:
             try:
                 decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
                 redirect_uri = decoded_json.get("redirect_uri")
                 provider = decoded_json.get("provider", "school")
                 target_grade = normalize_grade(decoded_json.get("grade") or "grade5")
-                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}")
+                student_hint = decoded_json.get("student_hint", "").strip()
+                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}, student_hint: {student_hint}")
             except Exception as ex:
                 print(f"[OAUTH WARN] Could not decode state param: {ex}")
 
@@ -1277,7 +1451,7 @@ def create_flask_app():
                 print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
                 session["google_access_token"] = cached_token
                 session["oauth_provider"] = provider
-                profile = _resolve_google_user_profile(cached_token, provider, target_grade)
+                profile = _resolve_google_user_profile(cached_token, provider, target_grade, student_hint=student_hint)
                 session_user_id = profile["student_id"]
                 session_user_name = profile["name"]
                 session_class_code = profile["class_code"]
@@ -1318,7 +1492,7 @@ def create_flask_app():
                 if code:
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
                 
-                profile = _resolve_google_user_profile(tok, provider, target_grade)
+                profile = _resolve_google_user_profile(tok, provider, target_grade, student_hint=student_hint)
                 session_user_id = profile["student_id"]
                 session_user_name = profile["name"]
                 session_class_code = profile["class_code"]
@@ -1663,8 +1837,47 @@ def create_flask_app():
                     s for s in known_students 
                     if (s.get("class_code") or "").strip().lower() == class_code
                 ]
-            leaderboard = []
+
+            # Deduplicate students by fuzzy name, student_id, or email
+            deduped_students = []
             for s in filtered_students:
+                s_id = str(s.get("student_id") or s.get("user_id") or "").strip().lower()
+                s_name = str(s.get("name") or "").strip()
+                s_email = str(s.get("email") or "").strip().lower()
+                
+                existing_match = None
+                for ex in deduped_students:
+                    ex_id = str(ex.get("student_id") or ex.get("user_id") or "").strip().lower()
+                    ex_name = str(ex.get("name") or "").strip()
+                    ex_email = str(ex.get("email") or "").strip().lower()
+                    if (s_id and ex_id and s_id == ex_id) or \
+                       (s_email and ex_email and s_email == ex_email) or \
+                       (s_name and ex_name and fuzzy_name_match(s_name, ex_name)):
+                        existing_match = ex
+                        break
+                
+                if existing_match:
+                    # Merge points, bytes, streak
+                    existing_match["eco_points"] = max(existing_match.get("eco_points", 0), s.get("eco_points", 0))
+                    existing_match["bytes_cleared"] = max(existing_match.get("bytes_cleared", 0), s.get("bytes_cleared", 0))
+                    existing_match["trees"] = max(existing_match.get("trees", 0) or 0, s.get("trees", 0) or 0)
+                    existing_match["streak_days"] = max(existing_match.get("streak_days", 0), s.get("streak_days", 0))
+                    # Prefer capitalized human name over lowercase or generic ID
+                    if len(s_name) > 0 and s_name[0].isupper() and (not existing_match.get("name") or not existing_match["name"][0].isupper()):
+                        existing_match["name"] = s_name
+                    # Record alias IDs/names
+                    if "aliases" not in existing_match:
+                        existing_match["aliases"] = set()
+                    if s_id: existing_match["aliases"].add(s_id)
+                    if s_name: existing_match["aliases"].add(s_name.lower())
+                    if s_email: existing_match["aliases"].add(s_email)
+                else:
+                    s_copy = dict(s)
+                    s_copy["aliases"] = {s_id, s_name.lower(), s_email} - {""}
+                    deduped_students.append(s_copy)
+
+            leaderboard = []
+            for s in deduped_students:
                 b_cleared = s.get("bytes_cleared", 0)
                 trees_val = s.get("trees")
                 if trees_val is None:
@@ -1677,19 +1890,41 @@ def create_flask_app():
                     "eco_points": s.get("eco_points", 0),
                     "data_cleared_bytes": b_cleared,
                     "streak_days": s.get("streak_days", 0),
-                    "trees": int(trees_val or 0)
+                    "trees": int(trees_val or 0),
+                    "aliases": list(s.get("aliases", []))
                 })
 
-        # Recalculate formatted data
+        # Recalculate formatted data and mark (You)
+        user_ident = student_id.strip().lower() if student_id else ""
+        if not user_ident:
+            auth_header = request.headers.get("Authorization", "")
+            tok = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+            tok_sess = default_auth_service.validate_token(tok) if tok else None
+            if tok_sess:
+                user_ident = str(tok_sess.get("user_id") or tok_sess.get("name") or "").strip().lower()
+
         formatted_list = []
         for entry in sorted(leaderboard, key=lambda x: x.get("eco_points", 0), reverse=True):
             item = dict(entry)
             b_val = item.get("data_cleared_bytes", 0) or item.get("bytes_cleared", 0)
             item["data_cleared_formatted"] = format_bytes(b_val)
             item["trees"] = int(item.get("trees", 0) or 0)
-            # Mark isSelf if matching student_id
-            if student_id and (str(item.get("user_id") or item.get("student_id") or "").lower() == student_id.lower()):
-                item["name"] = f"{item.get('name', student_id)} (You)"
+            
+            # Check isSelf: match user_id, student_id, aliases, or fuzzy name match
+            entry_name = item.get("name", "")
+            aliases = item.pop("aliases", [])
+            is_self = False
+            if user_ident:
+                item_uid = str(item.get("user_id") or "").lower()
+                item_sid = str(item.get("student_id") or "").lower()
+                if user_ident in (item_uid, item_sid) or user_ident in aliases:
+                    is_self = True
+                elif fuzzy_name_match(user_ident, entry_name):
+                    is_self = True
+            
+            if is_self and not entry_name.endswith("(You)"):
+                item["name"] = f"{entry_name} (You)"
+                
             formatted_list.append(item)
         for i, item in enumerate(formatted_list):
             item["rank"] = i + 1
@@ -4099,6 +4334,24 @@ def create_flask_app():
                 results = [s for s in results if normalize_grade(s.get("class_code", "")) == class_filter]
             else:
                 results = [s for s in results if s.get("class_code", "").strip().lower() == class_filter]
+
+        # Deduplicate students by fuzzy name and email
+        deduped = []
+        for s in results:
+            s_name = (s.get("name") or "").strip()
+            s_email = (s.get("email") or "").strip().lower()
+            ex = next((d for d in deduped if 
+                       (s_email and (d.get("email") or "").strip().lower() == s_email) or 
+                       (s_name and fuzzy_name_match(s_name, d.get("name", "")))), None)
+            if ex:
+                ex["bytes_cleared"] = max(ex.get("bytes_cleared", 0), s.get("bytes_cleared", 0))
+                ex["eco_points"] = max(ex.get("eco_points", 0), s.get("eco_points", 0))
+                ex["trees"] = max(ex.get("trees", 0) or 0, s.get("trees", 0) or 0)
+                if len(s_name) > 0 and s_name[0].isupper() and (not ex.get("name") or not ex["name"][0].isupper()):
+                    ex["name"] = s_name
+            else:
+                deduped.append(s)
+        results = deduped
 
         # Sort newest students first so new students immediately appear at the top
         results.sort(

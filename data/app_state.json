@@ -1,6 +1,7 @@
 {
   "student": {
     "student_id": "STU-8SB8FZ",
+    "user_id": "STU-8SB8FZ",
     "name": "Aaryan Agarawal",
     "class_code": "grade5",
     "bytes_cleared": 77004,
@@ -9,7 +10,10 @@
     "last_deletion_date": "2026-10-29",
     "daily_deletions_today": 1,
     "daily_deletion_limit": 5,
-    "strikes": 0
+    "strikes": 0,
+    "email": "aaryan.agarwal@lighthouse.edu",
+    "google_sub": "987654321",
+    "trees": 0
   },
   "leaderboard": [],
   "scanner": {
@@ -94,32 +98,6 @@
       "strikes": 0
     },
     {
-      "student_id": "GOOGLE-SCHOOL-1793254808",
-      "user_id": "GOOGLE-SCHOOL-1793254808",
-      "name": "GOOGLE-SCHOOL-1793254808",
-      "class_code": "grade5",
-      "bytes_cleared": 77004,
-      "eco_points": 20,
-      "trees": 0,
-      "streak_days": 2,
-      "daily_deletions_today": 1,
-      "daily_deletion_limit": 5,
-      "strikes": 0
-    },
-    {
-      "student_id": "STU-8SB8FZ",
-      "user_id": "STU-8SB8FZ",
-      "name": "Aaryan Agarawal",
-      "class_code": "grade5",
-      "bytes_cleared": 0,
-      "eco_points": 0,
-      "trees": 0,
-      "streak_days": 1,
-      "daily_deletions_today": 0,
-      "daily_deletion_limit": 5,
-      "strikes": 0
-    },
-    {
       "student_id": "GOOGLE-SCHOOL-1793253986",
       "user_id": "GOOGLE-SCHOOL-1793253986",
       "name": "GOOGLE-SCHOOL-1793253986",
@@ -157,6 +135,22 @@
       "daily_deletions_today": 0,
       "daily_deletion_limit": 5,
       "strikes": 0
+    },
+    {
+      "student_id": "STU-8SB8FZ",
+      "user_id": "STU-8SB8FZ",
+      "name": "Aaryan Agarawal",
+      "class_code": "grade5",
+      "bytes_cleared": 77004,
+      "eco_points": 20,
+      "streak_days": 2,
+      "last_deletion_date": "2026-10-29",
+      "daily_deletions_today": 1,
+      "daily_deletion_limit": 5,
+      "strikes": 0,
+      "email": "aaryan.agarwal@lighthouse.edu",
+      "google_sub": "987654321",
+      "trees": 0
     }
   ],
   "analytics": {

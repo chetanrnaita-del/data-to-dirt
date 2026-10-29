@@ -475,6 +475,103 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
         for s in students:
             self.assertEqual(s.get("class_code", "").lower(), "bio101", f"Student {s} has wrong class for Dr. Reed")
 
+    def test_google_oauth_profile_resolution_unifies_with_fuzzy_matching_student(self):
+        """Google OAuth userinfo with slight spelling variation resolves to authentic student record without duplicating."""
+        from unittest.mock import patch, MagicMock
+        from src.app.server import _resolve_google_user_profile, resolve_student_in_state
+
+        state = load_state()
+        state["students"] = [
+            {
+                "student_id": "STU-8SB8FZ",
+                "user_id": "STU-8SB8FZ",
+                "name": "Aaryan Agarawal",
+                "class_code": "grade5",
+                "bytes_cleared": 77004,
+                "eco_points": 20,
+                "streak_days": 2,
+                "daily_deletions_today": 1,
+                "daily_deletion_limit": 5,
+                "strikes": 0
+            }
+        ]
+        save_state(state)
+
+        # Mock urllib.request.urlopen returning Google profile with lowercase / alternate spelling
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "name": "aaryan agarwal",
+            "email": "aaryan.agarwal@lighthouse.edu",
+            "sub": "1234567890"
+        }).encode("utf-8")
+        mock_response.__enter__.return_value = mock_response
+
+        with patch("urllib.request.urlopen", return_value=mock_response):
+            profile = _resolve_google_user_profile("fake_token", provider="school", target_grade="grade5")
+
+        self.assertEqual(profile["student_id"], "STU-8SB8FZ")
+        self.assertEqual(profile["name"], "Aaryan Agarawal")
+        self.assertEqual(profile["class_code"], "grade5")
+        self.assertTrue(profile["existing"])
+
+        # Check persisted state: points preserved and email linked
+        curr_state = load_state()
+        stu = next((s for s in curr_state.get("students", []) if s.get("student_id") == "STU-8SB8FZ"), None)
+        self.assertIsNotNone(stu)
+        self.assertEqual(stu["eco_points"], 20)
+        self.assertEqual(stu["bytes_cleared"], 77004)
+        self.assertEqual(stu["email"], "aaryan.agarwal@lighthouse.edu")
+        # Ensure no duplicate student exists
+        self.assertEqual(len(curr_state.get("students", [])), 1)
+
+    def test_leaderboard_deduplication_and_you_tag(self):
+        """Leaderboard deduplicates fuzzy matching students and correctly tags (You)."""
+        state = load_state()
+        state["students"] = [
+            {
+                "student_id": "STU-8SB8FZ",
+                "user_id": "STU-8SB8FZ",
+                "name": "Aaryan Agarawal",
+                "class_code": "grade5",
+                "bytes_cleared": 77004,
+                "eco_points": 20,
+                "streak_days": 2,
+                "trees": 0
+            },
+            {
+                "student_id": "GOOGLE-SCHOOL-TEST",
+                "user_id": "GOOGLE-SCHOOL-TEST",
+                "name": "aaryan agarwal",
+                "class_code": "grade5",
+                "bytes_cleared": 0,
+                "eco_points": 0,
+                "streak_days": 1,
+                "trees": 0
+            }
+        ]
+        save_state(state)
+
+        # Query leaderboard passing Google user ID or name
+        res = self.client.get("/api/student/leaderboard?class_code=grade5&student_id=STU-8SB8FZ")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        lb = data.get("leaderboard", [])
+
+        # Deduplication must merge both into a single entry
+        aaryan_entries = [e for e in lb if "aaryan" in e.get("name", "").lower()]
+        self.assertEqual(len(aaryan_entries), 1, "Duplicate Aaryan entries must be merged into one")
+        self.assertEqual(aaryan_entries[0]["eco_points"], 20)
+        self.assertIn("(You)", aaryan_entries[0]["name"])
+
+        # Query with Google OAuth lowercase name as student_id
+        res2 = self.client.get("/api/student/leaderboard?class_code=grade5&student_id=aaryan%20agarwal")
+        self.assertEqual(res2.status_code, 200)
+        data2 = res2.get_json()
+        lb2 = data2.get("leaderboard", [])
+        aaryan_entries2 = [e for e in lb2 if "aaryan" in e.get("name", "").lower()]
+        self.assertEqual(len(aaryan_entries2), 1)
+        self.assertIn("(You)", aaryan_entries2[0]["name"])
+
 
 if __name__ == "__main__":
     unittest.main()
