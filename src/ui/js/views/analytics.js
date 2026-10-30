@@ -266,11 +266,32 @@ class AnalyticsDashboardView {
 
     const btnExport = document.getElementById("btn-an-export");
     if (btnExport) {
-      btnExport.addEventListener("click", () => {
+      btnExport.addEventListener("click", async () => {
         if (this.audioSynth) this.audioSynth.playCoinDing();
-        const token = localStorage.getItem("d2d_session_token");
-        const exportUrl = "/api/analytics/export" + (token ? `?token=${encodeURIComponent(token)}` : "");
-        window.open(exportUrl, "_blank");
+        try {
+          const token = localStorage.getItem("d2d_session_token");
+          const headers = {};
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          const exportUrl = "/api/analytics/export" + (token ? `?token=${encodeURIComponent(token)}` : "");
+          const res = await fetch(exportUrl, { headers });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `data_to_dirt_city_telemetry_${new Date().toISOString().slice(0, 10)}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            a.remove();
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        } catch (err) {
+          console.warn("Analytics CSV export fetch error, fallback to direct download:", err);
+          const token = localStorage.getItem("d2d_session_token");
+          const exportUrl = "/api/analytics/export" + (token ? `?token=${encodeURIComponent(token)}` : "");
+          window.location.href = exportUrl;
+        }
       });
     }
 

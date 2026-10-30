@@ -158,7 +158,16 @@ class AnalyticsService:
             return "🌐"
 
     @staticmethod
-    def export_csv_report(stats: ClassroomStats) -> str:
+    def _escape_csv(val: Any) -> str:
+        if val is None:
+            return ""
+        s = str(val)
+        if any(c in s for c in (',', '"', '\n', '\r')):
+            return f'"{s.replace("\"", "\"\"")}"'
+        return s
+
+    @staticmethod
+    def export_csv_report(stats: ClassroomStats, items: Optional[List[Dict[str, Any]]] = None) -> str:
         """Generates a CSV formatted environmental audit report."""
         lines = [
             "Metric,Value,Unit",
@@ -173,6 +182,39 @@ class AnalyticsService:
             f"Passenger Car Distance Avoided,{stats.car_km_avoided:.2f},km",
             f"Smartphone Charges Avoided,{stats.smartphone_charges_avoided:.1f},charges",
         ]
+
+        if stats.incident_log:
+            lines.append("")
+            lines.append("--- FLAGGED GAMING INCIDENTS ---")
+            lines.append("Timestamp,Student_ID,File_Name,Size_Bytes,AI_Score,Reason")
+            for inc in stats.incident_log:
+                lines.append(
+                    f"{AnalyticsService._escape_csv(inc.get('timestamp', ''))},"
+                    f"{AnalyticsService._escape_csv(inc.get('student_id', ''))},"
+                    f"{AnalyticsService._escape_csv(inc.get('file_name', ''))},"
+                    f"{inc.get('size_bytes', 0)},"
+                    f"{inc.get('ai_score', 0)},"
+                    f"{AnalyticsService._escape_csv(inc.get('reason', ''))}"
+                )
+
+        if items:
+            lines.append("")
+            lines.append("--- DELETION AUDIT TRAIL ---")
+            lines.append("Request_ID,Student_ID,Student_Name,Class_Code,File_Name,Size_Bytes,Carbon_Offset_g,Status,Reason,Submitted_At")
+            for it in items:
+                lines.append(
+                    f"{AnalyticsService._escape_csv(it.get('request_id') or it.get('id', ''))},"
+                    f"{AnalyticsService._escape_csv(it.get('student_id', ''))},"
+                    f"{AnalyticsService._escape_csv(it.get('student_name', ''))},"
+                    f"{AnalyticsService._escape_csv(it.get('class_code', ''))},"
+                    f"{AnalyticsService._escape_csv(it.get('file_name', ''))},"
+                    f"{it.get('file_size_bytes') or it.get('size_bytes', 0)},"
+                    f"{it.get('carbon_offset_grams', 0)},"
+                    f"{AnalyticsService._escape_csv(it.get('status', 'PENDING'))},"
+                    f"{AnalyticsService._escape_csv(it.get('reason', ''))},"
+                    f"{AnalyticsService._escape_csv(it.get('submitted_at', ''))}"
+                )
+
         return "\n".join(lines)
 
     @staticmethod

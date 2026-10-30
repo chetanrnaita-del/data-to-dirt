@@ -118,6 +118,9 @@ class TeacherConfirmationView {
             <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-t-manage-teachers" title="Teacher Accounts Directory">
               🧑‍🏫 Teachers
             </button>
+            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-t-export-csv" title="Export Classroom CSV Report">
+              📄 Export CSV
+            </button>
             <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-t-logout" title="Sign out">
               🚪 Logout
             </button>
@@ -287,6 +290,11 @@ class TeacherConfirmationView {
       } else if (window.AdminView && window.AdminView.openTeacherDirectoryModal) {
         window.AdminView.openTeacherDirectoryModal();
       }
+    });
+
+    // Export Classroom CSV Report
+    document.getElementById("btn-t-export-csv")?.addEventListener("click", () => {
+      this.exportClassroomCsvReport();
     });
 
     // Refresh queue
@@ -479,6 +487,89 @@ class TeacherConfirmationView {
       console.warn("Failed to load teacher queue:", e);
       this.showToast("Failed to connect to teacher API", "error");
     }
+  }
+
+  async exportClassroomCsvReport() {
+    if (this.audioSynth) this.audioSynth.playCoinDing?.();
+    this.showToast("⏳ Preparing Classroom CSV Report...", "info");
+    const classCode = this.selectedClassCode || "all";
+    const token = localStorage.getItem("d2d_session_token");
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    try {
+      const url = `/api/teacher/analytics/export?class_code=${encodeURIComponent(classCode)}` + (token ? `&token=${encodeURIComponent(token)}` : "");
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `classroom_report_${classCode}_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          link.remove();
+          window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+        this.showToast("📄 Classroom CSV Report downloaded successfully!", "success");
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend teacher CSV export failed, using local generation fallback:", err);
+    }
+
+    // Client-side fallback generation
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return "";
+      const s = String(val);
+      if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const analytics = this.analytics || {};
+    const rows = [
+      ["Metric", "Value", "Unit"],
+      ["Grade / Classroom", classCode, "class"],
+      ["Verified Data Cleared", analytics.data_cleaned_formatted || "0.0 MB", "formatted"],
+      ["Carbon Offset", analytics.carbon_offset_formatted || "0.0 g CO2", "formatted"],
+      ["Trees Funded", analytics.total_trees_funded || 0, "trees"],
+      ["Flagged Gaming Incidents", analytics.flagged_count || 0, "incidents"],
+    ];
+
+    if (Array.isArray(this.queue) && this.queue.length > 0) {
+      rows.push([]);
+      rows.push(["--- STUDENT DELETIONS AUDIT ---"]);
+      rows.push(["Request ID", "Student Name", "File Name", "Size (Bytes)", "Carbon Offset (g)", "Status", "Reason", "Submitted At"]);
+      for (const item of this.queue) {
+        rows.push([
+          item.request_id || item.id || "",
+          item.student_name || item.student_id || "",
+          item.file_name || "",
+          item.file_size_bytes || item.size_bytes || 0,
+          item.carbon_offset_grams || 0,
+          item.status || "PENDING",
+          item.reason || "",
+          item.submitted_at || ""
+        ]);
+      }
+    }
+
+    const csvContent = rows.map((r) => r.map(escapeCsv).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = `classroom_report_${classCode}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    }, 100);
+    this.showToast("📄 Classroom CSV Report downloaded successfully!", "success");
   }
 
   updateStatsBar() {

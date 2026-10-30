@@ -511,30 +511,83 @@ class AdminEcoFundView {
     }
   }
 
-  exportCsvReport() {
-    if (!this.analytics) return;
+  async exportCsvReport() {
+    this.showToast("⏳ Preparing Audit CSV Report...", "info");
+    try {
+      const headers = this.getAuthHeaders();
+      const res = await fetch("/api/admin/audit/export", { headers });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `data_to_dirt_audit_report_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        this.showToast("📄 Audit CSV Report downloaded successfully!", "success");
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend CSV export failed, using local generation fallback:", err);
+    }
+
+    // Client-side fallback generation with Blob download & proper escaping
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return "";
+      const s = String(val);
+      if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const analytics = this.analytics || {};
     const rows = [
       ["Metric", "Value", "Unit"],
-      ["Total Requests", this.analytics.total_requests || 0, "count"],
-      ["Approved Deletions", this.analytics.approved_count || 0, "count"],
-      ["Rejected Requests", this.analytics.rejected_count || 0, "count"],
-      ["Flagged Incidents", this.analytics.flagged_count || 0, "count"],
-      ["Total Data Cleared", (this.analytics.total_data_cleaned_gb || 0).toFixed(4), "GB"],
-      ["Total Carbon Offset", (this.analytics.total_carbon_offset_kg || 0).toFixed(4), "kg CO2e"],
-      ["Trees Funded", this.analytics.total_trees_funded || 0, "trees"],
-      ["Active Students", this.analytics.active_students_count || 0, "students"],
-      ["Car Travel Avoided", (this.analytics.car_km_avoided || 0).toFixed(2), "km"],
-      ["Smartphone Charges Avoided", Math.round(this.analytics.smartphone_charges_avoided || 0), "charges"],
+      ["Total Requests", analytics.total_requests || 0, "count"],
+      ["Approved Deletions", analytics.approved_count || 0, "count"],
+      ["Rejected Requests", analytics.rejected_count || 0, "count"],
+      ["Flagged Incidents", analytics.flagged_count || 0, "count"],
+      ["Total Data Cleared", (analytics.total_data_cleaned_gb || 0).toFixed(4), "GB"],
+      ["Total Carbon Offset", (analytics.total_carbon_offset_kg || 0).toFixed(4), "kg CO2e"],
+      ["Trees Funded", analytics.total_trees_funded || 0, "trees"],
+      ["Active Students", analytics.active_students_count || 0, "students"],
+      ["Car Travel Avoided", (analytics.car_km_avoided || 0).toFixed(2), "km"],
+      ["Smartphone Charges Avoided", Math.round(analytics.smartphone_charges_avoided || 0), "charges"],
     ];
 
-    const csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
+    if (this.auditData && Array.isArray(this.auditData.incident_log) && this.auditData.incident_log.length > 0) {
+      rows.push([]);
+      rows.push(["--- FLAGGED GAMING INCIDENTS ---"]);
+      rows.push(["Timestamp", "Student ID", "File Name", "Size (Bytes)", "Confidence Score", "Reason"]);
+      for (const inc of this.auditData.incident_log) {
+        rows.push([
+          inc.timestamp || "",
+          inc.student_id || "",
+          inc.file_name || "",
+          inc.size_bytes || 0,
+          inc.ai_score || 0,
+          inc.reason || ""
+        ]);
+      }
+    }
+
+    const csvContent = rows.map((r) => r.map(escapeCsv).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `data_to_dirt_audit_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.href = url;
+    link.download = `data_to_dirt_audit_report_${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
-    link.remove();
+    setTimeout(() => {
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }, 100);
     this.showToast("📄 Audit CSV Report downloaded successfully!", "success");
   }
 

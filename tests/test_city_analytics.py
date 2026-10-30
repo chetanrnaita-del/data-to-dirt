@@ -139,6 +139,29 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertEqual(res_param.status_code, 200)
         self.assertIn("text/csv", res_param.headers.get("Content-Type", ""))
 
+    def test_api_admin_audit_export_csv(self):
+        """GET /api/admin/audit/export returns complete audit CSV report."""
+        res = self.client.get("/api/admin/audit/export", headers=self.admin_headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("text/csv", res.headers.get("Content-Type", ""))
+        self.assertIn("attachment", res.headers.get("Content-Disposition", ""))
+        content = res.get_data(as_text=True)
+        self.assertIn("Metric,Value,Unit", content)
+        self.assertIn("Total Deletion Requests", content)
+
+    def test_api_teacher_analytics_export_csv(self):
+        """GET /api/teacher/analytics/export returns classroom CSV report."""
+        from src.services.auth import default_auth_service
+        teacher_token = default_auth_service.create_session(role="teacher", user_id="tea_01")["token"]
+        teacher_headers = {"Authorization": f"Bearer {teacher_token}"}
+        res = self.client.get("/api/teacher/analytics/export?class_code=grade5", headers=teacher_headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("text/csv", res.headers.get("Content-Type", ""))
+        self.assertIn("attachment", res.headers.get("Content-Disposition", ""))
+        content = res.get_data(as_text=True)
+        self.assertIn("Metric,Value,Unit", content)
+        self.assertIn("Total Deletion Requests", content)
+
     def test_api_config_analytics(self):
         """GET /api/config/analytics returns external analytics configuration keys."""
         res = self.client.get("/api/config/analytics")

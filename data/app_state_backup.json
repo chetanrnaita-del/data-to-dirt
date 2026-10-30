@@ -25,11 +25,11 @@
   },
   "teacher_queue": [
     {
-      "request_id": "REQ-86155",
+      "request_id": "REQ-57785",
       "student_id": "STU-8SB8FZ",
       "student_name": "Aaryan Agarawal",
       "class_code": "grade5",
-      "file_id": "test_01_1793337586154",
+      "file_id": "test_01_1793339857785",
       "file_name": "Presentation_Draft_Old.mov",
       "file_path": "Presentation_Draft_Old.mov",
       "file_size_bytes": 262144000,
@@ -45,12 +45,12 @@
       },
       "status": "APPROVED",
       "credited": true,
-      "submitted_at": "2026-10-30 10:49:46",
+      "submitted_at": "2026-10-30 11:27:37",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793337586.265322
+      "decided_at": 1793339857.8949912
     },
     {
-      "request_id": "REQ-86223",
+      "request_id": "REQ-57863",
       "student_id": "STU-001",
       "student_name": "STU-001",
       "class_code": "grade5",
@@ -70,12 +70,12 @@
       },
       "status": "APPROVED",
       "credited": true,
-      "submitted_at": "2026-10-30 10:49:46",
+      "submitted_at": "2026-10-30 11:27:37",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793337586.235351
+      "decided_at": 1793339857.874035
     },
     {
-      "request_id": "REQ-86229",
+      "request_id": "REQ-57868",
       "student_id": "STU-001",
       "student_name": "STU-001",
       "class_code": "grade5",
@@ -95,12 +95,12 @@
       },
       "status": "APPROVED",
       "credited": true,
-      "submitted_at": "2026-10-30 10:49:46",
+      "submitted_at": "2026-10-30 11:27:37",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793337586.2353668
+      "decided_at": 1793339857.874047
     },
     {
-      "request_id": "REQ-86244",
+      "request_id": "REQ-57878",
       "student_id": "STU-REJECT-TEST",
       "student_name": "STU-REJECT-TEST",
       "class_code": "grade5",
@@ -120,13 +120,13 @@
       },
       "status": "REJECTED",
       "credited": false,
-      "submitted_at": "2026-10-30 10:49:46",
+      "submitted_at": "2026-10-30 11:27:37",
       "feedback": "Keep this file for your archival record.",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793337586.249961
+      "decided_at": 1793339857.883622
     },
     {
-      "request_id": "REQ-86254",
+      "request_id": "REQ-57885",
       "student_id": "STU-FLAG-TEST",
       "student_name": "STU-FLAG-TEST",
       "class_code": "grade5",
@@ -146,13 +146,13 @@
       },
       "status": "FLAGGED",
       "credited": false,
-      "submitted_at": "2026-10-30 10:49:46",
+      "submitted_at": "2026-10-30 11:27:37",
       "feedback": "Suspicious pattern detected upon closer inspection.",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793337586.261775
+      "decided_at": 1793339857.8918788
     },
     {
-      "request_id": "REQ-86304",
+      "request_id": "REQ-57927",
       "student_id": "STU-ISOLATE-TEST",
       "student_name": "Test Isolate",
       "class_code": "grade5",
@@ -172,10 +172,10 @@
       },
       "status": "FLAGGED",
       "credited": false,
-      "submitted_at": "2026-10-30 10:49:46",
+      "submitted_at": "2026-10-30 11:27:37",
       "feedback": "Suspected unauthorized script execution",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793337586.311928
+      "decided_at": 1793339857.934797
     }
   ],
   "ecofund": {
@@ -353,9 +353,9 @@
       "strikes": 1
     },
     {
-      "user_id": "STU-TEST-37DD3A",
-      "student_id": "STU-TEST-37DD3A",
-      "name": "Alice Student 37DD3A",
+      "user_id": "STU-TEST-CD957F",
+      "student_id": "STU-TEST-CD957F",
+      "name": "Alice Student CD957F",
       "role": "student",
       "class_code": "bio101",
       "created_by": "TEACHER-001",
@@ -368,12 +368,12 @@
       "daily_deletion_limit": 5,
       "last_deletion_date": "2026-10-30",
       "strikes": 0,
-      "created_at_iso": "2026-10-30 10:49:46"
+      "created_at_iso": "2026-10-30 11:27:37"
     },
     {
-      "user_id": "STU-C2CC4E",
-      "student_id": "STU-C2CC4E",
-      "name": "Bob AutoGen 37DD3A",
+      "user_id": "STU-87C9F1",
+      "student_id": "STU-87C9F1",
+      "name": "Bob AutoGen CD957F",
       "role": "student",
       "class_code": "bio101",
       "created_by": "TEACHER-001",
@@ -386,7 +386,7 @@
       "daily_deletion_limit": 5,
       "last_deletion_date": "2026-10-30",
       "strikes": 0,
-      "created_at_iso": "2026-10-30 10:49:46"
+      "created_at_iso": "2026-10-30 11:27:37"
     },
     {
       "student_id": "STU-BIG-CLEANER",
@@ -445,7 +445,7 @@
         "scans": 0,
         "bytes_cleaned": 265289728,
         "co2_avoided_kg": 0.028,
-        "last_active": "2026-10-30 10:49:46"
+        "last_active": "2026-10-30 11:27:37"
       },
       "Singapore": {
         "city": "Singapore",
@@ -465,10 +465,10 @@
     },
     "recent_events": [
       {
-        "id": "EVT-586291",
-        "timestamp": "2026-10-30T05:19:46.291414+00:00",
-        "timestamp_str": "2026-10-30 10:49:46",
-        "timestamp_epoch": 1793337586.2914078,
+        "id": "EVT-857915",
+        "timestamp": "2026-10-30T05:57:37.915719+00:00",
+        "timestamp_str": "2026-10-30 11:27:37",
+        "timestamp_epoch": 1793339857.915715,
         "city": "Global Visitor",
         "country": "Global",
         "country_code": "",
@@ -480,10 +480,10 @@
         "bytes_cleaned": 0
       },
       {
-        "id": "EVT-586237",
-        "timestamp": "2026-10-30T05:19:46.237355+00:00",
-        "timestamp_str": "2026-10-30 10:49:46",
-        "timestamp_epoch": 1793337586.23735,
+        "id": "EVT-857875",
+        "timestamp": "2026-10-30T05:57:37.875782+00:00",
+        "timestamp_str": "2026-10-30 11:27:37",
+        "timestamp_epoch": 1793339857.8757792,
         "city": "Global Visitor",
         "country": "Global",
         "country_code": "",

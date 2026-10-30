@@ -5263,6 +5263,85 @@ def create_flask_app():
             "server_time": time.strftime("%Y-%m-%d %H:%M:%S"),
         })
 
+    @app.route("/api/admin/audit/export", methods=["GET"])
+    @default_auth_service.require_role("teacher")
+    def api_admin_audit_export():
+        """Exports complete audit report CSV with environmental stats and deletion items."""
+        state = load_state()
+        local_queue = state.get("teacher_queue", [])
+
+        firestore_queue = []
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("deletion_queue").stream():
+                    d = doc.to_dict()
+                    d["request_id"] = d.get("request_id") or doc.id
+                    firestore_queue.append(d)
+            except Exception as fe:
+                print(f"[!] Firestore audit export fetch notice: {fe}")
+
+        merged = {}
+        for item in local_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+        for item in firestore_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+
+        items = list(merged.values()) if merged else local_queue
+        trees = state.get("ecofund", {}).get("trees_planted", 0)
+        stats = AnalyticsService.calculate_analytics(items, trees_funded=trees)
+
+        csv_content = AnalyticsService.export_csv_report(stats, items=items)
+        filename = f"data_to_dirt_audit_report_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+        response = make_response(csv_content)
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        return response
+
+    @app.route("/api/teacher/analytics/export", methods=["GET"])
+    @default_auth_service.require_role("teacher")
+    def api_teacher_analytics_export():
+        """Exports classroom deletion audit report for the teacher's selected class or all classes."""
+        class_code = request.args.get("class_code", "").strip()
+        state = load_state()
+        local_queue = state.get("teacher_queue", [])
+
+        firestore_queue = []
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("deletion_queue").stream():
+                    d = doc.to_dict()
+                    d["request_id"] = d.get("request_id") or doc.id
+                    firestore_queue.append(d)
+            except Exception as fe:
+                print(f"[!] Firestore teacher export notice: {fe}")
+
+        merged = {}
+        for item in local_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+        for item in firestore_queue:
+            rid = item.get("request_id") or item.get("id")
+            if rid:
+                merged[rid] = item
+
+        items = list(merged.values()) if merged else local_queue
+        if class_code and class_code.lower() != "all":
+            items = [it for it in items if it.get("class_code", "").lower() == class_code.lower()]
+
+        stats = AnalyticsService.calculate_analytics(items)
+        csv_content = AnalyticsService.export_csv_report(stats, items=items)
+        class_suffix = f"_{class_code}" if class_code and class_code != "all" else "_all"
+        filename = f"classroom_report{class_suffix}_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+        response = make_response(csv_content)
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        return response
+
     @app.route("/api/analytics/export", methods=["GET"])
     @default_auth_service.require_role("admin")
     def api_analytics_export():
