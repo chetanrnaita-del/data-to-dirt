@@ -265,23 +265,88 @@ class FirestoreDB:
 
     def delete_student_record(self, student_id: str) -> bool:
         """Deletes a student record from Cloud Firestore users collection."""
+        self.maybe_reconnect()
         if not self.is_connected:
             return False
         clean_id = (student_id or "").strip()
         if not clean_id:
             return False
 
+        deleted = False
         try:
             # Check direct document ID and uppercase/lowercase variants
             for check_id in [clean_id, clean_id.upper(), clean_id.lower()]:
                 doc_ref = self.db.collection("users").document(check_id)
                 if doc_ref.get().exists:
                     doc_ref.delete()
-                    return True
-            return False
+                    deleted = True
+
+            # Also check if any document has student_id or user_id matching clean_id
+            if FieldFilter:
+                q = self.db.collection("users").where(filter=FieldFilter("role", "==", "student"))
+            else:
+                q = self.db.collection("users").where("role", "==", "student")
+            for doc in q.stream():
+                d = doc.to_dict()
+                sid = str(d.get("student_id") or d.get("user_id") or doc.id).strip().lower()
+                if sid == clean_id.lower():
+                    doc.reference.delete()
+                    deleted = True
+            return deleted
         except Exception as e:
             print(f"[!] Firestore delete_student_record error: {e}")
             return False
+
+    def delete_teacher_record(self, teacher_id: str) -> bool:
+        """Deletes a teacher record from Cloud Firestore users collection."""
+        self.maybe_reconnect()
+        if not self.is_connected:
+            return False
+        clean_id = (teacher_id or "").strip()
+        if not clean_id:
+            return False
+
+        deleted = False
+        try:
+            for check_id in [clean_id, clean_id.upper(), clean_id.lower()]:
+                doc_ref = self.db.collection("users").document(check_id)
+                if doc_ref.get().exists:
+                    doc_ref.delete()
+                    deleted = True
+
+            if FieldFilter:
+                q = self.db.collection("users").where(filter=FieldFilter("role", "==", "teacher"))
+            else:
+                q = self.db.collection("users").where("role", "==", "teacher")
+            for doc in q.stream():
+                d = doc.to_dict()
+                tid = str(d.get("teacher_id") or d.get("user_id") or doc.id).strip().lower()
+                if tid == clean_id.lower():
+                    doc.reference.delete()
+                    deleted = True
+            return deleted
+        except Exception as e:
+            print(f"[!] Firestore delete_teacher_record error: {e}")
+            return False
+
+    def delete_all_teachers(self) -> int:
+        """Deletes all teacher records from Cloud Firestore."""
+        self.maybe_reconnect()
+        if not self.is_connected:
+            return 0
+
+        deleted_count = 0
+        try:
+            if FieldFilter:
+                q = self.db.collection("users").where(filter=FieldFilter("role", "==", "teacher"))
+            else:
+                q = self.db.collection("users").where("role", "==", "teacher")
+            for doc in q.stream():
+                doc.reference.delete()
+                deleted_count += 1
+        except Exception as e:
+            print(f"[!] Firestore delete_all_teachers error: {e}")
+        return deleted_count
 
     def delete_students_by_class(self, class_code: str = "") -> int:
         """Deletes students matching a class code from Cloud Firestore."""

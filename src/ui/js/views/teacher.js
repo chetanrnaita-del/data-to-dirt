@@ -1157,7 +1157,11 @@ class TeacherConfirmationView {
           headers: this.getAuthHeaders()
         });
         const data = await res.json();
-        currentStudents = data.students || [];
+        const deletedStu = JSON.parse(localStorage.getItem("d2d_deleted_students") || "[]").map(x => String(x).toLowerCase());
+        currentStudents = (data.students || []).filter(s => {
+          const sid = String(s.student_id || s.user_id || "").toLowerCase();
+          return !deletedStu.includes(sid);
+        });
 
         if (data.students && Array.isArray(data.students)) {
           try {

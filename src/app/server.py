@@ -1548,6 +1548,12 @@ def create_flask_app():
     def api_auth_teachers():
         """Returns public list of registered teachers for the login view quick-select."""
         state = load_state()
+        if state.get("teachers_cleared"):
+            return jsonify({
+                "status": "ok",
+                "teachers": [],
+                "total_count": 0
+            })
         local_teachers = state.get("teachers", [])
         firestore_teachers = []
         if firestore_db.is_connected:
@@ -4419,6 +4425,7 @@ def create_flask_app():
 
         state = load_state()
         local_students = state.get("students", [])
+        deleted_stu_ids = set(str(x).strip().lower() for x in state.get("deleted_student_ids", []))
         
         # If Firestore is active, fetch from Firestore
         firestore_students = []
@@ -4431,13 +4438,13 @@ def create_flask_app():
         # Merge by student_id (Firestore takes precedence)
         merged = {}
         for s in local_students:
-            sid = s.get("student_id") or s.get("user_id")
-            if sid:
-                merged[sid] = s
+            sid = str(s.get("student_id") or s.get("user_id") or "").strip()
+            if sid and sid.lower() not in deleted_stu_ids:
+                merged[sid.upper()] = s
         for s in firestore_students:
-            sid = s.get("student_id") or s.get("user_id")
-            if sid:
-                merged[sid] = s
+            sid = str(s.get("student_id") or s.get("user_id") or "").strip()
+            if sid and sid.lower() not in deleted_stu_ids:
+                merged[sid.upper()] = s
                 
         results = list(merged.values())
         for s in results:
@@ -4547,6 +4554,11 @@ def create_flask_app():
         # 2. Save to local app_state
         students.append(new_student)
         state["students"] = students
+        if "deleted_student_ids" in state and isinstance(state["deleted_student_ids"], list):
+            state["deleted_student_ids"] = [
+                d for d in state["deleted_student_ids"]
+                if str(d).strip().lower() != student_id.lower()
+            ]
         save_state(state)
         
         return jsonify({
@@ -4577,6 +4589,13 @@ def create_flask_app():
             if (s.get("student_id") or s.get("user_id") or "").strip().lower() != clean_id
         ]
         state["students"] = filtered_students
+
+        # Track deleted student IDs so rehydration never resurrects them
+        deleted_stu_ids = state.setdefault("deleted_student_ids", [])
+        if clean_id not in deleted_stu_ids:
+            deleted_stu_ids.append(clean_id)
+        if student_id and student_id not in deleted_stu_ids:
+            deleted_stu_ids.append(student_id)
 
         # Cancel any pending deletion queue requests by this student
         queue = state.get("teacher_queue", [])
@@ -4627,6 +4646,15 @@ def create_flask_app():
             remaining = []
 
         deleted_count = orig_count - len(remaining)
+
+        # Track deleted student IDs so rehydration never resurrects them
+        deleted_stu_ids = state.setdefault("deleted_student_ids", [])
+        for s in students:
+            if s not in remaining:
+                sid = (s.get("student_id") or s.get("user_id") or "").strip().lower()
+                if sid and sid not in deleted_stu_ids:
+                    deleted_stu_ids.append(sid)
+
         state["students"] = remaining
         save_state(state)
 
@@ -4702,6 +4730,12 @@ def create_flask_app():
     def api_admin_teachers():
         """Returns all registered teacher accounts from local state and Cloud Firestore."""
         state = load_state()
+        if state.get("teachers_cleared"):
+            return jsonify({
+                "status": "ok",
+                "teachers": [],
+                "total_count": 0
+            })
         local_teachers = state.get("teachers", [])
 
         firestore_teachers = []
@@ -4867,25 +4901,7 @@ def create_flask_app():
 
         deleted_fb = False
         if firestore_db.is_connected:
-            try:
-                for did in [raw_teacher_id, teacher_id]:
-                    if did:
-                        doc = firestore_db.db.collection("users").document(did)
-                        if doc.get().exists:
-                            doc.delete()
-                            deleted_fb = True
-                if FieldFilter:
-                    q = firestore_db.db.collection("users").where(filter=FieldFilter("role", "==", "teacher"))
-                else:
-                    q = firestore_db.db.collection("users").where("role", "==", "teacher")
-                for doc in q.stream():
-                    d = doc.to_dict()
-                    d_tid = str(d.get("teacher_id") or d.get("user_id") or doc.id).strip().lower()
-                    if d_tid == teacher_id or doc.id.lower() == teacher_id:
-                        doc.reference.delete()
-                        deleted_fb = True
-            except Exception as e:
-                print(f"[!] Error deleting teacher from Firestore: {e}")
+            deleted_fb = firestore_db.delete_teacher_record(raw_teacher_id or teacher_id)
 
         return jsonify({
             "status": "deleted",
@@ -4917,17 +4933,7 @@ def create_flask_app():
 
         deleted_fb_count = 0
         if firestore_db.is_connected:
-            try:
-                # Query users with role == teacher
-                if FieldFilter:
-                    q = firestore_db.db.collection("users").where(filter=FieldFilter("role", "==", "teacher"))
-                else:
-                    q = firestore_db.db.collection("users").where("role", "==", "teacher")
-                for doc in q.stream():
-                    doc.reference.delete()
-                    deleted_fb_count += 1
-            except Exception as e:
-                print(f"[!] Error deleting all teachers from Firestore: {e}")
+            deleted_fb_count = firestore_db.delete_all_teachers()
 
         return jsonify({
             "status": "deleted_all",
@@ -4965,6 +4971,15 @@ def create_flask_app():
         state = load_state()
         modified = False
 
+        # Also respect server-side deleted lists so rehydration never resurrects deleted records
+        server_deleted_teachers = set((x or "").lower() for x in state.get("deleted_teacher_ids", []))
+        server_deleted_students = set((x or "").lower() for x in state.get("deleted_student_ids", []))
+        all_deleted_students = deleted_student_ids | server_deleted_students
+        all_deleted_teachers = deleted_teacher_ids | server_deleted_teachers
+
+        # If the server has teachers_cleared flag set, don't rehydrate any teachers
+        teachers_cleared = state.get("teachers_cleared", False)
+
         # Merge students
         current_students = state.setdefault("students", [])
         existing_stu_map = {
@@ -4976,7 +4991,7 @@ def create_flask_app():
             if not isinstance(cs, dict):
                 continue
             sid = (cs.get("student_id") or cs.get("user_id") or "").strip().lower()
-            if not sid or sid in deleted_student_ids:
+            if not sid or sid in all_deleted_students:
                 continue
             if sid in existing_stu_map:
                 existing = existing_stu_map[sid]
@@ -5014,7 +5029,7 @@ def create_flask_app():
             if not isinstance(ct, dict):
                 continue
             tid = (ct.get("teacher_id") or ct.get("user_id") or "").strip().lower()
-            if not tid or tid in deleted_teacher_ids:
+            if not tid or tid in all_deleted_teachers or teachers_cleared:
                 continue
             if tid not in existing_tch_map:
                 current_teachers.append(ct)
@@ -5042,6 +5057,53 @@ def create_flask_app():
                     pw_map[k.lower()] = v
                     pw_map[k.upper()] = v
                     modified = True
+
+        # Ensure server remembers and enforces all deleted IDs
+        if deleted_student_ids:
+            cur_del_s = state.setdefault("deleted_student_ids", [])
+            for sid in deleted_student_ids:
+                if sid not in cur_del_s:
+                    cur_del_s.append(sid)
+                    modified = True
+                if firestore_db.is_connected:
+                    try:
+                        firestore_db.delete_student_record(sid)
+                    except Exception:
+                        pass
+
+        if deleted_teacher_ids:
+            cur_del_t = state.setdefault("deleted_teacher_ids", [])
+            for tid in deleted_teacher_ids:
+                if tid not in cur_del_t:
+                    cur_del_t.append(tid)
+                    modified = True
+                if firestore_db.is_connected:
+                    try:
+                        firestore_db.delete_teacher_record(tid)
+                    except Exception:
+                        pass
+
+        # Purge any deleted students or teachers from state
+        clean_students = [
+            s for s in state.get("students", [])
+            if str(s.get("student_id") or s.get("user_id") or "").strip().lower() not in all_deleted_students
+        ]
+        if len(clean_students) != len(state.get("students", [])):
+            state["students"] = clean_students
+            modified = True
+
+        if teachers_cleared:
+            if state.get("teachers"):
+                state["teachers"] = []
+                modified = True
+        else:
+            clean_teachers = [
+                t for t in state.get("teachers", [])
+                if str(t.get("teacher_id") or t.get("user_id") or "").strip().lower() not in all_deleted_teachers
+            ]
+            if len(clean_teachers) != len(state.get("teachers", [])):
+                state["teachers"] = clean_teachers
+                modified = True
 
         if modified:
             save_state(state)

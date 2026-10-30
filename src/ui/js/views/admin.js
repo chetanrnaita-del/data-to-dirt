@@ -671,7 +671,11 @@ class AdminEcoFundView {
           headers: token ? { "Authorization": `Bearer ${token}` } : {}
         });
         const data = await res.json();
-        allTeachers = data.teachers || [];
+        const deletedTch = JSON.parse(localStorage.getItem("d2d_deleted_teachers") || "[]").map(x => String(x).toLowerCase());
+        allTeachers = (data.teachers || []).filter(t => {
+          const tid = String(t.teacher_id || t.user_id || "").toLowerCase();
+          return !deletedTch.includes(tid);
+        });
         if (allTeachers && Array.isArray(allTeachers)) {
           try {
             const stored = JSON.parse(localStorage.getItem("d2d_directory_teachers") || "[]");

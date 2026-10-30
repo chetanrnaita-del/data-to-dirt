@@ -34,18 +34,18 @@
     "donations_history": []
   },
   "auth": {
-    "current_role": "student",
+    "current_role": "admin",
     "teacher_pin": "teacher123",
     "admin_pin": "admin123",
     "teacher_passwords": {
-      "teacher_grade5": "teacher123",
       "teacher_grade6": "teacher123",
       "teacher_grade7": "teacher123",
       "teacher_grade8": "teacher123",
       "teacher_grade9": "teacher123",
       "teacher_grade10": "teacher123",
       "teacher_grade11": "teacher123",
-      "teacher_grade12": "teacher123"
+      "teacher_grade12": "teacher123",
+      "teacher_grade5": "teacher123"
     }
   },
   "students": [
@@ -562,5 +562,6 @@
     }
   ],
   "deleted_teacher_ids": [],
-  "teachers_cleared": false
+  "teachers_cleared": false,
+  "deleted_student_ids": []
 }
