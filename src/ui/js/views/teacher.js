@@ -1492,9 +1492,6 @@ class TeacherConfirmationView {
                 <button type="button" class="retro-btn retro-btn-sm retro-btn-wood" id="btn-tch-banner-reconnect-school" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
                   🏫 School Drive
                 </button>
-                <button type="button" class="retro-btn retro-btn-sm retro-btn-green" id="btn-tch-banner-picker" style="padding: 5px 12px; font-size: 11.5px; cursor: pointer;">
-                  📁 Google Picker
-                </button>
               </div>
             </div>
           `;
@@ -1506,11 +1503,8 @@ class TeacherConfirmationView {
             localStorage.setItem("d2d_google_provider", "school");
             window.location.href = "/auth/google/login?provider=school";
           });
-          banner.querySelector("#btn-tch-banner-picker")?.addEventListener("click", () => {
-            this.openTeacherGooglePicker();
-          });
         }
-        this.renderTeacherScannedFiles("Google Drive authorization expired. Please click 'Reconnect Personal Drive' or 'School Drive' above.");
+        this.renderTeacherScannedFiles("Google Drive authorization expired. Please click 'Reconnect Personal Email' or 'School Drive' above.");
         return;
       }
 
@@ -1939,13 +1933,6 @@ class TeacherConfirmationView {
             </div>
           </button>
 
-          <button class="retro-btn retro-btn-green" id="btn-tch-gdrive-picker" style="width: 100%; padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer;">
-            <strong>📁 Google Drive Picker (Select Specific Folder / Files)</strong>
-            <div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">
-              Opens Google selection dialog to browse and handpick files to clean.
-            </div>
-          </button>
-
           <button class="retro-btn retro-btn-danger retro-btn-sm" id="btn-tch-gdrive-cancel" style="width: 100%; margin-top: 4px; cursor: pointer;">
             ✖ Cancel
           </button>
@@ -1978,104 +1965,8 @@ class TeacherConfirmationView {
       window.location.href = "/auth/google/login?provider=personal";
     });
 
-    modal.querySelector("#btn-tch-gdrive-picker")?.addEventListener("click", () => {
-      dismiss();
-      this.openTeacherGooglePicker();
-    });
-
     modal.querySelector("#btn-tch-gdrive-cancel")?.addEventListener("click", dismiss);
     modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
-  }
-
-  async openTeacherGooglePicker() {
-    try {
-      const cfgRes = await fetch("/api/config/auth");
-      const cfg = await cfgRes.json();
-      const currentProvider = localStorage.getItem("d2d_google_provider") || "school";
-      const clientId = (currentProvider === "personal" && cfg.google_client_id_personal)
-        ? cfg.google_client_id_personal
-        : cfg.google_client_id;
-      const appId = (currentProvider === "personal" && cfg.google_app_id_personal)
-        ? cfg.google_app_id_personal
-        : (cfg.google_app_id || (clientId ? clientId.split("-")[0] : ""));
-
-      const buildPicker = (oauthToken) => {
-        if (!window.google || !window.google.picker) {
-          this.executeTeacherScan("__google_drive__", true, "drive");
-          return;
-        }
-
-        const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
-          .setIncludeFolders(true)
-          .setSelectFolderEnabled(true)
-          .setOwnedByMe(true);
-
-        const folderView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-          .setSelectFolderEnabled(true)
-          .setOwnedByMe(true);
-
-        const builder = new google.picker.PickerBuilder()
-          .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-          .setOAuthToken(oauthToken)
-          .setAppId(appId)
-          .addView(docsView)
-          .addView(folderView)
-          .addView(new google.picker.DocsUploadView())
-          .setTitle("Select Teacher Google Drive Files or Folder to Clean");
-
-        if (cfg.google_api_key) {
-          builder.setDeveloperKey(cfg.google_api_key);
-        }
-
-        const picker = builder
-          .setCallback(async (data) => {
-            if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
-              const docs = data[google.picker.Response.DOCUMENTS] || [];
-              if (docs.length > 0) {
-                const pickedFiles = docs.map((d) => ({
-                  id: d[google.picker.Document.ID],
-                  name: d[google.picker.Document.NAME],
-                  sizeBytes: Number(d[google.picker.Document.SIZE_BYTES] || d.sizeBytes || d.fileSize || 0),
-                  mimeType: d[google.picker.Document.MIME_TYPE],
-                  lastEditedUtc: d[google.picker.Document.LAST_EDITED_UTC] || Date.now(),
-                  isOwner: d.isOwner !== false
-                }));
-                await this.executeTeacherScan(null, true, "picker_files", pickedFiles, oauthToken);
-              }
-            }
-          })
-          .build();
-        picker.setVisible(true);
-      };
-
-      const loadGapiAndPicker = (token) => {
-        if (window.gapi) {
-          window.gapi.load("picker", () => buildPicker(token));
-        } else {
-          this.executeTeacherScan("__google_drive__", true, "drive");
-        }
-      };
-
-      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file",
-          callback: (resp) => {
-            if (resp && resp.access_token) {
-              loadGapiAndPicker(resp.access_token);
-            } else {
-              this.executeTeacherScan("__google_drive__", true, "drive");
-            }
-          }
-        });
-        tokenClient.requestAccessToken({ prompt: "" });
-      } else {
-        this.executeTeacherScan("__google_drive__", true, "drive");
-      }
-    } catch (err) {
-      console.warn("Teacher picker error, falling back to direct drive scan:", err);
-      this.executeTeacherScan("__google_drive__", true, "drive");
-    }
   }
 
   showTeacherDeviceScanModal() {

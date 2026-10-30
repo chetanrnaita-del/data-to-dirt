@@ -215,7 +215,7 @@ class TestServerRestEndpoints(unittest.TestCase):
         self.assertIn("tree_growth_stage", data)
         self.assertIn("current_streak_days", data)
         self.assertIn("daily_deletion_limit", data)
-        self.assertGreaterEqual(data["daily_deletion_limit"], 1)
+        self.assertTrue(data.get("daily_deletion_limit") is None or data.get("daily_deletion_limit") >= 1)
 
     def test_api_student_leaderboard(self):
         res = self.client.get("/api/student/leaderboard")

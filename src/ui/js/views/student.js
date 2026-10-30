@@ -203,9 +203,9 @@ class StudentDashboardView {
             <div class="retro-inset" style="text-align: center;">
               <div style="font-size: 11px; font-weight: bold; color: var(--c-ink-muted); text-transform: uppercase;">Daily Deletions</div>
               <div style="font-size: 26px; font-weight: bold; color: var(--c-info-cyan); margin: 4px 0;">
-                🗑️ <span id="daily-limit-val">0 / 5</span>
+                🗑️ <span id="daily-limit-val">0</span>
               </div>
-              <div style="font-size: 10px; color: var(--c-ink-light);" id="daily-limit-sub">Available Today</div>
+              <div style="font-size: 10px; color: #15803d; font-weight: bold;" id="daily-limit-sub">Unlimited Today</div>
             </div>
 
           </div>
@@ -514,10 +514,10 @@ class StudentDashboardView {
     const elLimitSub = document.getElementById("daily-limit-sub");
 
     if (elStreak) elStreak.textContent = this.stats.current_streak_days;
-    if (elLimit) elLimit.textContent = `${this.stats.daily_deletions_today} / ${this.stats.daily_deletion_limit}`;
+    if (elLimit) elLimit.textContent = `${this.stats.daily_deletions_today || 0}`;
     if (elLimitSub) {
-      const remaining = this.stats.daily_deletion_limit - this.stats.daily_deletions_today;
-      elLimitSub.textContent = remaining > 0 ? `${remaining} remaining today` : "Limit reached for today!";
+      elLimitSub.textContent = "Unlimited Today";
+      elLimitSub.style.color = "#15803d";
     }
   }
 
@@ -640,97 +640,6 @@ class StudentDashboardView {
 
     modal.querySelector("#btn-gdrive-cancel")?.addEventListener("click", dismiss);
     modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
-  }
-
-  async openGooglePicker() {
-    try {
-      const cfgRes = await fetch("/api/config/auth");
-      const cfg = await cfgRes.json();
-      const currentProvider = localStorage.getItem("d2d_google_provider") || "school";
-      const clientId = (currentProvider === "personal" && cfg.google_client_id_personal)
-        ? cfg.google_client_id_personal
-        : cfg.google_client_id;
-      const appId = (currentProvider === "personal" && cfg.google_app_id_personal)
-        ? cfg.google_app_id_personal
-        : (cfg.google_app_id || (clientId ? clientId.split("-")[0] : ""));
-
-      const buildPicker = (oauthToken) => {
-        if (!window.google || !window.google.picker) {
-          this.executeScan("__google_drive__", true, "drive");
-          return;
-        }
-
-        const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
-          .setIncludeFolders(true)
-          .setSelectFolderEnabled(true)
-          .setOwnedByMe(true);
-
-        const folderView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-          .setSelectFolderEnabled(true)
-          .setOwnedByMe(true);
-
-        const builder = new google.picker.PickerBuilder()
-          .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-          .setOAuthToken(oauthToken)
-          .setAppId(appId)
-          .addView(docsView)
-          .addView(folderView)
-          .addView(new google.picker.DocsUploadView())
-          .setTitle("Select Google Drive Files or Folder to Clean");
-
-        if (cfg.google_api_key) {
-          builder.setDeveloperKey(cfg.google_api_key);
-        }
-
-        const picker = builder
-          .setCallback(async (data) => {
-            if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
-              const docs = data[google.picker.Response.DOCUMENTS] || [];
-              if (docs.length > 0) {
-                const pickedFiles = docs.map((d) => ({
-                  id: d[google.picker.Document.ID],
-                  name: d[google.picker.Document.NAME],
-                  sizeBytes: Number(d[google.picker.Document.SIZE_BYTES] || d.sizeBytes || d.fileSize || 0),
-                  mimeType: d[google.picker.Document.MIME_TYPE],
-                  lastEditedUtc: d[google.picker.Document.LAST_EDITED_UTC] || Date.now(),
-                  isOwner: d.isOwner !== false
-                }));
-                await this.executeScan(null, true, "picker_files", pickedFiles, oauthToken);
-              }
-            }
-          })
-          .build();
-        picker.setVisible(true);
-      };
-
-      const loadGapiAndPicker = (token) => {
-        if (window.gapi) {
-          window.gapi.load("picker", () => buildPicker(token));
-        } else {
-          this.executeScan("__google_drive__", true, "drive");
-        }
-      };
-
-      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file",
-          callback: (resp) => {
-            if (resp && resp.access_token) {
-              loadGapiAndPicker(resp.access_token);
-            } else {
-              this.executeScan("__google_drive__", true, "drive");
-            }
-          }
-        });
-        tokenClient.requestAccessToken({ prompt: "" });
-      } else {
-        this.executeScan("__google_drive__", true, "drive");
-      }
-    } catch (err) {
-      console.warn("Picker error, falling back to direct drive scan:", err);
-      this.executeScan("__google_drive__", true, "drive");
-    }
   }
 
   showDeviceScanModal() {

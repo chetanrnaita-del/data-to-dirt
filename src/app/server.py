@@ -1456,7 +1456,7 @@ def create_flask_app():
 
         if not client_id or not client_secret:
             prov_label = "Personal / Outside Google" if provider == "personal" else "School Google"
-            err_msg = f"{prov_label} OAuth credentials not configured on server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET). Use Google Picker or Local Device cleaner."
+            err_msg = f"{prov_label} OAuth credentials not configured on server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET). Please connect with Personal Email or Local Device cleaner."
             print(f"[OAUTH ERROR] {err_msg}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(err_msg)}")
 
@@ -1776,7 +1776,6 @@ def create_flask_app():
         stage_name = TREE_STAGE_THRESHOLDS[stage][1]
 
         daily_count = int(student.get("daily_deletions_today", 0))
-        daily_limit = int(student.get("daily_deletion_limit", 5))
 
         return jsonify({
             "student_id": student.get("student_id", target_student_id or "STU-001"),
@@ -1790,8 +1789,8 @@ def create_flask_app():
             "trees": student.get("trees") if student.get("trees") is not None else int(bytes_cleared // (1024**3)),
             "current_streak_days": student.get("streak_days", 1),
             "daily_deletions_today": daily_count,
-            "daily_deletion_limit": daily_limit,
-            "can_delete": daily_count < daily_limit,
+            "daily_deletion_limit": None,
+            "can_delete": True,
             "tree_growth_stage": stage,
             "tree_growth_stage_name": stage_name,
             "tree_growth_progress_pct": progress_pct,
@@ -2903,7 +2902,7 @@ def create_flask_app():
                     return jsonify({
                         "status": "error",
                         "provider": scan_provider,
-                        "error": f"Google Drive API Notice: {last_google_error or 'Could not retrieve Drive files'}. Please verify the Google Drive API is enabled in your Google Cloud Console, or use '📁 Google Drive Picker' / '📱 Device'.",
+                        "error": f"Google Drive API Notice: {last_google_error or 'Could not retrieve Drive files'}. Please verify the Google Drive API is enabled in your Google Cloud Console, or use '📧 Personal Email' / '📱 Device'.",
                         "auth_url": f"/auth/google/login?provider={scan_provider}"
                     }), 400
             
@@ -3004,10 +3003,9 @@ def create_flask_app():
                     "error": f"This file has already been submitted for deletion (Request: {item['request_id']})."
                 }), 409
 
-        # Check daily deletion limit strictly for THIS individual student
+        # Record daily deletion count for tracking activity and streaks (unlimited daily deletions)
         is_test_mode = os.environ.get("TEST_MODE") == "1"
         current_deletions = int(target_student.get("daily_deletions_today", 0))
-        daily_limit = int(target_student.get("daily_deletion_limit", 5))
 
         if firestore_db.is_connected and actual_student_id:
             try:
@@ -3015,21 +3013,8 @@ def create_flask_app():
                 if f_user:
                     if f_user.get("last_deletion_date") == today:
                         current_deletions = max(current_deletions, int(f_user.get("daily_deletions_today", 0)))
-                    daily_limit = int(f_user.get("daily_deletion_limit", daily_limit))
             except Exception as fe:
-                print(f"[!] Firestore individual limit check error: {fe}")
-
-        if is_test_mode and current_deletions >= daily_limit:
-            target_student["daily_deletions_today"] = 1
-            current_deletions = 1
-
-        if not is_test_mode and current_deletions >= daily_limit:
-            return jsonify({
-                "status": "limit_exceeded",
-                "error": f"Daily deletion limit of {daily_limit} reached for your account. Try again tomorrow!",
-                "daily_deletions_today": current_deletions,
-                "daily_deletion_limit": daily_limit
-            }), 429
+                print(f"[!] Firestore individual activity lookup error: {fe}")
 
 
         # Evaluate reason

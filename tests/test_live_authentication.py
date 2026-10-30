@@ -318,7 +318,7 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
         os.environ["TEST_MODE"] = "1"
 
     def test_individual_student_daily_deletions_isolation(self):
-        """Student A reaching the daily deletion limit must NOT block Student B."""
+        """Student A deletions do not block Student B, and daily limit is removed allowing unlimited deletions."""
         student_a = f"STU_INDIV_A_{int(time.time())}"
         student_b = f"STU_INDIV_B_{int(time.time())}"
 
@@ -334,13 +334,12 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
             })
             self.assertEqual(res.status_code, 200, f"Deletion {i+1} for Student A should succeed")
 
-        # 2. Student A stats should show 5/5 deletions and can_delete == False
+        # 2. Student A stats should show 5 deletions and can_delete == True (unlimited deletions)
         stats_a = self.client.get(f"/api/student/stats?student_id={student_a}").get_json()
         self.assertEqual(stats_a.get("daily_deletions_today"), 5)
-        self.assertEqual(stats_a.get("daily_deletion_limit"), 5)
-        self.assertFalse(stats_a.get("can_delete"))
+        self.assertTrue(stats_a.get("can_delete"))
 
-        # 3. Student A's 6th deletion must be blocked with HTTP 429
+        # 3. Student A's 6th deletion succeeds without limit blocking
         res_a_6 = self.client.post("/api/deletion/submit", json={
             "student_id": student_a,
             "file_id": f"file_a_extra_{time.time()}",
@@ -349,13 +348,11 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
             "reason": "Old duplicate study notes from past biology exam",
             "is_drive": False
         })
-        self.assertEqual(res_a_6.status_code, 429)
-        self.assertEqual(res_a_6.get_json().get("status"), "limit_exceeded")
+        self.assertEqual(res_a_6.status_code, 200)
 
-        # 4. Student B stats must be completely isolated at 0/5
+        # 4. Student B stats must be completely isolated at 0 deletions
         stats_b = self.client.get(f"/api/student/stats?student_id={student_b}").get_json()
         self.assertEqual(stats_b.get("daily_deletions_today"), 0, "Student B must start with 0 deletions")
-        self.assertEqual(stats_b.get("daily_deletion_limit"), 5)
         self.assertTrue(stats_b.get("can_delete"), "Student B must be permitted to delete")
 
         # 5. Student B submits their first deletion and succeeds
