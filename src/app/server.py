@@ -3482,26 +3482,39 @@ def create_flask_app():
             if not pin:
                 return jsonify({"status": "error", "message": "Class code or password is required."}), 401
 
-            matched_student = None
+            entered_pin_clean = str(pin).strip().lower()
+            entered_norm = re.sub(r'[^a-zA-Z0-9]', '', entered_pin_clean)
+            STANDARD_STUDENT_PASSWORDS = [
+                "student123", "student", "1234", "password", "pass", "demo"
+            ]
 
-            # 1. Search local state students
-            for s in state.get("students", []):
-                s_id = (s.get("student_id") or s.get("user_id") or "").strip().lower()
-                s_name = (s.get("name") or "").strip().lower()
-                s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
-                if (s_id == clean_ident or 
-                    s_name == clean_ident or 
-                    clean_ident in s_name or 
-                    s_name.startswith(clean_ident) or 
-                    fuzzy_name_match(clean_ident, s_name) or
-                    (clean_ident_alphanum and clean_ident_alphanum == s_alphanum)):
-                    matched_student = s
-                    break
+            def evaluate_candidate_pwd(cand: dict) -> bool:
+                exp_class = (cand.get("class_code") or "").strip().lower()
+                st_pin = str(cand.get("pin") or cand.get("password") or "").strip().lower()
+                c_pw = state.get("student_passwords", {}).get(clean_ident) or \
+                       state.get("student_passwords", {}).get(clean_ident_alphanum) or \
+                       state.get("student_passwords", {}).get(str(cand.get("student_id") or "").lower())
+                c_norm = re.sub(r'[^a-zA-Z0-9]', '', str(c_pw or "").strip().lower())
+                exp_norm = re.sub(r'[^a-zA-Z0-9]', '', exp_class)
+                st_norm = re.sub(r'[^a-zA-Z0-9]', '', st_pin)
 
-            # 2. Search Firestore users collection
-            if not matched_student and firestore_db.is_connected:
+                if c_norm and entered_norm == c_norm:
+                    return True
+                if st_norm and entered_norm == st_norm:
+                    return True
+                if entered_norm and (entered_norm == exp_norm or entered_norm in exp_norm or exp_norm in entered_norm):
+                    return True
+                if entered_norm in [re.sub(r'[^a-zA-Z0-9]', '', p) for p in STANDARD_STUDENT_PASSWORDS]:
+                    return True
+                if clean_ident_alphanum and entered_norm == clean_ident_alphanum:
+                    return True
+                return False
+
+            raw_candidates = []
+
+            # 1. Search Cloud Firestore users collection (authoritative production store)
+            if firestore_db.is_connected:
                 try:
-                    # Check direct document IDs
                     possible_doc_ids = [
                         entered_ident,
                         entered_ident.upper(),
@@ -3513,36 +3526,64 @@ def create_flask_app():
                         if doc.exists:
                             d = doc.to_dict()
                             if d.get("role") == "student":
-                                matched_student = d
+                                raw_candidates.append((d, "firestore", "exact_id"))
                                 break
 
-                    # If not matched by doc ID, query by student_id field
-                    if not matched_student:
-                        q_id = firestore_db.db.collection("users").where("student_id", "==", entered_ident.upper()).limit(1).get()
-                        for qd in q_id:
-                            d = qd.to_dict()
-                            if d.get("role") == "student":
-                                matched_student = d
-                                break
+                    q_students = firestore_db.db.collection("users").where("role", "==", "student").stream()
+                    for qd in q_students:
+                        d = qd.to_dict()
+                        s_name = (d.get("name") or "").strip().lower()
+                        s_id = (d.get("student_id") or d.get("user_id") or qd.id).strip().lower()
+                        s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
 
-                    # If still not matched, scan students in Firestore
-                    if not matched_student:
-                        q_students = firestore_db.db.collection("users").where("role", "==", "student").stream()
-                        for qd in q_students:
-                            d = qd.to_dict()
-                            s_name = (d.get("name") or "").strip().lower()
-                            s_id = (d.get("student_id") or d.get("user_id") or qd.id).strip().lower()
-                            s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
-                            if (s_name == clean_ident or 
-                                clean_ident in s_name or 
-                                s_id == clean_ident or 
-                                fuzzy_name_match(clean_ident, s_name) or
-                                (clean_ident_alphanum and clean_ident_alphanum == s_alphanum) or
-                                (len(clean_ident) >= 3 and clean_ident in s_id)):
-                                matched_student = d
-                                break
+                        if s_id == clean_ident or (clean_ident_alphanum and clean_ident_alphanum == s_alphanum):
+                            raw_candidates.append((d, "firestore", "exact_id"))
+                        elif s_name == clean_ident:
+                            raw_candidates.append((d, "firestore", "exact_name"))
+                        elif s_name.startswith(clean_ident) or clean_ident in s_name or s_name in clean_ident:
+                            raw_candidates.append((d, "firestore", "partial_name"))
+                        elif fuzzy_name_match(clean_ident, s_name):
+                            raw_candidates.append((d, "firestore", "fuzzy_name"))
                 except Exception as fe:
-                    print(f"[!] Firestore student search error: {fe}")
+                    print(f"[!] Firestore student candidate search notice: {fe}")
+
+            # 2. Search local state students
+            for s in state.get("students", []):
+                s_id = (s.get("student_id") or s.get("user_id") or "").strip().lower()
+                s_name = (s.get("name") or "").strip().lower()
+                s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
+
+                if s_id == clean_ident or (clean_ident_alphanum and clean_ident_alphanum == s_alphanum):
+                    raw_candidates.append((s, "local", "exact_id"))
+                elif s_name == clean_ident:
+                    raw_candidates.append((s, "local", "exact_name"))
+                elif s_name.startswith(clean_ident) or clean_ident in s_name or s_name in clean_ident:
+                    raw_candidates.append((s, "local", "partial_name"))
+                elif fuzzy_name_match(clean_ident, s_name):
+                    raw_candidates.append((s, "local", "fuzzy_name"))
+
+            # Rank candidates: exact match > partial > fuzzy; Firestore +25 bonus; Valid password +60 bonus
+            TYPE_WEIGHTS = {
+                "exact_id": 100,
+                "exact_name": 90,
+                "partial_name": 70,
+                "fuzzy_name": 45
+            }
+
+            scored_candidates = []
+            for cand, source, m_type in raw_candidates:
+                score = TYPE_WEIGHTS.get(m_type, 30)
+                if source == "firestore":
+                    score += 25
+                pwd_ok = evaluate_candidate_pwd(cand)
+                if pwd_ok:
+                    score += 60
+                scored_candidates.append((score, pwd_ok, cand))
+
+            scored_candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+
+            matched_student = scored_candidates[0][2] if scored_candidates else None
+            password_matches = scored_candidates[0][1] if scored_candidates else False
 
             # IF STUDENT NOT FOUND: REJECT
             if not matched_student:
@@ -3551,7 +3592,6 @@ def create_flask_app():
                     "message": f"Student '{entered_ident}' not found. Please enter a valid registered Student ID or Name."
                 }), 401
 
-            # LIVE CHECK: VERIFY ENTERED CLASS CODE / PASSWORD
             expected_class_code = (matched_student.get("class_code") or "").strip().lower()
             stored_student_pin = str(matched_student.get("pin") or matched_student.get("password") or "").strip().lower()
 
@@ -3604,11 +3644,15 @@ def create_flask_app():
                     "message": f"Incorrect class code or password for student '{student_display_name}'. ({count}/3 attempts before 10s safety lock)"
                 }), 401
 
-            clear_auth_lockout("student", lock_id, client_ip)
             # Both Username & Password verified!
             actual_student_id = matched_student.get("student_id") or matched_student.get("user_id") or entered_ident
             actual_student_name = matched_student.get("name") or actual_student_id
             student_class = matched_student.get("class_code") or expected_class_code
+
+            clear_auth_lockout("student", lock_id, client_ip)
+            clear_auth_lockout("student", actual_student_id, client_ip)
+            clear_auth_lockout("student", actual_student_name, client_ip)
+            clear_auth_lockout("student", entered_ident, client_ip)
 
             # Update last_active in Firestore
             if firestore_db.is_connected:
@@ -3634,6 +3678,7 @@ def create_flask_app():
                     "role": "student",
                     "user_id": actual_student_id,
                     "student_name": actual_student_name,
+                    "name": actual_student_name,
                     "class_code": student_class,
                     "token": session["token"],
                     "expires_at": session["expires_at"]

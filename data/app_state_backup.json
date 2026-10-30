@@ -1,8 +1,8 @@
 {
   "student": {
-    "student_id": "STU-8SB8FZ",
-    "user_id": "STU-8SB8FZ",
-    "name": "Aaryan Agarawal",
+    "student_id": "STU-001",
+    "user_id": "STU-001",
+    "name": "Demo Student",
     "class_code": "grade5",
     "bytes_cleared": 0,
     "eco_points": 100,
@@ -11,8 +11,7 @@
     "daily_deletions_today": 0,
     "daily_deletion_limit": 5,
     "strikes": 0,
-    "email": "aaryan.agarwal@lighthouse.edu",
-    "google_sub": "987654321",
+    "email": "student@lighthouse.edu",
     "trees": 0
   },
   "leaderboard": [],
@@ -25,11 +24,11 @@
   },
   "teacher_queue": [
     {
-      "request_id": "REQ-57785",
-      "student_id": "STU-8SB8FZ",
-      "student_name": "Aaryan Agarawal",
-      "class_code": "grade5",
-      "file_id": "test_01_1793339857785",
+      "request_id": "REQ-86729",
+      "student_id": "STU-001",
+      "student_name": "STU-001",
+      "class_code": "bio101",
+      "file_id": "test_01_1793344786728",
       "file_name": "Presentation_Draft_Old.mov",
       "file_path": "Presentation_Draft_Old.mov",
       "file_size_bytes": 262144000,
@@ -45,15 +44,15 @@
       },
       "status": "APPROVED",
       "credited": true,
-      "submitted_at": "2026-10-30 11:27:37",
+      "submitted_at": "2026-10-30 12:49:46",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793339857.8949912
+      "decided_at": 1793344786.8313012
     },
     {
-      "request_id": "REQ-57863",
+      "request_id": "REQ-86799",
       "student_id": "STU-001",
       "student_name": "STU-001",
-      "class_code": "grade5",
+      "class_code": "bio101",
       "file_id": "batch_file_1",
       "file_name": "batch1.iso",
       "file_path": "batch1.iso",
@@ -70,15 +69,15 @@
       },
       "status": "APPROVED",
       "credited": true,
-      "submitted_at": "2026-10-30 11:27:37",
+      "submitted_at": "2026-10-30 12:49:46",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793339857.874035
+      "decided_at": 1793344786.809848
     },
     {
-      "request_id": "REQ-57868",
+      "request_id": "REQ-86804",
       "student_id": "STU-001",
       "student_name": "STU-001",
-      "class_code": "grade5",
+      "class_code": "bio101",
       "file_id": "batch_file_2",
       "file_name": "batch2.iso",
       "file_path": "batch2.iso",
@@ -95,12 +94,12 @@
       },
       "status": "APPROVED",
       "credited": true,
-      "submitted_at": "2026-10-30 11:27:37",
+      "submitted_at": "2026-10-30 12:49:46",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793339857.874047
+      "decided_at": 1793344786.809862
     },
     {
-      "request_id": "REQ-57878",
+      "request_id": "REQ-86813",
       "student_id": "STU-REJECT-TEST",
       "student_name": "STU-REJECT-TEST",
       "class_code": "grade5",
@@ -120,13 +119,13 @@
       },
       "status": "REJECTED",
       "credited": false,
-      "submitted_at": "2026-10-30 11:27:37",
+      "submitted_at": "2026-10-30 12:49:46",
       "feedback": "Keep this file for your archival record.",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793339857.883622
+      "decided_at": 1793344786.8195388
     },
     {
-      "request_id": "REQ-57885",
+      "request_id": "REQ-86821",
       "student_id": "STU-FLAG-TEST",
       "student_name": "STU-FLAG-TEST",
       "class_code": "grade5",
@@ -146,13 +145,13 @@
       },
       "status": "FLAGGED",
       "credited": false,
-      "submitted_at": "2026-10-30 11:27:37",
+      "submitted_at": "2026-10-30 12:49:46",
       "feedback": "Suspicious pattern detected upon closer inspection.",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793339857.8918788
+      "decided_at": 1793344786.8280609
     },
     {
-      "request_id": "REQ-57927",
+      "request_id": "REQ-86862",
       "student_id": "STU-ISOLATE-TEST",
       "student_name": "Test Isolate",
       "class_code": "grade5",
@@ -172,10 +171,10 @@
       },
       "status": "FLAGGED",
       "credited": false,
-      "submitted_at": "2026-10-30 11:27:37",
+      "submitted_at": "2026-10-30 12:49:46",
       "feedback": "Suspected unauthorized script execution",
       "decided_by": "TEACHER-001",
-      "decided_at": 1793339857.934797
+      "decided_at": 1793344786.869737
     }
   ],
   "ecofund": {
@@ -295,36 +294,6 @@
       "strikes": 0
     },
     {
-      "student_id": "STU-8SB8FZ",
-      "user_id": "STU-8SB8FZ",
-      "name": "Aaryan Agarawal",
-      "class_code": "grade5",
-      "bytes_cleared": 77004,
-      "eco_points": 20,
-      "streak_days": 2,
-      "last_deletion_date": "2026-10-29",
-      "daily_deletions_today": 1,
-      "daily_deletion_limit": 5,
-      "strikes": 0,
-      "email": "aaryan.agarwal@lighthouse.edu",
-      "google_sub": "987654321",
-      "trees": 0
-    },
-    {
-      "student_id": "STU-001",
-      "user_id": "STU-001",
-      "name": "STU-001",
-      "class_code": "grade5",
-      "bytes_cleared": 3145728,
-      "eco_points": 41,
-      "trees": 0,
-      "streak_days": 3,
-      "last_deletion_date": "2026-10-30",
-      "daily_deletions_today": 2,
-      "daily_deletion_limit": 5,
-      "strikes": 0
-    },
-    {
       "student_id": "STU-REJECT-TEST",
       "user_id": "STU-REJECT-TEST",
       "name": "STU-REJECT-TEST",
@@ -353,9 +322,9 @@
       "strikes": 1
     },
     {
-      "user_id": "STU-TEST-CD957F",
-      "student_id": "STU-TEST-CD957F",
-      "name": "Alice Student CD957F",
+      "user_id": "STU-TEST-522578",
+      "student_id": "STU-TEST-522578",
+      "name": "Alice Student 522578",
       "role": "student",
       "class_code": "bio101",
       "created_by": "TEACHER-001",
@@ -368,12 +337,12 @@
       "daily_deletion_limit": 5,
       "last_deletion_date": "2026-10-30",
       "strikes": 0,
-      "created_at_iso": "2026-10-30 11:27:37"
+      "created_at_iso": "2026-10-30 12:49:46"
     },
     {
-      "user_id": "STU-87C9F1",
-      "student_id": "STU-87C9F1",
-      "name": "Bob AutoGen CD957F",
+      "user_id": "STU-C334A5",
+      "student_id": "STU-C334A5",
+      "name": "Bob AutoGen 522578",
       "role": "student",
       "class_code": "bio101",
       "created_by": "TEACHER-001",
@@ -386,7 +355,7 @@
       "daily_deletion_limit": 5,
       "last_deletion_date": "2026-10-30",
       "strikes": 0,
-      "created_at_iso": "2026-10-30 11:27:37"
+      "created_at_iso": "2026-10-30 12:49:46"
     },
     {
       "student_id": "STU-BIG-CLEANER",
@@ -445,7 +414,7 @@
         "scans": 0,
         "bytes_cleaned": 265289728,
         "co2_avoided_kg": 0.028,
-        "last_active": "2026-10-30 11:27:37"
+        "last_active": "2026-10-30 12:49:46"
       },
       "Singapore": {
         "city": "Singapore",
@@ -465,10 +434,10 @@
     },
     "recent_events": [
       {
-        "id": "EVT-857915",
-        "timestamp": "2026-10-30T05:57:37.915719+00:00",
-        "timestamp_str": "2026-10-30 11:27:37",
-        "timestamp_epoch": 1793339857.915715,
+        "id": "EVT-786851",
+        "timestamp": "2026-10-30T07:19:46.851297+00:00",
+        "timestamp_str": "2026-10-30 12:49:46",
+        "timestamp_epoch": 1793344786.851294,
         "city": "Global Visitor",
         "country": "Global",
         "country_code": "",
@@ -480,10 +449,10 @@
         "bytes_cleaned": 0
       },
       {
-        "id": "EVT-857875",
-        "timestamp": "2026-10-30T05:57:37.875782+00:00",
-        "timestamp_str": "2026-10-30 11:27:37",
-        "timestamp_epoch": 1793339857.8757792,
+        "id": "EVT-786811",
+        "timestamp": "2026-10-30T07:19:46.811573+00:00",
+        "timestamp_str": "2026-10-30 12:49:46",
+        "timestamp_epoch": 1793344786.811569,
         "city": "Global Visitor",
         "country": "Global",
         "country_code": "",

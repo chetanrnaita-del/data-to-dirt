@@ -1,18 +1,17 @@
 {
   "student": {
-    "student_id": "STU-8SB8FZ",
-    "user_id": "STU-8SB8FZ",
-    "name": "Aaryan Agarawal",
+    "student_id": "STU-001",
+    "user_id": "STU-001",
+    "name": "Demo Student",
     "class_code": "grade5",
-    "bytes_cleared": 77004,
-    "eco_points": 20,
-    "streak_days": 2,
-    "last_deletion_date": "2026-10-29",
-    "daily_deletions_today": 1,
+    "bytes_cleared": 0,
+    "eco_points": 0,
+    "streak_days": 1,
+    "last_deletion_date": "2026-10-30",
+    "daily_deletions_today": 0,
     "daily_deletion_limit": 5,
     "strikes": 0,
-    "email": "aaryan.agarwal@lighthouse.edu",
-    "google_sub": "987654321",
+    "email": "student@lighthouse.edu",
     "trees": 0
   },
   "leaderboard": [],
@@ -34,7 +33,7 @@
     "donations_history": []
   },
   "auth": {
-    "current_role": "admin",
+    "current_role": "student",
     "teacher_pin": "teacher123",
     "admin_pin": "admin123",
     "teacher_passwords": {
@@ -139,22 +138,6 @@
       "daily_deletions_today": 0,
       "daily_deletion_limit": 5,
       "strikes": 0
-    },
-    {
-      "student_id": "STU-8SB8FZ",
-      "user_id": "STU-8SB8FZ",
-      "name": "Aaryan Agarawal",
-      "class_code": "grade5",
-      "bytes_cleared": 77004,
-      "eco_points": 20,
-      "streak_days": 2,
-      "last_deletion_date": "2026-10-29",
-      "daily_deletions_today": 1,
-      "daily_deletion_limit": 5,
-      "strikes": 0,
-      "email": "aaryan.agarwal@lighthouse.edu",
-      "google_sub": "987654321",
-      "trees": 0
     }
   ],
   "analytics": {
