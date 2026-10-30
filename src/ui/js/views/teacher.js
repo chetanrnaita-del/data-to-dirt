@@ -464,6 +464,22 @@ class TeacherConfirmationView {
       this.queue = queueRes.queue || [];
       this.analytics = analyticsRes || {};
 
+      if (!this.studentNameMap) {
+        this.studentNameMap = {};
+      }
+      try {
+        const cachedStu = JSON.parse(localStorage.getItem("d2d_directory_students") || "[]");
+        cachedStu.forEach(s => {
+          const sid = s.student_id || s.user_id;
+          if (sid && s.name) this.studentNameMap[sid] = s.name;
+        });
+      } catch (_) {}
+      this.queue.forEach(item => {
+        if (item.student_id && item.student_name && item.student_name !== item.student_id) {
+          this.studentNameMap[item.student_id] = item.student_name;
+        }
+      });
+
       // If pending count is 0, but queue has items and current filter is pending,
       // default to "all" so the queue never looks empty/vanished!
       const pendingCount = this.queue.filter((r) => (r.status || "").toLowerCase() === "pending").length;
@@ -698,6 +714,11 @@ class TeacherConfirmationView {
     const status = (item.status || "PENDING").toUpperCase();
 
     const isPending = status === "PENDING";
+    const rawStudentName = (item.student_name || "").trim();
+    const resolvedName = (rawStudentName && rawStudentName.toLowerCase() !== (item.student_id || "").toLowerCase() && rawStudentName.toLowerCase() !== "student")
+      ? rawStudentName
+      : ((this.studentNameMap && this.studentNameMap[item.student_id]) || item.student_id);
+    const hasDistinctName = resolvedName && resolvedName.toLowerCase() !== (item.student_id || "").toLowerCase();
 
     return `
       <div class="retro-inset" style="padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;">
@@ -705,10 +726,10 @@ class TeacherConfirmationView {
         <!-- Header: Student & AI Confidence -->
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-weight: bold; font-size: 13px; color: var(--c-wood-border);">
-              ${item.student_name || item.student_id}
+            <span style="font-weight: bold; font-size: 13.5px; color: var(--c-wood-border);">
+              👤 ${resolvedName}
             </span>
-            <span style="font-size: 11px; color: var(--c-ink-muted);">(${item.student_id})</span>
+            ${hasDistinctName ? `<span style="font-size: 11px; color: var(--c-ink-muted);">(${item.student_id})</span>` : ""}
             <span class="retro-tag ${isPlausible ? "retro-tag-leaf" : "retro-tag-danger"}" style="font-size: 10px;">
               ${badgeLabel}
             </span>

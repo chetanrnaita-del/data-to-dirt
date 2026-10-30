@@ -3047,11 +3047,12 @@ def create_flask_app():
                 "eco_points": target_student.get("eco_points", 0)
             }), 400
 
-        # Look up student's real name and class code (checking session, local state and Cloud Firestore)
-        actual_student_name = (session.get("name") if session else None) or actual_student_id
+        # Look up student's real name and class code (checking payload, session, local state, and Cloud Firestore)
+        req_name = (data.get("student_name") or "").strip()
+        actual_student_name = req_name if (req_name and req_name != actual_student_id) else ((session.get("name") if session else None) or actual_student_id)
         student_class_code = data.get("class_code") or (session.get("class_code") if session else None) or ""
         s_match = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == actual_student_id.lower()), None)
-        if not s_match and firestore_db.is_connected and actual_student_id:
+        if (not s_match or not s_match.get("name") or s_match.get("name") == actual_student_id) and firestore_db.is_connected and actual_student_id:
             try:
                 doc = firestore_db.db.collection("users").document(actual_student_id.upper()).get()
                 if not doc.exists:
@@ -3066,7 +3067,9 @@ def create_flask_app():
                 print(f"[!] Firestore student lookup notice: {fe}")
 
         if s_match:
-            actual_student_name = s_match.get("name") or actual_student_name
+            resolved_n = s_match.get("name")
+            if resolved_n and resolved_n != actual_student_id:
+                actual_student_name = resolved_n
             if not student_class_code:
                 student_class_code = s_match.get("class_code", "bio101")
         elif "_" in actual_student_id:
@@ -3697,6 +3700,38 @@ def create_flask_app():
 
         queue = list(merged.values())
 
+        # Build student resolution cache from local state and Cloud Firestore
+        student_info_map = {}
+        for s in state.get("students", []):
+            sid = (s.get("student_id") or "").strip().upper()
+            if sid:
+                student_info_map[sid] = {
+                    "name": s.get("name") or sid,
+                    "class_code": s.get("class_code") or ""
+                }
+        if firestore_db.is_connected:
+            try:
+                for doc in firestore_db.db.collection("users").stream():
+                    udata = doc.to_dict() or {}
+                    sid = (udata.get("student_id") or doc.id or "").strip().upper()
+                    if sid:
+                        sname = (udata.get("name") or "").strip()
+                        if sname and sname.upper() != sid:
+                            student_info_map[sid] = {
+                                "name": sname,
+                                "class_code": udata.get("class_code") or ""
+                            }
+            except Exception as fe:
+                print(f"[!] Firestore users fetch notice in api_teacher_queue: {fe}")
+
+        for item in queue:
+            sid = (item.get("student_id") or "").strip().upper()
+            curr_name = (item.get("student_name") or "").strip()
+            if (not curr_name or curr_name.upper() == sid or curr_name.lower() == "student") and sid in student_info_map:
+                item["student_name"] = student_info_map[sid]["name"]
+            if not item.get("class_code") and sid in student_info_map and student_info_map[sid].get("class_code"):
+                item["class_code"] = student_info_map[sid]["class_code"]
+
         # Sync items to default_teacher_queue if empty
         if len(default_teacher_queue) == 0 and queue:
             for item in queue:
@@ -3743,19 +3778,7 @@ def create_flask_app():
                 item_class = (item.get("class_code") or "").lower()
                 if not item_class:
                     s_id = student_id.lower()
-                    s_rec = next((s for s in state.get("students", []) if s.get("student_id", "").lower() == s_id), None)
-                    if not s_rec and firestore_db.is_connected and student_id:
-                        try:
-                            doc = firestore_db.db.collection("users").document(student_id.upper()).get()
-                            if doc.exists:
-                                s_rec = doc.to_dict()
-                        except Exception:
-                            pass
-                    if s_rec:
-                        item_class = (s_rec.get("class_code") or "").lower()
-                        if not item.get("student_name") or item.get("student_name") == student_id:
-                            item["student_name"] = s_rec.get("name") or student_id
-                    elif f"-{teacher_class_code[:3]}-" in s_id or s_id.startswith(f"{teacher_class_code}_"):
+                    if f"-{teacher_class_code[:3]}-" in s_id or s_id.startswith(f"{teacher_class_code}_"):
                         item_class = teacher_class_code
                     elif s_id in ["stu-001", "stu-002", "stu-jordan-01"]:
                         item_class = "grade5"

@@ -318,6 +318,15 @@ class StudentDashboardView {
       }
     }
 
+    // Safety check: if an old cached DOM snippet has btn-scan-picker, morph it into btn-scan-gdrive-personal
+    const obsoletePickerBtn = document.getElementById("btn-scan-picker");
+    if (obsoletePickerBtn) {
+      obsoletePickerBtn.id = "btn-scan-gdrive-personal";
+      obsoletePickerBtn.className = "retro-btn retro-btn-gold retro-btn-sm";
+      obsoletePickerBtn.title = "Clean Personal Google Drive (@gmail.com / Personal Email)";
+      obsoletePickerBtn.innerHTML = "📧 Personal Email";
+    }
+
     const btnScanDrivePersonal = document.getElementById("btn-scan-gdrive-personal");
     if (btnScanDrivePersonal) {
       btnScanDrivePersonal.addEventListener("click", () => {
@@ -1205,7 +1214,8 @@ class StudentDashboardView {
               reason: reason,
               is_drive: file.is_drive || false,
               student_id: localStorage.getItem("d2d_user_id") || this.userId || "",
-              class_code: localStorage.getItem("d2d_class_code") || ""
+              student_name: localStorage.getItem("d2d_student_name") || this.studentName || "",
+              class_code: localStorage.getItem("d2d_class_code") || this.classCode || ""
             }),
           });
 
