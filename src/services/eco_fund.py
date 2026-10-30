@@ -324,7 +324,7 @@ class EcoFundManager:
             amount_cents=total_cost_cents,
             debit_account="REFORESTATION_EXPENSE",
             credit_account="ECO_FUND_CASH",
-            description=f"Planted {trees_count} tree(s) via Tree-Nation ({species})",
+            description=f"Planted {trees_count} tree(s) via Reforestation Initiative ({species})",
             metadata={
                 "tree_id": plant_res.get("tree_id"),
                 "trees_planted": trees_count,
@@ -353,7 +353,7 @@ class EcoFundManager:
             "trees_count": trees_count,
             "animation": "PARTICLE_BURST_GOLD",
             "sound_cue": "FANFARE",
-            "message": f"{trees_count} Tree{'s' if trees_count > 1 else ''} planted via Tree-Nation!",
+            "message": f"{trees_count} Tree{'s' if trees_count > 1 else ''} planted!",
             "certificate_url": cert_url,
             "species": species,
             "location": location,

@@ -752,7 +752,7 @@ class DataToDirtApp {
           <!-- Eco-Fund Ledger & Settings Card -->
           <div class="retro-card" style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
             <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border); border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 6px;">
-              🌳 Eco-Fund & Tree-Nation Reforestation Status (R5)
+              🌳 Eco-Fund & Verified Reforestation Status (R5)
             </div>
 
             <!-- Eco-Fund Balance Box -->

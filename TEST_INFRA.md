@@ -108,7 +108,7 @@ The application architecture comprises 30 primary features organized across Requ
   - Scanning + Confidentiality Tagging + Deletion Queue filtering.
   - AI Confidence Evaluation + Anti-Gaming Strike Accrual + Leaderboard Deduction.
   - Teacher Queue Approval + Cumulative Waste Accumulator + 1 GB Threshold Trigger.
-  - Threshold Trigger + Tree-Nation API Call + Eco-Fund Ledger SHA-256 Chaining.
+  - Threshold Trigger + Reforestation API Call + Eco-Fund Ledger SHA-256 Chaining.
   - Teacher Rejection + Student Feedback Notification + File Disk Preservation.
   - Cloud Storage Mock Deletion + Local Tree Growth Animation Event Dispatch.
 - **Test File**: `tests/e2e/test_tier3_pairwise.py`

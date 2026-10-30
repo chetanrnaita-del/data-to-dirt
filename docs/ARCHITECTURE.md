@@ -19,7 +19,7 @@ sequenceDiagram
     participant GD as ☁️ Google Drive API
     participant AI as 🤖 AI Evaluator
     participant T as 👨‍🏫 Teacher Browser
-    participant TN as 🌳 Tree-Nation API
+    participant TN as 🌳 Reforestation Partner
 
     rect rgb(240, 237, 255)
     Note over S,F: Phase 1 — Authentication
@@ -280,7 +280,7 @@ flowchart LR
     end
 
     subgraph External["🌍 External"]
-        TN["🌳 Tree-Nation API"]
+        TN["🌳 Reforestation Partner"]
         CF["📊 Cloudflare<br/>Web Analytics"]
     end
 

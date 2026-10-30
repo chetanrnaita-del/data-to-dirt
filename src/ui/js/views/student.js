@@ -254,7 +254,7 @@ class StudentDashboardView {
             <div style="font-weight: bold; color: var(--c-wood-border); margin-bottom: 4px;">🌍 Real-World Impact Equivalency</div>
             <div>• Singapore Grid Emission Factor: <strong>405.7 g CO₂e/kWh</strong></div>
             <div>• Storage Power Coefficient: <strong>0.28 kWh/GB/year</strong></div>
-            <div>• Every <strong>1.0 GB</strong> verified waste triggers 1 Tree-Nation micro-donation!</div>
+            <div>• Every <strong>1.0 GB</strong> verified waste triggers 1 real tree micro-donation!</div>
           </div>
 
         </div>

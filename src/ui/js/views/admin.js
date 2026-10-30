@@ -1,7 +1,7 @@
 /**
  * ==============================================================================
  * DATA-TO-DIRT — Admin Eco-Fund Budget & Environmental Impact View (R4 & R5)
- * Budget allocation widget, Tree-Nation threshold slider, classroom carbon charts,
+ * Budget allocation widget, Reforestation threshold slider, classroom carbon charts,
  * incident audit register, and tamper-evident transaction logs.
  * ==============================================================================
  */
@@ -69,7 +69,7 @@ class AdminEcoFundView {
         <!-- Responsive Master Grid -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; flex: 1;">
 
-          <!-- Left Column: Eco-Fund Budget & Tree-Nation Threshold Controller -->
+          <!-- Left Column: Eco-Fund Budget & Reforestation Threshold Controller -->
           <div style="display: flex; flex-direction: column; gap: 12px;">
 
             <!-- Eco-Fund Budget Widget -->
@@ -111,14 +111,14 @@ class AdminEcoFundView {
               </div>
             </div>
 
-            <!-- Tree-Nation Threshold Widget -->
+            <!-- Reforestation Threshold Widget -->
             <div class="retro-card" style="display: flex; flex-direction: column; gap: 10px;">
               <div style="font-weight: bold; font-size: 14px; color: var(--c-wood-border); border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 4px;">
                 🌲 Reforestation Threshold Trigger (R5)
               </div>
 
               <p style="font-size: 12px; color: var(--c-ink-text); margin: 0;">
-                When classroom cumulative verified dark data crossed this threshold, an automatic micro-donation of <strong>$1.50</strong> (1 real tree) is triggered via the Tree-Nation API.
+                When classroom cumulative verified dark data crossed this threshold, an automatic micro-donation of <strong>$1.50</strong> (1 real tree) is triggered for verified reforestation.
               </p>
 
               <div class="retro-inset" style="display: flex; flex-direction: column; gap: 8px; padding: 10px;">
@@ -199,7 +199,7 @@ class AdminEcoFundView {
             <!-- Reforestation Transaction Certificates -->
             <div class="retro-card" style="display: flex; flex-direction: column; gap: 6px;">
               <div style="font-weight: bold; font-size: 13px; color: var(--c-wood-border);">
-                📜 Tree-Nation Certificates Ledger
+                📜 Verified Reforestation Certificates Ledger
               </div>
               <div id="adm-tree-ledger" class="retro-inset" style="max-height: 140px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
                 <div>No trees planted yet.</div>

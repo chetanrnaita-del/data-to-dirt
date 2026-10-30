@@ -1,7 +1,6 @@
 """
-Data-to-Dirt — Tree-Nation REST API Integration & Deterministic Offline Emulator
-Connects to Tree-Nation (https://tree-nation.com/api) for automated reforestation micro-donations.
-Provides a deterministic synthetic offline emulator when operating offline or without API keys.
+Data-to-Dirt — Reforestation REST Integration & Deterministic Offline Emulator
+Provides automated reforestation micro-donations and a deterministic synthetic offline emulator.
 """
 
 import os
@@ -103,16 +102,16 @@ class TreeNationError(Exception):
 
 
 class TreeNationAPIError(TreeNationError):
-    """Raised when the Tree-Nation API returns an error HTTP status."""
+    """Raised when the reforestation service returns an error HTTP status."""
     def __init__(self, status_code: int, message: str):
-        super().__init__(f"Tree-Nation API error (HTTP {status_code}): {message}")
+        super().__init__(f"Reforestation API error (HTTP {status_code}): {message}")
         self.status_code = status_code
         self.message = message
 
 
 class TreeNationClient:
     """
-    Client for Tree-Nation REST API with high-fidelity deterministic offline emulator.
+    Client for Reforestation REST Service with high-fidelity deterministic offline emulator.
     Switches to offline emulator when API key is missing or set to 'MOCK'.
     """
 
@@ -189,7 +188,7 @@ class TreeNationClient:
         message: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Plants one or more trees via Tree-Nation API or deterministic synthetic emulator.
+        Plants one or more trees via Reforestation Service or deterministic synthetic emulator.
         POST /api/plant or /api/projects/{id}/plant
         """
         if count <= 0:
@@ -296,7 +295,7 @@ class TreeNationClient:
         payload: Optional[Dict[str, Any]] = None,
         timeout: float = 10.0,
     ) -> Dict[str, Any]:
-        """Performs authenticated HTTP request to Tree-Nation API."""
+        """Performs authenticated HTTP request to Reforestation Service."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = {
             "Authorization": f"Bearer {self.api_key}",

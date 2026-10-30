@@ -798,7 +798,7 @@ class TeacherConfirmationView {
       if (res.donation_triggered) {
         if (this.audioSynth) this.audioSynth.playVictoryFanfare();
         if (this.particleEngine) this.particleEngine.emitConfetti();
-        this.showToast(`🌳 1.0 GB Threshold Reached! Micro-donation triggered via Tree-Nation!`, "success");
+        this.showToast(`🌳 1.0 GB Threshold Reached! Verified tree planting micro-donation triggered!`, "success");
       } else {
         this.showToast(`✓ Request ${requestId} approved. File recycled and carbon savings credited.`, "success");
       }

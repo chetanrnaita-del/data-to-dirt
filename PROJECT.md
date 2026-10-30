@@ -62,7 +62,7 @@ The user interface delivers an authentic 16-bit retro-game visual style inspired
 | **F-R5-01** | Eco-Fund | Cumulative Waste Accumulator | Tracks verified teacher-approved bytes toward configurable threshold | **M6** | Accumulates waste across sessions until reaching threshold (default 1 GB). |
 | **F-R5-02** | Eco-Fund | 1.0 GB Threshold Trigger | Automatic trigger executing micro-donation when threshold is crossed | **M6** | Automatically plants tree and logs transaction when cumulative waste $\ge 1\text{ GB}$. |
 | **F-R5-03** | Eco-Fund | Tamper-Evident Ledger | SHA-256 hash-chained JSON ledger recording all financial/tree transactions | **M6** | Cryptographically verifies transaction integrity and detects tampering. |
-| **F-R5-04** | Eco-Fund | Live Tree-Nation REST Client | Sends `POST /api/plant` requests to Tree-Nation API with bearer auth | **M6** | Dispatches real tree planting request and parses certificate URL. |
+| **F-R5-04** | Eco-Fund | Live Reforestation REST Client | Sends `POST /api/plant` requests to Reforestation Service with bearer auth | **M6** | Dispatches real tree planting request and parses certificate URL. |
 | **F-R5-05** | Eco-Fund | Offline Synthetic Tree Emulator | Fallback emulator generating synthetic tree records and offline certificates | **M6** | Operates cleanly without internet connection or missing API keys. |
 | **F-R5-06** | Eco-Fund | Retro Certificate Viewer | Pixel-art modal displaying verified tree certificate and CO2 offset stats | **M6** | Clicking certificate URL displays authentic 8-bit diploma. |
 
@@ -137,7 +137,7 @@ data-to-dirt/
 │   │   ├── auth.py              # Role-based access control (Student / Teacher / Admin)
 │   │   ├── teacher_queue.py     # Deletion request queue management
 │   │   ├── eco_fund.py          # Budget ledger & tamper-evident SHA-256 chain
-│   │   └── tree_nation.py       # Tree-Nation API client & offline emulator
+│   │   └── tree_nation.py       # Reforestation service client & offline emulator
 │   ├── ai/
 │   │   ├── __init__.py
 │   │   ├── tokenizer.py         # Subword tokenizer with vocab.json
