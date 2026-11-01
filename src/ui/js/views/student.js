@@ -6,6 +6,16 @@
  * ==============================================================================
  */
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class StudentDashboardView {
   constructor() {
     this.container = null;
@@ -550,9 +560,9 @@ class StudentDashboardView {
           <tr style="${rowBg} border-bottom: 1px dashed var(--c-parchment-border);">
             <td style="padding: 6px 8px; font-weight: bold;">${rankMedal}</td>
             <td style="padding: 6px 8px; font-weight: ${isSelf ? "bold" : "normal"}; color: ${isSelf ? "var(--c-eco-leaf)" : "inherit"};">
-              ${entry.name}
+              ${escapeHtml(entry.name)}
             </td>
-            <td style="padding: 6px 8px; text-align: right; color: var(--c-ink-muted);">${entry.data_cleared_formatted}</td>
+            <td style="padding: 6px 8px; text-align: right; color: var(--c-ink-muted);">${escapeHtml(entry.data_cleared_formatted)}</td>
             <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: var(--c-brass-dark);">${entry.eco_points}</td>
             <td style="padding: 6px 8px; text-align: center;">🌲 ${treesNum}</td>
           </tr>
@@ -1038,11 +1048,11 @@ class StudentDashboardView {
                 <span style="font-size: 18px; line-height: 1.2;" title="${file.category}">${icon}</span>
                 <div style="flex: 1; min-width: 0;">
                   <div style="font-weight: bold; font-size: 13px; color: var(--c-ink-text); word-break: break-all; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
-                    <span>${file.is_confidential ? "🔒 [CONFIDENTIAL] " : ""}${file.file_name}</span>
+                    <span>${file.is_confidential ? "🔒 [CONFIDENTIAL] " : ""}${escapeHtml(file.file_name)}</span>
                     ${file.sha_match ? `<span class="retro-tag retro-tag-duplicate" style="font-size: 9px; background: #e02424; color: #fff; font-weight: bold; padding: 1px 5px; border-radius: 3px;">🎯 EXACT SHA-256 CLONE</span>` : ""}
                   </div>
                   <div style="font-size: 10px; color: var(--c-ink-muted); margin-top: 2px; font-family: monospace; word-break: break-all;">
-                    📂 ${file.file_path || file.absolute_path || file.storage_source || "Local / Cloud Storage"}
+                    📂 ${escapeHtml(file.file_path || file.absolute_path || file.storage_source || "Local / Cloud Storage")}
                   </div>
                 </div>
               </div>
@@ -1051,7 +1061,7 @@ class StudentDashboardView {
                 ${
                   file.is_confidential
                     ? `<span style="font-size: 11px; color: var(--c-ink-light); font-style: italic;">Protected</span>`
-                    : `<button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-file" data-id="${file.file_id}" style="padding: 4px 10px; font-weight: bold;">
+                    : `<button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-file" data-id="${escapeHtml(file.file_id)}" style="padding: 4px 10px; font-weight: bold;">
                         🗑️ Clean
                       </button>`
                 }

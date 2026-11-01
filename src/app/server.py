@@ -447,8 +447,8 @@ def save_state(state: Dict[str, Any]) -> None:
             print(f"[!] Warning: Failed to persist state: {e}")
 
 
-def _resolve_google_user_profile(access_token: str, provider: str = "school", target_grade: str = "grade5", student_hint: str = "") -> Dict[str, Any]:
-    """Fetches verified Google user profile and unifies with existing student records using fuzzy matching, email, and ID."""
+def _resolve_google_user_profile(access_token: str, provider: str = "school", target_grade: str = "grade5") -> Dict[str, Any]:
+    """Fetches verified Google user profile and securely binds with existing student records using verified email or ID."""
     user_info = {}
     if access_token:
         try:
@@ -463,7 +463,6 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
     google_name = (user_info.get("name") or "").strip()
     google_email = (user_info.get("email") or "").strip().lower()
     google_sub = (user_info.get("sub") or "").strip()
-    clean_hint = (student_hint or "").strip()
 
     # Stable, deterministic fallback student ID
     clean_email_part = ""
@@ -478,8 +477,6 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
     display_name = google_name
     if not display_name and google_email:
         display_name = google_email.split("@")[0].replace(".", " ").title()
-    if not display_name and clean_hint and not clean_hint.upper().startswith("STU-"):
-        display_name = clean_hint
     if not display_name:
         display_name = "Student"
 
@@ -490,39 +487,39 @@ def _resolve_google_user_profile(access_token: str, provider: str = "school", ta
     students_list = state.get("students", [])
     default_stu = state.get("student")
 
-    # Helper function to check if candidate student matches Google user
+    # Helper function to check if candidate student matches verified Google identity
     def matches_candidate(cand: Dict[str, Any]) -> bool:
         if not isinstance(cand, dict):
             return False
         cid = str(cand.get("student_id") or cand.get("user_id") or "").strip().lower()
         cname = str(cand.get("name") or "").strip()
         cemail = str(cand.get("email") or "").strip().lower()
+        csub = str(cand.get("google_sub") or "").strip()
 
-        # 1. Exact email match
+        # If candidate already has an authentic email linked, it MUST match the verified Google email
+        if cemail and google_email and cemail != google_email:
+            return False
+
+        # 1. Exact verified email match
         if google_email and cemail and cemail == google_email:
             return True
 
-        # 2. Exact student ID match
+        # 2. Exact verified Google sub match
+        if google_sub and csub and csub == google_sub:
+            return True
+
+        # 3. Exact deterministic student ID match
         if cid and cid in (stable_id.lower(), f"stu-{clean_email_part}".lower() if clean_email_part else ""):
             return True
 
-        # 3. Match via student_hint (from login prompt)
-        if clean_hint:
-            h_low = clean_hint.lower()
-            if cid == h_low or cname.lower() == h_low:
-                return True
-            if fuzzy_name_match(clean_hint, cname):
-                return True
-
-        # 4. Exact or fuzzy name match with Google profile name
-        if display_name and display_name.lower() != "student":
-            if cname.lower() == display_name.lower() or fuzzy_name_match(display_name, cname):
-                return True
-
-        # 5. Fuzzy match with Google email username prefix
-        if email_user_guess and len(email_user_guess) >= 3:
-            if fuzzy_name_match(email_user_guess, cname):
-                return True
+        # 4. Verified Google profile name or email prefix match (only if candidate has NO conflicting email bound)
+        if not cemail:
+            if display_name and display_name.lower() != "student":
+                if cname.lower() == display_name.lower() or fuzzy_name_match(display_name, cname):
+                    return True
+            if email_user_guess and len(email_user_guess) >= 3:
+                if fuzzy_name_match(email_user_guess, cname):
+                    return True
 
         return False
 
@@ -1314,6 +1311,17 @@ def create_flask_app():
 
     @app.route("/api/analytics/geo", methods=["GET"])
     def api_analytics_geo():
+        """
+        Reflects incoming Cloudflare edge headers for the caller's own location.
+        Does NOT store or expose any student geolocation data.
+        Returns coarse city/country. Masks fine-grained GPS coordinates (0.0, 0.0)
+        for unauthenticated public callers to preserve location privacy.
+        """
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+        is_authenticated = bool(session and session.get("role") in ("admin", "teacher"))
+
         cf_city = request.headers.get("CF-IPCity")
         cf_country = request.headers.get("CF-IPCountry")
         cf_lat = request.headers.get("CF-IPLatitude")
@@ -1322,6 +1330,9 @@ def create_flask_app():
         code = (cf_country or "").strip().upper()
         flag = AnalyticsService.country_code_to_flag(code) if code else "🌐"
 
+        out_lat = float(cf_lat) if (cf_lat and is_authenticated) else 0.0
+        out_lon = float(cf_lon) if (cf_lon and is_authenticated) else 0.0
+
         return jsonify({
             "status": "success",
             "city": cf_city or "Unknown",
@@ -1329,8 +1340,9 @@ def create_flask_app():
             "country_code": code,
             "region": cf_region,
             "flag": flag,
-            "lat": float(cf_lat) if cf_lat else 0.0,
-            "lon": float(cf_lon) if cf_lon else 0.0,
+            "lat": out_lat,
+            "lon": out_lon,
+            "is_coarse": not is_authenticated
         })
 
     @app.route("/<path:path>")
@@ -1386,7 +1398,6 @@ def create_flask_app():
             provider = "school"
 
         target_grade = normalize_grade(request.args.get("grade") or request.args.get("class_code") or "grade5")
-        student_hint = request.args.get("student_hint", "").strip()
 
         client_id = get_google_client_id(provider)
         if not client_id:
@@ -1396,14 +1407,13 @@ def create_flask_app():
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
         session["oauth_provider"] = provider
-        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}, student_hint = {student_hint}")
+        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}")
 
-        # Pack redirect_uri, provider, grade, student_hint, and timestamp into signed state parameter
+        # Pack redirect_uri, provider, grade, and timestamp into signed state parameter
         state_payload = {
             "redirect_uri": redirect_uri,
             "provider": provider,
             "grade": target_grade,
-            "student_hint": student_hint,
             "ts": time.time()
         }
         state_str = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
@@ -1432,19 +1442,17 @@ def create_flask_app():
             print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
 
-        # 1. Extract verified redirect_uri, provider, grade, and student_hint from state parameter
+        # 1. Extract verified redirect_uri, provider, and grade from state parameter
         redirect_uri = None
         provider = "school"
         target_grade = "grade5"
-        student_hint = ""
         if state_param:
             try:
                 decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
                 redirect_uri = decoded_json.get("redirect_uri")
                 provider = decoded_json.get("provider", "school")
                 target_grade = normalize_grade(decoded_json.get("grade") or "grade5")
-                student_hint = decoded_json.get("student_hint", "").strip()
-                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}, student_hint: {student_hint}")
+                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}")
             except Exception as ex:
                 print(f"[OAUTH WARN] Could not decode state param: {ex}")
 
@@ -1473,7 +1481,7 @@ def create_flask_app():
                 print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
                 session["google_access_token"] = cached_token
                 session["oauth_provider"] = provider
-                profile = _resolve_google_user_profile(cached_token, provider, target_grade, student_hint=student_hint)
+                profile = _resolve_google_user_profile(cached_token, provider, target_grade)
                 session_user_id = profile["student_id"]
                 session_user_name = profile["name"]
                 session_class_code = profile["class_code"]
@@ -1514,7 +1522,7 @@ def create_flask_app():
                 if code:
                     _oauth_code_cache[code] = {"token": tok, "ts": now_ts}
                 
-                profile = _resolve_google_user_profile(tok, provider, target_grade, student_hint=student_hint)
+                profile = _resolve_google_user_profile(tok, provider, target_grade)
                 session_user_id = profile["student_id"]
                 session_user_name = profile["name"]
                 session_class_code = profile["class_code"]
@@ -1595,8 +1603,7 @@ def create_flask_app():
                 all_candidates.append({
                     "teacher_id": t["teacher_id"],
                     "name": t["name"],
-                    "class_code": t.get("class_code", "bio101"),
-                    "pin": t.get("pin", "teacher123")
+                    "class_code": t.get("class_code", "bio101")
                 })
         for t in local_teachers:
             tid = (t.get("teacher_id") or t.get("user_id") or "").strip().lower()
@@ -1604,8 +1611,7 @@ def create_flask_app():
                 all_candidates.append({
                     "teacher_id": tid,
                     "name": t.get("name", tid),
-                    "class_code": t.get("class_code", "all"),
-                    "pin": t.get("pin") or t.get("password") or "teacher123"
+                    "class_code": t.get("class_code", "all")
                 })
         for t in firestore_teachers:
             tid = (t.get("teacher_id") or t.get("user_id") or "").strip().lower()
@@ -1613,8 +1619,7 @@ def create_flask_app():
                 all_candidates.append({
                     "teacher_id": tid,
                     "name": t.get("name", tid),
-                    "class_code": t.get("class_code", "all"),
-                    "pin": t.get("pin") or t.get("password") or "teacher123"
+                    "class_code": t.get("class_code", "all")
                 })
 
         seen_keys = set()
@@ -1966,20 +1971,24 @@ def create_flask_app():
     @app.route("/api/student/grade", methods=["POST"])
     @app.route("/api/student/update_grade", methods=["POST"])
     def api_student_update_grade():
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+
         data = request.get_json() or {}
         new_grade = normalize_grade(data.get("class_code") or data.get("grade") or "")
         if not new_grade:
             return jsonify({"status": "error", "message": "Invalid grade specified."}), 400
 
+        # Enforce authentication: students can only update their own grade
         student_id = (data.get("student_id") or "").strip()
-        auth_header = request.headers.get("Authorization", "")
-        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
-        session = default_auth_service.validate_token(token) if token else None
-        if not student_id and session:
+        if session and session.get("role") == "student":
+            student_id = session.get("user_id")
+        elif not student_id and session:
             student_id = session.get("user_id")
 
         if not student_id:
-            return jsonify({"status": "error", "message": "Student ID required."}), 400
+            return jsonify({"status": "error", "message": "Authentication required. Student ID missing."}), 401
 
         # Update in Firestore
         if firestore_db.is_connected:
@@ -2008,10 +2017,15 @@ def create_flask_app():
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
         session = default_auth_service.validate_token(token) if token else None
 
+        if not session:
+            return jsonify({"status": "error", "message": "Authentication required. Please log in."}), 401
+
         data = request.get_json() or {}
-        student_id = (data.get("student_id") or "").strip()
-        if not student_id and session:
+        # Students can only update their own password; teachers/admins may specify student_id
+        if session.get("role") == "student":
             student_id = session.get("user_id")
+        else:
+            student_id = (data.get("student_id") or session.get("user_id") or "").strip()
 
         if not student_id:
             return jsonify({"status": "error", "message": "Authentication required. Student ID missing."}), 401
@@ -2967,8 +2981,8 @@ def create_flask_app():
         # Check if caller is teacher or admin: bypass student verification & approval queue
         auth_header = request.headers.get("Authorization", "")
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
-        session = default_auth_service.validate_token(token)
-        user_role = (session.get("role") if session else data.get("role") or "").lower()
+        session = default_auth_service.validate_token(token) if token else None
+        user_role = (session.get("role") if session else "").lower()
         if user_role in ("teacher", "admin"):
             return api_teacher_deletion_direct()
 
@@ -4779,7 +4793,7 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/teachers", methods=["GET"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_teachers():
         """Returns all registered teacher accounts from local state and Cloud Firestore."""
         state = load_state()
@@ -4846,7 +4860,7 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/teachers/create", methods=["POST"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_teachers_create():
         """Allows administrator or teacher to create a new teacher account."""
         data = request.get_json() or {}
@@ -4923,7 +4937,7 @@ def create_flask_app():
         }), 201
 
     @app.route("/api/admin/teachers/delete", methods=["POST"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_teachers_delete():
         """Allows administrator or teacher to delete a teacher account."""
         data = request.get_json() or {}
@@ -4964,7 +4978,7 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/teachers/delete_all", methods=["POST"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_teachers_delete_all():
         """Allows administrator or teacher to delete all teacher accounts at once."""
         state = load_state()
@@ -5170,7 +5184,7 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/export_data", methods=["GET"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_export_data():
         """Exports complete database backup as JSON download."""
         state = load_state()
@@ -5184,7 +5198,7 @@ def create_flask_app():
         )
 
     @app.route("/api/admin/import_data", methods=["POST"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_import_data():
         """Restores complete database from uploaded JSON backup."""
         data = request.get_json(silent=True) or {}
@@ -5332,7 +5346,7 @@ def create_flask_app():
         })
 
     @app.route("/api/admin/audit/export", methods=["GET"])
-    @default_auth_service.require_role("teacher")
+    @default_auth_service.require_role("admin")
     def api_admin_audit_export():
         """Exports complete audit report CSV with environmental stats and deletion items."""
         state = load_state()

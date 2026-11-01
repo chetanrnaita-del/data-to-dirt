@@ -177,7 +177,8 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertIn(b"Data-to-Dirt", res.data)
 
     def test_api_analytics_geo(self):
-        """GET /api/analytics/geo reads Cloudflare edge headers and returns caller location."""
+        """GET /api/analytics/geo reads Cloudflare edge headers: masks coordinates for unauthenticated callers, returns coordinates for staff."""
+        # 1. Unauthenticated public request - coordinates masked for location privacy
         res = self.client.get("/api/analytics/geo", headers={
             "CF-IPCity": "Mumbai",
             "CF-IPCountry": "IN",
@@ -190,8 +191,24 @@ class TestCityAnalytics(unittest.TestCase):
         self.assertEqual(data["city"], "Mumbai")
         self.assertEqual(data["country_code"], "IN")
         self.assertEqual(data["flag"], "🇮🇳")
-        self.assertAlmostEqual(data["lat"], 19.0760)
-        self.assertAlmostEqual(data["lon"], 72.8777)
+        self.assertEqual(data["lat"], 0.0)
+        self.assertEqual(data["lon"], 0.0)
+        self.assertTrue(data.get("is_coarse"))
+
+        # 2. Authenticated admin request - precise coordinates returned
+        auth_headers = dict(self.admin_headers)
+        auth_headers.update({
+            "CF-IPCity": "Mumbai",
+            "CF-IPCountry": "IN",
+            "CF-IPLatitude": "19.0760",
+            "CF-IPLongitude": "72.8777",
+        })
+        res_auth = self.client.get("/api/analytics/geo", headers=auth_headers)
+        self.assertEqual(res_auth.status_code, 200)
+        data_auth = res_auth.get_json()
+        self.assertAlmostEqual(data_auth["lat"], 19.0760)
+        self.assertAlmostEqual(data_auth["lon"], 72.8777)
+        self.assertFalse(data_auth.get("is_coarse"))
 
 
 if __name__ == "__main__":

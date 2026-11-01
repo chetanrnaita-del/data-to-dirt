@@ -289,27 +289,18 @@ class LoginView {
       });
     });
 
-    // Helper to update Google buttons links with selected grade and student hint
+    // Helper to update Google buttons links with selected grade (no student details exposed in URL)
     const updateGoogleSchoolBtnHref = () => {
       const schoolBtn = container.querySelector('#btn-login-google-school');
       const personalBtn = container.querySelector('#btn-login-google-personal');
       const selectedGrade = inputPass.value.trim() || localStorage.getItem("d2d_class_code") || "grade5";
-      const userHint = inputUser.value.trim() || localStorage.getItem("d2d_student_name") || localStorage.getItem("d2d_user_id") || "";
       
       if (schoolBtn) {
-        let href = `/auth/google/login?provider=school&grade=${encodeURIComponent(selectedGrade)}`;
-        if (userHint && !userHint.toLowerCase().startsWith("guest") && !userHint.toLowerCase().startsWith("personal")) {
-          href += `&student_hint=${encodeURIComponent(userHint)}`;
-        }
-        schoolBtn.href = href;
+        schoolBtn.href = `/auth/google/login?provider=school&grade=${encodeURIComponent(selectedGrade)}`;
       }
 
       if (personalBtn) {
-        let href = `/auth/google/login?provider=personal&grade=${encodeURIComponent(selectedGrade)}`;
-        if (userHint && !userHint.toLowerCase().startsWith("guest") && !userHint.toLowerCase().startsWith("personal")) {
-          href += `&student_hint=${encodeURIComponent(userHint)}`;
-        }
-        personalBtn.href = href;
+        personalBtn.href = `/auth/google/login?provider=personal&grade=${encodeURIComponent(selectedGrade)}`;
       }
     };
 

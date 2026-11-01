@@ -6,6 +6,16 @@
  * ==============================================================================
  */
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class AnalyticsDashboardView {
   constructor() {
     this.container = null;
@@ -447,12 +457,12 @@ class AnalyticsDashboardView {
           <td style="padding: 8px 10px; font-weight: bold; color: var(--c-wood-border);">${rankBadge}</td>
           <td style="padding: 8px 10px;">
             <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-              <span>${c.flag || "🌐"}</span>
-              <span>${c.city || "Global"}</span>
-              <span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 1px 5px;">${c.country_code || "XX"}</span>
+              <span>${escapeHtml(c.flag || "🌐")}</span>
+              <span>${escapeHtml(c.city || "Global")}</span>
+              <span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 1px 5px;">${escapeHtml(c.country_code || "XX")}</span>
             </div>
             <div style="font-size: 10px; color: var(--c-ink-light); margin-top: 2px;">
-              ${c.region ? c.region + ", " : ""}${c.country || "Global"}
+              ${escapeHtml(c.region ? c.region + ", " : "")}${escapeHtml(c.country || "Global")}
             </div>
           </td>
           <td style="padding: 8px 10px; font-family: monospace; font-size: 11px; color: var(--c-ink-muted);">${latLon}</td>
@@ -538,18 +548,18 @@ class AnalyticsDashboardView {
         <div class="retro-inset" style="padding: 6px 8px; font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="font-weight: 600; color: var(--c-wood-border); display: flex; align-items: center; gap: 5px;">
-              <span>${evt.flag || "🌐"}</span>
-              <span>${evt.city || "Global"}</span>
-              <span class="retro-tag retro-tag-clean" style="font-size: 8px; padding: 1px 4px;">${evt.role || "user"}</span>
+              <span>${escapeHtml(evt.flag || "🌐")}</span>
+              <span>${escapeHtml(evt.city || "Global")}</span>
+              <span class="retro-tag retro-tag-clean" style="font-size: 8px; padding: 1px 4px;">${escapeHtml(evt.role || "user")}</span>
             </div>
-            <span style="font-size: 9px; color: var(--c-ink-light); font-weight: 600;" title="${fullTimeStr}">${timeStr}</span>
+            <span style="font-size: 9px; color: var(--c-ink-light); font-weight: 600;" title="${escapeHtml(fullTimeStr)}">${escapeHtml(timeStr)}</span>
           </div>
           <div style="color: var(--c-ink); font-size: 10.5px; line-height: 1.3;">
-            ${evt.action || "Activity"}
+            ${escapeHtml(evt.action || "Activity")}
           </div>
           <div style="font-size: 9px; color: var(--c-ink-light); display: flex; justify-content: space-between;">
-            <span>ID: ${evt.user_id || "visitor"}</span>
-            <span style="font-weight: 600;">${evt.device_type || "macOS Desktop"}</span>
+            <span>ID: ${escapeHtml(evt.user_id || "visitor")}</span>
+            <span style="font-weight: 600;">${escapeHtml(evt.device_type || "macOS Desktop")}</span>
           </div>
         </div>
       `;

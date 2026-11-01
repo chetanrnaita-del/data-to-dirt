@@ -6,6 +6,16 @@
  * ==============================================================================
  */
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class AdminEcoFundView {
   constructor() {
     this.container = null;
@@ -461,12 +471,12 @@ class AdminEcoFundView {
         elIncidentList.innerHTML = incidents.map((inc) => `
           <div style="border-left: 3px solid var(--c-danger-bright); padding: 4px 8px; background: rgba(255,255,255,0.4); margin-bottom: 4px;">
             <div style="font-weight: bold; color: var(--c-danger-bright); display: flex; justify-content: space-between;">
-              <span>Student: ${inc.student_id || 'Unknown'}</span>
-              <span style="font-size: 10px; color: var(--c-ink-muted);">${inc.request_id || ''}</span>
+              <span>Student: ${escapeHtml(inc.student_id || 'Unknown')}</span>
+              <span style="font-size: 10px; color: var(--c-ink-muted);">${escapeHtml(inc.request_id || '')}</span>
             </div>
-            <div>File: <strong>${inc.file_name || 'unknown'}</strong> • AI Score: ${Math.round(Number(inc.ai_score || 0) * 100)}%</div>
-            <div style="font-style: italic; color: var(--c-ink-muted);">"${inc.reason || 'Flagged by Teacher'}"</div>
-            <div style="color: var(--c-ink-text);">Action Note: ${inc.feedback || "Strike applied"}</div>
+            <div>File: <strong>${escapeHtml(inc.file_name || 'unknown')}</strong> • AI Score: ${Math.round(Number(inc.ai_score || 0) * 100)}%</div>
+            <div style="font-style: italic; color: var(--c-ink-muted);">"${escapeHtml(inc.reason || 'Flagged by Teacher')}"</div>
+            <div style="color: var(--c-ink-text);">Action Note: ${escapeHtml(inc.feedback || "Strike applied")}</div>
           </div>
         `).join("");
       }
@@ -485,7 +495,7 @@ class AdminEcoFundView {
       } else {
         elLedger.innerHTML = history.map((d) => `
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px dashed var(--c-parchment-border);">
-            <span>🌲 <strong>${d.tree_id || d.id || 'TN-TREE'}</strong>: ${d.species || 'Mangrove'}</span>
+            <span>🌲 <strong>${escapeHtml(d.tree_id || d.id || 'TREE')}</strong>: ${escapeHtml(d.species || 'Mangrove')}</span>
             <span style="color: var(--c-eco-leaf); font-weight: bold;">+${Number(d.co2_offset_kg || 250).toFixed(0)} kg CO₂</span>
           </div>
         `).join("");
@@ -814,17 +824,17 @@ class AdminEcoFundView {
         const cCode = formatGrade(t.class_code || "all");
         const tid = t.teacher_id || t.user_id || "";
         const actionHtml = `
-          <button type="button" class="btn-delete-teacher" data-tid="${tid}" style="background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
+          <button type="button" class="btn-delete-teacher" data-tid="${escapeHtml(tid)}" style="background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
             🗑️ Delete
           </button>
         `;
         return `
           <tr style="border-bottom: 1px solid #f1f2f6;">
-            <td style="padding: 6px 8px; font-weight: bold; color: #2d3436;">🧑‍🏫 ${t.name || t.teacher_id}</td>
-            <td style="padding: 6px 8px; font-family: monospace; color: #2d6a36;"><code>${tid}</code></td>
-            <td style="padding: 6px 8px;"><span class="retro-tag retro-tag-clean" style="font-size: 9.5px; padding: 1px 5px;">${cCode}</span></td>
-            <td style="padding: 6px 8px; font-family: monospace; color: #636e72;">${t.pin || "teacher123"}</td>
-            <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${t.created_at_iso || "Registered"}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #2d3436;">🧑‍🏫 ${escapeHtml(t.name || t.teacher_id)}</td>
+            <td style="padding: 6px 8px; font-family: monospace; color: #2d6a36;"><code>${escapeHtml(tid)}</code></td>
+            <td style="padding: 6px 8px;"><span class="retro-tag retro-tag-clean" style="font-size: 9.5px; padding: 1px 5px;">${escapeHtml(cCode)}</span></td>
+            <td style="padding: 6px 8px; font-family: monospace; color: #636e72;">••••••••</td>
+            <td style="padding: 6px 8px; color: #95a5a6; font-size: 10px;">${escapeHtml(t.created_at_iso || "Registered")}</td>
             <td style="padding: 6px 8px; text-align: right;">${actionHtml}</td>
           </tr>
         `;

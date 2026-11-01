@@ -6,6 +6,16 @@
  * ==============================================================================
  */
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class TeacherConfirmationView {
   constructor() {
     this.container = null;
@@ -727,54 +737,54 @@ class TeacherConfirmationView {
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-weight: bold; font-size: 13.5px; color: var(--c-wood-border);">
-              👤 ${resolvedName}
+              👤 ${escapeHtml(resolvedName)}
             </span>
-            ${hasDistinctName ? `<span style="font-size: 11px; color: var(--c-ink-muted);">(${item.student_id})</span>` : ""}
+            ${hasDistinctName ? `<span style="font-size: 11px; color: var(--c-ink-muted);">(${escapeHtml(item.student_id)})</span>` : ""}
             <span class="retro-tag ${isPlausible ? "retro-tag-leaf" : "retro-tag-danger"}" style="font-size: 10px;">
               ${badgeLabel}
             </span>
           </div>
           <div>
             <span class="retro-tag retro-tag-stale" style="font-size: 10px;">
-              STATUS: ${status}
+              STATUS: ${escapeHtml(status)}
             </span>
           </div>
         </div>
 
         <!-- File details -->
         <div style="font-size: 12px; color: var(--c-ink-text); display: flex; justify-content: space-between;">
-          <span>File: <strong>${item.file_name}</strong> (${sizeMb} MB)</span>
-          <span style="color: var(--c-ink-muted); font-size: 11px;">ID: ${reqId}</span>
+          <span>File: <strong>${escapeHtml(item.file_name)}</strong> (${sizeMb} MB)</span>
+          <span style="color: var(--c-ink-muted); font-size: 11px;">ID: ${escapeHtml(reqId)}</span>
         </div>
 
         <!-- Student justification callout -->
         <div style="font-size: 12px; font-style: italic; color: var(--c-ink-muted); background: rgba(255, 255, 255, 0.6); padding: 6px 10px; border: 1px dashed var(--c-parchment-border);">
-          "${reasonText}"
+          "${escapeHtml(reasonText)}"
         </div>
 
         <!-- AI Evaluation Summary -->
         <div style="font-size: 11px; color: ${isPlausible ? "var(--c-eco-leaf)" : "var(--c-danger-bright)"}; font-weight: bold; display: flex; align-items: center; gap: 6px;">
           <span>🤖 AI Summary:</span>
-          <span style="font-weight: normal; color: var(--c-ink-text);">${aiSummary}</span>
+          <span style="font-weight: normal; color: var(--c-ink-text);">${escapeHtml(aiSummary)}</span>
         </div>
 
         <!-- Decision details if already decided -->
         ${item.feedback || item.decision_note ? `
           <div style="font-size: 11px; color: var(--c-ink-muted); font-style: italic;">
-            Teacher Note: "${item.feedback || item.decision_note}"
+            Teacher Note: "${escapeHtml(item.feedback || item.decision_note)}"
           </div>
         ` : ""}
 
         <!-- Action Buttons (Only enabled when Pending) -->
         ${isPending ? `
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
-            <button class="retro-btn retro-btn-danger retro-btn-sm btn-act-flag" data-id="${reqId}" data-name="${item.file_name}" data-student="${item.student_name || item.student_id}">
+            <button class="retro-btn retro-btn-danger retro-btn-sm btn-act-flag" data-id="${escapeHtml(reqId)}" data-name="${escapeHtml(item.file_name)}" data-student="${escapeHtml(item.student_name || item.student_id)}">
               🚩 Flag Gaming
             </button>
-            <button class="retro-btn retro-btn-wood retro-btn-sm btn-act-reject" data-id="${reqId}" data-name="${item.file_name}">
+            <button class="retro-btn retro-btn-wood retro-btn-sm btn-act-reject" data-id="${escapeHtml(reqId)}" data-name="${escapeHtml(item.file_name)}">
               ✕ Reject
             </button>
-            <button class="retro-btn retro-btn-green retro-btn-sm btn-act-approve" data-id="${reqId}">
+            <button class="retro-btn retro-btn-green retro-btn-sm btn-act-approve" data-id="${escapeHtml(reqId)}">
               ✓ Approve Deletion
             </button>
           </div>
@@ -1169,22 +1179,22 @@ class TeacherConfirmationView {
         return `
           <tr style="${rowBg}">
             <td style="padding: 7px 10px; font-family: monospace; font-weight: bold; color: #2980b9;">
-              ${sid} ${isNew ? '<span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">⭐ NEW</span>' : ''}
+              ${escapeHtml(sid)} ${isNew ? '<span class="retro-tag retro-tag-clean" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">⭐ NEW</span>' : ''}
             </td>
             <td style="padding: 7px 10px; font-weight: 600; color: #2c3e50;">
-              ${name}
+              ${escapeHtml(name)}
             </td>
             <td style="padding: 7px 10px; color: #7f8c8d;">
-              <span class="retro-tag retro-tag-wood" style="font-size: 10px;">${classCode}</span>
+              <span class="retro-tag retro-tag-wood" style="font-size: 10px;">${escapeHtml(classCode)}</span>
             </td>
             <td style="padding: 7px 10px; text-align: right; font-weight: bold; color: #27ae60;">
               ${points} pts
             </td>
             <td style="padding: 7px 10px; text-align: center; white-space: nowrap;">
-              <button class="retro-btn retro-btn-wood retro-btn-sm btn-copy-stu-id" data-id="${sid}" title="Copy Student ID" style="padding: 2px 7px; font-size: 10px; cursor: pointer;">
+              <button class="retro-btn retro-btn-wood retro-btn-sm btn-copy-stu-id" data-id="${escapeHtml(sid)}" title="Copy Student ID" style="padding: 2px 7px; font-size: 10px; cursor: pointer;">
                 📋 Copy
               </button>
-              <button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-stu" data-id="${sid}" data-name="${name}" title="Delete Student" style="padding: 2px 7px; font-size: 10px; margin-left: 4px; cursor: pointer;">
+              <button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-stu" data-id="${escapeHtml(sid)}" data-name="${escapeHtml(name)}" title="Delete Student" style="padding: 2px 7px; font-size: 10px; margin-left: 4px; cursor: pointer;">
                 🗑️ Delete
               </button>
             </td>
@@ -1780,16 +1790,16 @@ class TeacherConfirmationView {
               <span style="font-size: 18px; line-height: 1.2;">${icon}</span>
               <div style="flex: 1; min-width: 0;">
                 <div style="font-weight: bold; font-size: 13px; color: var(--c-ink-text); word-break: break-all; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
-                  <span>${file.file_name}</span>
+                  <span>${escapeHtml(file.file_name)}</span>
                   ${file.sha_match ? `<span class="retro-tag retro-tag-duplicate" style="font-size: 9px; background: #e02424; color: #fff; font-weight: bold; padding: 1px 5px; border-radius: 3px;">🎯 CLONE</span>` : ""}
                 </div>
                 <div style="font-size: 10px; color: var(--c-ink-muted); margin-top: 2px; font-family: monospace; word-break: break-all;">
-                  📂 ${file.file_path || file.absolute_path || "Local / Cloud"}
+                  📂 ${escapeHtml(file.file_path || file.absolute_path || "Local / Cloud")}
                 </div>
               </div>
             </div>
             <div style="flex-shrink: 0;">
-              <button class="retro-btn retro-btn-danger retro-btn-sm btn-teacher-delete-file" data-id="${file.file_id}" style="padding: 4px 10px; font-weight: bold;">
+              <button class="retro-btn retro-btn-danger retro-btn-sm btn-teacher-delete-file" data-id="${escapeHtml(file.file_id)}" style="padding: 4px 10px; font-weight: bold;">
                 🗑️ Clean
               </button>
             </div>
