@@ -777,7 +777,8 @@ class AdminEcoFundView {
           headers: {
             "Content-Type": "application/json",
             "Authorization": token ? `Bearer ${token}` : ""
-          }
+          },
+          body: JSON.stringify({ confirmation: "DELETE_ALL", confirm: true })
         });
         const d = await res.json();
         if (d.status === "deleted_all") {

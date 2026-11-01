@@ -501,13 +501,15 @@ class TestServerRestEndpoints(unittest.TestCase):
     def test_api_teacher_decide_reject_and_flag_workflows(self):
         """Verifies that teacher decide handles reject and flag without UnboundLocalError and properly updates state."""
         # 1. Submit a valid deletion request
+        s1 = default_auth_service.create_session(role="student", user_id="STU-REJECT-TEST")
+        h1 = {"Authorization": f"Bearer {s1['token']}"}
         res_sub1 = self.client.post("/api/deletion/submit", json={
             "file_id": "test_reject_file_id",
             "file_name": "temp_notes.log",
             "file_size": 10 * 1024 * 1024,
             "reason": "This is an old leftover cache log from last semester",
             "student_id": "STU-REJECT-TEST"
-        }, headers=self.student_headers)
+        }, headers=h1)
         self.assertEqual(res_sub1.status_code, 200)
         req_id1 = res_sub1.get_json()["request_id"]
 
@@ -522,13 +524,15 @@ class TestServerRestEndpoints(unittest.TestCase):
         self.assertEqual(res_decide_rej.get_json()["action_taken"], "reject")
 
         # 2. Submit another request for flag
+        s2 = default_auth_service.create_session(role="student", user_id="STU-FLAG-TEST")
+        h2 = {"Authorization": f"Bearer {s2['token']}"}
         res_sub2 = self.client.post("/api/deletion/submit", json={
             "file_id": "test_flag_file_id",
             "file_name": "gaming_sample.bin",
             "file_size": 20 * 1024 * 1024,
             "reason": "Legitimate dark data cleanup of old course project video",
             "student_id": "STU-FLAG-TEST"
-        }, headers=self.student_headers)
+        }, headers=h2)
         self.assertEqual(res_sub2.status_code, 200)
         req_id2 = res_sub2.get_json()["request_id"]
 
@@ -611,6 +615,8 @@ class TestServerRestEndpoints(unittest.TestCase):
         save_state(state)
 
         # Submit request from STU-ISOLATE-TEST
+        s_iso = default_auth_service.create_session(role="student", user_id="STU-ISOLATE-TEST", name="Test Isolate")
+        h_iso = {"Authorization": f"Bearer {s_iso['token']}"}
         res_sub = self.client.post("/api/deletion/submit", json={
             "file_id": "file_isolate_99",
             "file_name": "suspicious_log.txt",
@@ -618,7 +624,7 @@ class TestServerRestEndpoints(unittest.TestCase):
             "reason": "Old log file from previous lab experiment",
             "student_id": "STU-ISOLATE-TEST",
             "student_name": "Test Isolate"
-        }, headers=self.student_headers)
+        }, headers=h_iso)
         self.assertEqual(res_sub.status_code, 200)
         req_id = res_sub.get_json()["request_id"]
 

@@ -309,6 +309,19 @@ class DataToDirtApp {
   }
 
   logout() {
+    const token = localStorage.getItem("d2d_session_token");
+    if (token) {
+      try {
+        fetch("/api/auth/logout", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
     this.userId = null;
     this.pin = null;
     this.classCode = null;
@@ -319,6 +332,16 @@ class DataToDirtApp {
     localStorage.removeItem("d2d_user_id");
     localStorage.removeItem("d2d_pin");
     localStorage.removeItem("d2d_class_code");
+    localStorage.removeItem("d2d_student_name");
+    sessionStorage.clear();
+
+    // Clear CacheStorage to prevent sensitive profile data leakage on shared school computers
+    if ("caches" in window) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
+    }
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ action: "CLEAR_CACHES" });
+    }
 
     this.updateNavigation(null);
 

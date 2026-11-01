@@ -1368,7 +1368,7 @@ class TeacherConfirmationView {
             ...this.getAuthHeaders(),
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ class_code: activeClass })
+          body: JSON.stringify({ class_code: activeClass, confirmation: "DELETE_ALL", confirm: true })
         });
         const data = await res.json();
         if (res.ok) {

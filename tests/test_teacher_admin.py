@@ -783,7 +783,19 @@ class TestStudentDeletion(unittest.TestCase):
 
     def test_delete_all_students_in_specific_grade(self):
         """Teacher/admin can delete all students in a specified class."""
-        headers = {"Authorization": f"Bearer {self.teacher_token}"}
+        # Create a grade 5 student to ensure grade5 has students
+        self.client.post("/api/teacher/students/create", headers={"Authorization": f"Bearer {self.teacher_token}"}, json={
+            "name": "Grade 5 Student",
+            "class_code": "grade5",
+            "student_id": "STU-G5-KEPT"
+        })
+
+        login_res = self.client.post("/api/auth/login", json={
+            "role": "teacher",
+            "user_id": "teacher_grade8",
+            "pin": "teacher123"
+        })
+        headers = {"Authorization": f"Bearer {login_res.get_json()['token']}"}
         # Create 2 students in grade8
         self.client.post("/api/teacher/students/create", headers=headers, json={
             "name": "Grade 8 Student A",
@@ -796,9 +808,10 @@ class TestStudentDeletion(unittest.TestCase):
             "student_id": "STU-G8-B"
         })
 
-        # Bulk delete grade8
+        # Bulk delete grade8 with explicit confirmation
         del_res = self.client.post("/api/teacher/students/delete_all", headers=headers, json={
-            "class_code": "grade8"
+            "class_code": "grade8",
+            "confirm": True
         })
         self.assertEqual(del_res.status_code, 200)
         self.assertEqual(del_res.get_json()["status"], "deleted_all")
@@ -808,7 +821,7 @@ class TestStudentDeletion(unittest.TestCase):
         list_g8 = self.client.get("/api/teacher/students?class_code=grade8", headers=headers)
         self.assertEqual(len(list_g8.get_json().get("students", [])), 0)
 
-        list_g5 = self.client.get("/api/teacher/students?class_code=grade5", headers=headers)
+        list_g5 = self.client.get("/api/teacher/students?class_code=grade5", headers={"Authorization": f"Bearer {self.teacher_token}"})
         self.assertGreater(len(list_g5.get_json().get("students", [])), 0)
 
     def test_student_directory_all_grades_filter(self):

@@ -607,7 +607,7 @@ class IndividualDailyDeletionIsolationTest(unittest.TestCase):
         res_success = self.client.post(
             "/api/student/password",
             headers={"Authorization": f"Bearer {token}"},
-            json={"student_id": test_student_id, "new_password": new_pw}
+            json={"student_id": test_student_id, "current_password": "initial123", "new_password": new_pw}
         )
         self.assertEqual(res_success.status_code, 200)
         data = res_success.get_json()

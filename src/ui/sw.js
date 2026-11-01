@@ -1,4 +1,4 @@
-const CACHE_NAME = 'data-to-dirt-v101';
+const CACHE_NAME = 'data-to-dirt-v102';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,18 +6,18 @@ const ASSETS = [
   '/logo.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  '/css/retro_base.css?v=1.7.6',
-  '/css/stardew.css?v=1.7.6',
-  '/css/animations.css?v=1.7.6',
-  '/js/app.js?v=1.7.6',
-  '/js/audio.js?v=1.7.6',
-  '/js/particles.js?v=1.7.6',
-  '/js/tree.js?v=1.7.6',
-  '/js/views/login.js?v=1.7.6',
-  '/js/views/student.js?v=1.7.6',
-  '/js/views/teacher.js?v=1.7.6',
-  '/js/views/admin.js?v=1.7.6',
-  '/js/views/analytics.js?v=1.7.6'
+  '/css/retro_base.css?v=1.7.7',
+  '/css/stardew.css?v=1.7.7',
+  '/css/animations.css?v=1.7.7',
+  '/js/app.js?v=1.7.7',
+  '/js/audio.js?v=1.7.7',
+  '/js/particles.js?v=1.7.7',
+  '/js/tree.js?v=1.7.7',
+  '/js/views/login.js?v=1.7.7',
+  '/js/views/student.js?v=1.7.7',
+  '/js/views/teacher.js?v=1.7.7',
+  '/js/views/admin.js?v=1.7.7',
+  '/js/views/analytics.js?v=1.7.7'
 ];
 
 self.addEventListener('install', event => {
@@ -42,9 +42,20 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Explicit cache purge listener triggered during student/teacher/admin logout
+self.addEventListener('message', event => {
+  if (event.data && event.data.action === 'CLEAR_CACHES') {
+    event.waitUntil(
+      caches.keys().then(cacheNames => {
+        return Promise.all(cacheNames.map(name => caches.delete(name)));
+      })
+    );
+  }
+});
+
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  // Strictly bypass service worker for OAuth and API routes to prevent duplicate requests / invalid_grant errors
+  // Strictly bypass service worker (NetworkOnly) for OAuth and all API routes to prevent sensitive caching on shared school computers
   if (url.pathname.startsWith('/auth/') || url.pathname.startsWith('/api/')) {
     return;
   }

@@ -37,6 +37,7 @@ def get_ssl_context():
     except Exception:
         return None
 from pathlib import Path
+import uuid
 from typing import Dict, Any, List, Optional
 
 # Ensure project root is in sys.path
@@ -285,10 +286,52 @@ def clear_auth_lockout(role: str, user_id: str, ip: str):
     with _auth_lockout_lock:
         _auth_failed_attempts.pop(key, None)
 
+_ip_failed_logins: Dict[str, List[float]] = {}
+_ip_lockout_lock = threading.Lock()
+
+def check_ip_auth_lockout(ip: str, max_attempts: int = 15, window_sec: int = 900) -> tuple[bool, int]:
+    """Protects against distributed credential-stuffing by tracking failed attempts per IP."""
+    now = time.time()
+    with _ip_lockout_lock:
+        attempts = _ip_failed_logins.setdefault(ip, [])
+        valid = [t for t in attempts if now - t < window_sec]
+        _ip_failed_logins[ip] = valid
+        if len(valid) >= max_attempts:
+            oldest = valid[0]
+            remaining = int(math.ceil(window_sec - (now - oldest)))
+            return True, max(1, remaining)
+        return False, 0
+
+def record_ip_failed_auth(ip: str):
+    """Records an unauthenticated failure for an IP."""
+    now = time.time()
+    with _ip_lockout_lock:
+        _ip_failed_logins.setdefault(ip, []).append(now)
+
+_track_rate_limits: Dict[str, List[float]] = {}
+_track_rate_lock = threading.Lock()
+
+def check_track_rate_limit(ip: str, max_requests: int = 30, window_sec: int = 60) -> bool:
+    """Limits telemetry tracking requests to prevent log poisoning or telemetry flooding."""
+    now = time.time()
+    with _track_rate_lock:
+        timestamps = _track_rate_limits.setdefault(ip, [])
+        valid = [t for t in timestamps if now - t < window_sec]
+        if len(valid) >= max_requests:
+            _track_rate_limits[ip] = valid
+            return False
+        valid.append(now)
+        _track_rate_limits[ip] = valid
+        return True
+
 def reset_all_auth_lockouts():
-    """Resets all lockout records across all clients."""
+    """Resets all lockout records and rate-limiters across all clients."""
     with _auth_lockout_lock:
         _auth_failed_attempts.clear()
+    with _ip_lockout_lock:
+        _ip_failed_logins.clear()
+    with _track_rate_lock:
+        _track_rate_limits.clear()
 
 
 def is_test_teacher_account(teacher_id: str, name: str) -> bool:
@@ -1032,6 +1075,34 @@ def enrich_file_iq1000(file_dict: Dict[str, Any], now_epoch: float, sha_tracker:
         file_dict["ai_forensic_rationale"] = rat
         
     return file_dict
+
+
+def log_security_audit_event(action: str, actor: str = "system", details: str = "", ip: str = "") -> Dict[str, Any]:
+    """Records an immutable security audit ledger event in local state and Cloud Firestore."""
+    state = load_state()
+    audit_log = state.setdefault("system_audit_log", [])
+    event = {
+        "event_id": f"AUD-{uuid.uuid4().hex[:8].upper()}",
+        "action": str(action)[:100],
+        "actor": str(actor)[:100],
+        "details": str(details)[:500],
+        "ip": ip or get_client_ip(),
+        "timestamp_epoch": time.time(),
+        "timestamp_iso": datetime.now(timezone.utc).isoformat(),
+        "timestamp_formatted": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+    }
+    audit_log.append(event)
+    if len(audit_log) > 500:
+        state["system_audit_log"] = audit_log[-500:]
+    save_state(state)
+
+    if firestore_db.is_connected:
+        try:
+            firestore_db.db.collection("audit_events").document(event["event_id"]).set(event)
+        except Exception as fe:
+            print(f"[!] Firestore audit event record notice: {fe}")
+
+    return event
 
 
 def record_telemetry_event(
@@ -2044,10 +2115,42 @@ def create_flask_app():
         for s in state.get("students", []):
             if (s.get("student_id") or s.get("user_id") or "").strip().lower() == student_id.lower():
                 target_student = s
-                s["pin"] = new_password
-                s["password"] = new_password
-                updated_local = True
                 break
+        if not target_student and state.get("student", {}).get("student_id", "").strip().lower() == student_id.lower():
+            target_student = state["student"]
+
+        # Require verification of existing password when caller is a student
+        if session.get("role") == "student":
+            current_password = str(data.get("current_password") or data.get("old_password") or "").strip()
+            existing_pw = None
+            student_class = "grade5"
+            if target_student:
+                existing_pw = target_student.get("pin") or target_student.get("password")
+                student_class = target_student.get("class_code") or "grade5"
+            if not existing_pw and "student_passwords" in state:
+                existing_pw = state["student_passwords"].get(student_id.lower()) or state["student_passwords"].get(student_id.upper())
+
+            if existing_pw:
+                matches_pw = hmac.compare_digest(current_password, str(existing_pw))
+                matches_class = hmac.compare_digest(current_password.lower(), student_class.lower())
+                if not (matches_pw or matches_class):
+                    return jsonify({
+                        "status": "error",
+                        "message": "Incorrect current password. Please enter your existing password to verify your identity."
+                    }), 401
+            else:
+                matches_class = hmac.compare_digest(current_password.lower(), student_class.lower())
+                matches_default = hmac.compare_digest(current_password, "1234") or hmac.compare_digest(current_password, "student123")
+                if not (matches_class or matches_default):
+                    return jsonify({
+                        "status": "error",
+                        "message": "Incorrect current password or grade code."
+                    }), 401
+
+        if target_student:
+            target_student["pin"] = new_password
+            target_student["password"] = new_password
+            updated_local = True
 
         if state.get("student", {}).get("student_id", "").strip().lower() == student_id.lower():
             state["student"]["pin"] = new_password
@@ -3000,7 +3103,13 @@ def create_flask_app():
             default_student["last_deletion_date"] = today
 
         # Resolve authenticated or requested student
-        actual_student_id = data.get("student_id") or (session["user_id"] if session else default_student["student_id"])
+        if user_role == "student":
+            actual_student_id = session.get("user_id")
+            req_stu = (data.get("student_id") or "").strip()
+            if req_stu and req_stu.lower() != actual_student_id.lower():
+                return jsonify({"status": "error", "message": "Forbidden: Students can only submit deletion requests for their own account."}), 403
+        else:
+            actual_student_id = data.get("student_id") or (session["user_id"] if session else default_student["student_id"])
         target_student = resolve_student_in_state(state, actual_student_id)
         if target_student.get("last_deletion_date") != today:
             target_student["daily_deletions_today"] = 0
@@ -4635,11 +4744,15 @@ def create_flask_app():
             "message": f"Student ID '{student_id}' created successfully for {name}!"
         }), 201
 
-    @app.route("/api/teacher/students/delete", methods=["POST"])
+    @app.route("/api/teacher/students/delete", methods=["POST", "DELETE"])
     @default_auth_service.require_role("teacher")
     def api_teacher_delete_student():
-        """Allows a teacher or administrator to delete a student record."""
-        data = request.get_json() or {}
+        """Allows a teacher or administrator to delete a student record, scoped to their assigned grade."""
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        session = default_auth_service.validate_token(token) if token else None
+
+        data = request.get_json(silent=True) or {}
         student_id = (data.get("student_id") or data.get("user_id") or "").strip()
         if not student_id:
             return jsonify({"status": "error", "message": "Student ID is required."}), 400
@@ -4648,6 +4761,20 @@ def create_flask_app():
 
         state = load_state()
         students = state.get("students", [])
+
+        # Enforce grade scoping: teachers assigned to a specific grade cannot delete students from another grade
+        is_admin = session and session.get("role") == "admin"
+        teacher_class = (session.get("class_code") or "").strip().lower() if session else ""
+        if not is_admin and teacher_class and teacher_class not in ("all", "*", "any"):
+            target_student = next((s for s in students if (s.get("student_id") or s.get("user_id") or "").strip().lower() == clean_id), None)
+            if target_student:
+                stu_class = (target_student.get("class_code") or "").strip().lower()
+                if stu_class and normalize_grade(stu_class) != normalize_grade(teacher_class):
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Forbidden: Teachers assigned to {teacher_class} cannot delete students from {stu_class}."
+                    }), 403
+
         original_count = len(students)
 
         # Filter out matching student
@@ -4687,20 +4814,41 @@ def create_flask_app():
             "message": f"Student '{student_id}' deleted successfully." if found else f"Student '{student_id}' not found."
         })
 
-    @app.route("/api/teacher/students/delete_all", methods=["POST"])
+    @app.route("/api/teacher/students/delete_all", methods=["POST", "DELETE"])
     @default_auth_service.require_role("teacher")
     def api_teacher_delete_all_students():
-        """Allows teacher or admin to delete all students in a grade or all grades."""
+        """Allows teacher or admin to delete all students in a grade or all grades with confirmation."""
         auth_header = request.headers.get("Authorization", "")
         token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
-        session = default_auth_service.validate_token(token)
+        session = default_auth_service.validate_token(token) if token else None
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
+        confirmed = (
+            data.get("confirm") is True
+            or data.get("confirmation") in ("DELETE_ALL", "CONFIRM", "true", True)
+            or request.headers.get("X-Confirm-Delete-All") == "true"
+        )
+        if not confirmed:
+            return jsonify({
+                "status": "error",
+                "message": "Explicit confirmation required for mass deletion. Please pass 'confirm: true' or 'confirmation: DELETE_ALL'."
+            }), 400
+
         class_filter = (data.get("class_code") or "").strip().lower()
 
         is_admin = session and session.get("role") == "admin"
-        if not is_admin and not class_filter:
-            class_filter = (session.get("class_code") or "").strip().lower() if session else ""
+        teacher_class = (session.get("class_code") or "").strip().lower() if session else ""
+
+        if not is_admin and teacher_class and teacher_class not in ("all", "*", "any"):
+            if not class_filter:
+                class_filter = teacher_class
+            elif normalize_grade(class_filter) != normalize_grade(teacher_class):
+                return jsonify({
+                    "status": "error",
+                    "message": f"Forbidden: Teachers assigned to {teacher_class} cannot mass delete students in {class_filter}."
+                }), 403
+        elif not is_admin and not class_filter:
+            class_filter = teacher_class
 
         state = load_state()
         students = state.get("students", [])
@@ -4936,10 +5084,10 @@ def create_flask_app():
             "message": f"Teacher account '{clean_id}' created successfully for {name}!"
         }), 201
 
-    @app.route("/api/admin/teachers/delete", methods=["POST"])
+    @app.route("/api/admin/teachers/delete", methods=["POST", "DELETE"])
     @default_auth_service.require_role("admin")
     def api_admin_teachers_delete():
-        """Allows administrator or teacher to delete a teacher account."""
+        """Allows administrator to delete a teacher account."""
         data = request.get_json() or {}
         raw_teacher_id = (data.get("teacher_id") or "").strip()
         teacher_id = raw_teacher_id.lower()
@@ -4977,10 +5125,22 @@ def create_flask_app():
             "message": f"Teacher account '{teacher_id}' deleted successfully."
         })
 
-    @app.route("/api/admin/teachers/delete_all", methods=["POST"])
+    @app.route("/api/admin/teachers/delete_all", methods=["POST", "DELETE"])
     @default_auth_service.require_role("admin")
     def api_admin_teachers_delete_all():
-        """Allows administrator or teacher to delete all teacher accounts at once."""
+        """Allows administrator to delete all teacher accounts at once with explicit confirmation."""
+        data = request.get_json(silent=True) or {}
+        confirmed = (
+            data.get("confirm") is True
+            or data.get("confirmation") in ("DELETE_ALL", "CONFIRM", "true", True)
+            or request.headers.get("X-Confirm-Delete-All") == "true"
+        )
+        if not confirmed:
+            return jsonify({
+                "status": "error",
+                "message": "Explicit confirmation required for mass deletion. Please pass 'confirm: true' or 'confirmation: DELETE_ALL'."
+            }), 400
+
         state = load_state()
 
         deleted_ids = state.setdefault("deleted_teacher_ids", [])
@@ -5021,19 +5181,35 @@ def create_flask_app():
         })
 
     @app.route("/api/sync/rehydrate", methods=["POST"])
+    @default_auth_service.require_role("admin")
     def api_sync_rehydrate():
         """
-        Receives client-side persisted directory (students, teachers, passwords)
+        Receives persisted directory (students, teachers, passwords)
         and ensures they are never lost across ephemeral container restarts.
-        Merges seamlessly without duplicating IDs or overwriting higher eco-points.
+        Enforces admin authorization, 2MB payload limit, and strips privilege escalation.
         """
+        if request.content_length and request.content_length > 2 * 1024 * 1024:
+            return jsonify({"status": "error", "message": "Payload exceeds 2MB limit"}), 413
+
         firestore_db.maybe_reconnect()
         data = request.get_json(silent=True) or {}
         client_students = data.get("students") or []
-        client_teachers = data.get("teachers") or []
+        raw_client_teachers = data.get("teachers") or []
         client_passwords = data.get("passwords") or {}
         deleted_student_ids = set((x or "").lower() for x in data.get("deleted_student_ids", []))
         deleted_teacher_ids = set((x or "").lower() for x in data.get("deleted_teacher_ids", []))
+
+        # Privilege escalation prevention: forbid admin IDs and force role="teacher"
+        FORBIDDEN_IDS = {"admin", "root", "administrator", "system", "superadmin"}
+        client_teachers = []
+        for ct in raw_client_teachers:
+            if not isinstance(ct, dict):
+                continue
+            tid = (ct.get("teacher_id") or ct.get("user_id") or "").strip().lower()
+            if not tid or tid in FORBIDDEN_IDS or ct.get("role") == "admin":
+                continue
+            ct["role"] = "teacher"
+            client_teachers.append(ct)
 
         state = load_state()
         modified = False
@@ -5057,6 +5233,7 @@ def create_flask_app():
         for cs in client_students:
             if not isinstance(cs, dict):
                 continue
+            cs["role"] = "student"
             sid = (cs.get("student_id") or cs.get("user_id") or "").strip().lower()
             if not sid or sid in all_deleted_students:
                 continue
@@ -5175,6 +5352,8 @@ def create_flask_app():
         if modified:
             save_state(state)
 
+        log_security_audit_event("SYNC_REHYDRATE", actor="admin", details=f"Rehydrated {len(client_students)} students, {len(client_teachers)} teachers")
+
         return jsonify({
             "status": "ok",
             "rehydrated": modified,
@@ -5186,11 +5365,12 @@ def create_flask_app():
     @app.route("/api/admin/export_data", methods=["GET"])
     @default_auth_service.require_role("admin")
     def api_admin_export_data():
-        """Exports complete database backup as JSON download."""
+        """Exports complete database backup as JSON download with audit logging."""
         state = load_state()
         from flask import Response
         dump_str = json.dumps(state, indent=2)
         filename = f"datatodirt_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        log_security_audit_event("ADMIN_EXPORT_DATA", actor="admin", details=f"Database state backup exported ({len(dump_str)} bytes)")
         return Response(
             dump_str,
             mimetype="application/json",
@@ -5200,23 +5380,70 @@ def create_flask_app():
     @app.route("/api/admin/import_data", methods=["POST"])
     @default_auth_service.require_role("admin")
     def api_admin_import_data():
-        """Restores complete database from uploaded JSON backup."""
+        """Restores complete database from uploaded JSON backup with schema validation, 10MB limit, and audit logging."""
+        if request.content_length and request.content_length > 10 * 1024 * 1024:
+            return jsonify({"status": "error", "message": "Payload exceeds 10MB limit"}), 413
+
         data = request.get_json(silent=True) or {}
         if not data or not isinstance(data, dict):
             return jsonify({"status": "error", "message": "Invalid JSON backup payload"}), 400
         
         state = load_state()
+
+        # Validate and sanitize students
         if "students" in data and isinstance(data["students"], list):
-            state["students"] = data["students"]
+            valid_students = []
+            for s in data["students"]:
+                if isinstance(s, dict):
+                    sid = str(s.get("student_id") or s.get("user_id") or "").strip()[:50]
+                    if sid:
+                        valid_students.append({
+                            "student_id": sid,
+                            "user_id": sid,
+                            "name": str(s.get("name") or "Student")[:100],
+                            "class_code": normalize_grade(s.get("class_code") or "grade5"),
+                            "role": "student",
+                            "eco_points": max(0, int(s.get("eco_points") or 0)),
+                            "bytes_cleared": max(0, int(s.get("bytes_cleared") or 0)),
+                        })
+            state["students"] = valid_students
+
+        # Validate and sanitize teachers (prevent privilege escalation)
         if "teachers" in data and isinstance(data["teachers"], list):
-            state["teachers"] = data["teachers"]
+            valid_teachers = []
+            FORBIDDEN_IDS = {"admin", "root", "administrator", "system", "superadmin"}
+            for t in data["teachers"]:
+                if isinstance(t, dict):
+                    tid = str(t.get("teacher_id") or t.get("user_id") or "").strip()[:50]
+                    if tid and tid.lower() not in FORBIDDEN_IDS and t.get("role") != "admin":
+                        valid_teachers.append({
+                            "teacher_id": tid,
+                            "user_id": tid,
+                            "name": str(t.get("name") or "Teacher")[:100],
+                            "class_code": str(t.get("class_code") or "all")[:30],
+                            "role": "teacher",
+                            "pin": str(t.get("pin") or "teacher123")[:50]
+                        })
+            state["teachers"] = valid_teachers
             state["teachers_cleared"] = False
+
         if "student_passwords" in data and isinstance(data["student_passwords"], dict):
-            state["student_passwords"] = data["student_passwords"]
+            state["student_passwords"] = {
+                str(k)[:50]: str(v)[:50]
+                for k, v in data["student_passwords"].items()
+                if isinstance(k, str) and isinstance(v, str)
+            }
         if "ecofund" in data and isinstance(data["ecofund"], dict):
-            state["ecofund"] = data["ecofund"]
+            eco = data["ecofund"]
+            if "budget_usd" in eco:
+                state["ecofund"]["budget_usd"] = float(eco["budget_usd"])
+            if "balance_usd" in eco:
+                state["ecofund"]["balance_usd"] = float(eco["balance_usd"])
+            if "threshold_bytes" in eco:
+                state["ecofund"]["threshold_bytes"] = int(eco["threshold_bytes"])
             
         save_state(state)
+        log_security_audit_event("ADMIN_IMPORT_DATA", actor="admin", details=f"Database restored: {len(state.get('students', []))} students, {len(state.get('teachers', []))} teachers")
         return jsonify({
             "status": "restored",
             "message": "Database restored successfully from backup!",
@@ -5226,37 +5453,72 @@ def create_flask_app():
 
     @app.route("/api/analytics/track", methods=["POST"])
     def api_analytics_track():
-        payload = request.get_json(silent=True) or {}
-        city = (payload.get("city") or "").strip()
-        country = (payload.get("country") or "").strip()
-        country_code = (payload.get("country_code") or "").upper().strip()
+        client_ip = get_client_ip()
+        if not check_track_rate_limit(client_ip, max_requests=30, window_sec=60):
+            return jsonify({"status": "error", "message": "Rate limit exceeded. Please wait a moment before sending more analytics telemetry."}), 429
+
+        if request.data:
+            payload = request.get_json(silent=True)
+            if payload is None or not isinstance(payload, dict):
+                return jsonify({"status": "error", "message": "Invalid telemetry payload"}), 400
+        else:
+            payload = {}
+
+        raw_city = str(payload.get("city") or "")[:80]
+        raw_country = str(payload.get("country") or "")[:80]
+        country_code = str(payload.get("country_code") or "").upper().strip()[:5]
 
         # Augment with Cloudflare edge geolocation headers if available
         cf_city = request.headers.get("CF-IPCity")
         cf_country = request.headers.get("CF-IPCountry")
+        city = raw_city.strip()
+        country = raw_country.strip()
         if (not city or city == "Global Visitor" or city.lower() == "unknown") and cf_city:
-            city = cf_city.strip()
+            city = cf_city.strip()[:80]
         if (not country_code or country_code == "GLOBAL") and cf_country:
-            country_code = cf_country.strip().upper()
+            country_code = cf_country.strip().upper()[:5]
             if not country or country == "Global":
                 country = country_code
 
-        region = (payload.get("region") or request.headers.get("CF-Region") or "").strip()
-        action = (payload.get("action") or "Page Visit").strip()
-        user_id = (payload.get("user_id") or "anonymous").strip()
-        role = (payload.get("role") or "visitor").strip()
-        device_type = (payload.get("device_type") or "Desktop").strip()
-        bytes_cleaned = int(payload.get("bytes_cleaned") or 0)
-        lat = payload.get("lat") or request.headers.get("CF-IPLatitude")
-        lon = payload.get("lon") or request.headers.get("CF-IPLongitude")
+        region = str(payload.get("region") or request.headers.get("CF-Region") or "").strip()[:80]
+        action = str(payload.get("action") or "Page Visit").strip()[:100]
+        user_id = str(payload.get("user_id") or "anonymous").strip()[:80]
+
+        raw_role = str(payload.get("role") or "visitor").strip().lower()
+        role = raw_role if raw_role in ("visitor", "student", "teacher", "admin") else "visitor"
+
+        device_type = str(payload.get("device_type") or "Desktop").strip()[:50]
+        try:
+            bytes_cleaned = max(0, min(int(payload.get("bytes_cleaned") or 0), 10 * 1024**4))
+        except (ValueError, TypeError):
+            bytes_cleaned = 0
+
+        raw_lat = payload.get("lat") or request.headers.get("CF-IPLatitude")
+        raw_lon = payload.get("lon") or request.headers.get("CF-IPLongitude")
+        lat = None
+        lon = None
+        if raw_lat is not None:
+            try:
+                f_lat = float(raw_lat)
+                if -90.0 <= f_lat <= 90.0:
+                    lat = f_lat
+            except (ValueError, TypeError):
+                pass
+        if raw_lon is not None:
+            try:
+                f_lon = float(raw_lon)
+                if -180.0 <= f_lon <= 180.0:
+                    lon = f_lon
+            except (ValueError, TypeError):
+                pass
 
         res = record_telemetry_event(
             city=city,
             country=country or "Global",
             country_code=country_code,
             region=region,
-            lat=float(lat) if lat is not None else None,
-            lon=float(lon) if lon is not None else None,
+            lat=lat,
+            lon=lon,
             action=action,
             user_id=user_id,
             role=role,
@@ -5378,6 +5640,7 @@ def create_flask_app():
 
         csv_content = AnalyticsService.export_csv_report(stats, items=items)
         filename = f"data_to_dirt_audit_report_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+        log_security_audit_event("ADMIN_AUDIT_EXPORT", actor="admin", details=f"Audit report CSV exported ({len(items)} items)")
         response = make_response(csv_content)
         response.headers["Content-Disposition"] = f"attachment; filename={filename}"
         response.headers["Content-Type"] = "text/csv; charset=utf-8"
@@ -5434,10 +5697,25 @@ def create_flask_app():
         cities_list.sort(key=lambda c: (c.get("visitors", 0) + c.get("scans", 0) * 2), reverse=True)
 
         csv_content = AnalyticsService.export_cities_csv(cities_list)
+        log_security_audit_event("ANALYTICS_EXPORT", actor="admin", details=f"City telemetry CSV exported ({len(cities_list)} cities)")
         response = make_response(csv_content)
         response.headers["Content-Disposition"] = "attachment; filename=data_to_dirt_city_telemetry.csv"
         response.headers["Content-Type"] = "text/csv; charset=utf-8"
         return response
+
+    @app.route("/api/auth/logout", methods=["POST"])
+    def api_auth_logout():
+        """Terminates session on server, revoking active session tokens and clearing server sessions."""
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
+        if token:
+            default_auth_service.revoke_token(token)
+        try:
+            from flask import session as flask_session
+            flask_session.clear()
+        except Exception:
+            pass
+        return jsonify({"status": "logged_out", "message": "Successfully logged out."})
 
     return app
 
