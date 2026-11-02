@@ -154,7 +154,7 @@ class StudentDashboardView {
               </div>
             </div>
 
-            <!-- Digital Smog Virtual Biome Telemetry Widget (Item 14) -->
+            <!-- Digital Smog Virtual Biome Telemetry Widget -->
             <div class="retro-inset" style="padding: 8px 10px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; border-radius: 4px;">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 16px;">🌫️</span>
@@ -280,6 +280,24 @@ class StudentDashboardView {
             </div>
           </div>
 
+          <!-- Digitized Notes Vault Card -->
+          <div class="retro-card" id="notes-vault-card" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 6px;">
+              <div style="font-weight: bold; font-size: 13px; color: var(--c-wood-border); display: flex; align-items: center; gap: 6px;">
+                <span>📓 My Digitized Notes Vault</span>
+                <span id="notes-vault-count" class="retro-tag" style="background: rgba(67, 56, 202, 0.1); color: #4338ca; font-size: 10px; padding: 1px 6px;">0 Notes</span>
+              </div>
+              <button class="retro-btn retro-btn-sm" id="btn-vault-add-ocr" style="background: #4338ca; color: #fff; font-size: 10px; padding: 2px 7px;">
+                + Digitize Photo
+              </button>
+            </div>
+            <div id="notes-vault-list" class="retro-inset" style="max-height: 220px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="text-align: center; padding: 14px; color: var(--c-ink-light); font-size: 11px;">
+                Loading your digitized notes from Google Cloud Firestore...
+              </div>
+            </div>
+          </div>
+
           <!-- Classroom Impact Summary Box -->
           <div class="retro-card" style="font-size: 12px; color: var(--c-ink-muted); line-height: 1.5;">
             <div style="font-weight: bold; color: var(--c-wood-border); margin-bottom: 4px;">🌍 Real-World Impact Equivalency</div>
@@ -321,6 +339,11 @@ class StudentDashboardView {
     document.getElementById("btn-school-commons-pool")?.addEventListener("click", () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       this.openSchoolCommonsModal();
+    });
+
+    document.getElementById("btn-vault-add-ocr")?.addEventListener("click", () => {
+      if (this.audioSynth) this.audioSynth.playBlip();
+      this.openOcrNotesModal();
     });
 
     const isIPad = /iPad/i.test(navigator.userAgent) || 
@@ -500,6 +523,7 @@ class StudentDashboardView {
       this.leaderboard = lbRes.leaderboard || [];
       this.updateStatsUI();
       this.updateLeaderboardUI();
+      await this.renderNotesVault();
     } catch (e) {
       console.warn("Failed to fetch student data:", e);
     }
@@ -558,7 +582,7 @@ class StudentDashboardView {
       );
     }
 
-    // Update Digital Smog Biome & Computational Energy Metrics (Item 14)
+    // Update Digital Smog Biome & Computational Energy Metrics
     const uncleanedBytes = (this.scannedFiles || []).reduce((acc, f) => acc + (f.size_bytes || 0), 0);
     const expiredCount = (this.scannedFiles || []).filter(f => f.is_expired).length;
     let smogPct = 0;
@@ -1101,7 +1125,7 @@ class StudentDashboardView {
     const quickActionsHtml = `
       <div style="background: rgba(45, 106, 54, 0.08); border: 1.5px solid var(--c-pine); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
-          <span style="font-weight: bold; font-size: 11.5px; color: var(--c-wood-border);">⚡ Keep-or-Sweep Smart Automations (Item 15)</span>
+          <span style="font-weight: bold; font-size: 11.5px; color: var(--c-wood-border);">⚡ Keep-or-Sweep Smart Automations</span>
           <span style="font-size: 10px; color: var(--c-ink-muted);">${junkFiles.length} junk files ready for instant 1-click clearing</span>
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -1251,7 +1275,7 @@ class StudentDashboardView {
       })
       .join("");
 
-    // Bind Instant Direct Sweep buttons (Item 15)
+    // Bind Instant Direct Sweep buttons
     container.querySelectorAll(".btn-instant-sweep").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         const fileId = e.currentTarget.getAttribute("data-id");
@@ -1262,7 +1286,7 @@ class StudentDashboardView {
       });
     });
 
-    // Bind Batch Sweep buttons (Item 15)
+    // Bind Batch Sweep buttons
     container.querySelector("#btn-batch-sweep-junk")?.addEventListener("click", async () => {
       await this.executeBatchSweep("all_junk");
     });
@@ -1344,7 +1368,7 @@ class StudentDashboardView {
       document.body.classList.add("screen-shake");
       setTimeout(() => document.body.classList.remove("screen-shake"), 400);
 
-      // Trigger Smog Clearing in Virtual Biome (Item 14)
+      // Trigger Smog Clearing in Virtual Biome
       if (window.TreeRenderer) {
         window.TreeRenderer.triggerSmogClearing();
       }
@@ -1465,13 +1489,17 @@ class StudentDashboardView {
     modal.innerHTML = `
       <div class="retro-card retro-modal" style="max-width: 580px;">
         <div class="retro-modal-header">
-          <span>📸 Whiteboard & Notes OCR Converter (Item 5)</span>
+          <span>📸 Whiteboard & Notes OCR Converter</span>
           <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-ocr-close">✕</button>
         </div>
         <div class="retro-modal-body" style="font-size: 11.5px; line-height: 1.5;">
-          <div style="margin-bottom: 10px; color: var(--c-ink-muted);">
+          <div style="margin-bottom: 8px; color: var(--c-ink-muted);">
             High-res camera photos of whiteboards and notebooks take 8MB–15MB each.
             Our OCR engine transcribes text, formulas, and diagrams into a clean, searchable markdown doc (~1.5 KB), achieving <strong>99.8% carbon & storage savings</strong>!
+          </div>
+
+          <div style="font-size: 11px; background: rgba(67, 56, 202, 0.08); border-left: 3px solid #4338ca; padding: 8px 10px; border-radius: 4px; margin-bottom: 12px; color: var(--c-wood-border);">
+            ☁️ <strong>Saved to Notes Vault & Google Cloud:</strong> Converted notes are permanently saved to your personal <strong>Digitized Notes Vault</strong> below and synced with Firebase Firestore so you can view, copy, or export them anytime while saving megabytes of carbon-intensive photo storage.
           </div>
 
           <div style="background: rgba(0,0,0,0.03); border: 1.5px dashed var(--c-wood-border); border-radius: 6px; padding: 14px; text-align: center; margin-bottom: 12px;">
@@ -1524,6 +1552,8 @@ class StudentDashboardView {
           body: JSON.stringify({
             file_name: file.name,
             file_size_bytes: file.size,
+            student_id: localStorage.getItem("d2d_user_id") || "STU-001",
+            student_name: localStorage.getItem("d2d_student_name") || "Student",
             title: file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ")
           })
         });
@@ -1545,9 +1575,168 @@ class StudentDashboardView {
     btnSave?.addEventListener("click", async () => {
       if (window.RetroAudio) window.RetroAudio.playVictoryFanfare();
       if (window.ParticleEngine) window.ParticleEngine.emitConfetti();
-      alert("🎉 Clean structured note saved! +50 Eco-credits credited to your account.");
+      alert("🎉 Clean structured note saved to your Notes Vault and Google Cloud Firestore! +50 Eco-credits credited to your account.");
       close();
       await this.fetchData();
+      await this.renderNotesVault();
+    });
+  }
+
+  async renderNotesVault() {
+    const container = document.getElementById("notes-vault-list");
+    const countBadge = document.getElementById("notes-vault-count");
+    if (!container) return;
+
+    try {
+      const token = localStorage.getItem("d2d_session_token");
+      const userId = localStorage.getItem("d2d_user_id");
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch(`/api/notes/list?student_id=${encodeURIComponent(userId || "")}`, { headers });
+      const data = await res.json();
+      const notes = data.notes || [];
+
+      if (countBadge) {
+        countBadge.textContent = `${notes.length} Note${notes.length === 1 ? "" : "s"}`;
+      }
+
+      if (notes.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 14px; color: var(--c-ink-light); font-size: 11px;">
+            No notes digitized yet. Click '+ Digitize Photo' or '📸 OCR Notes' above to convert whiteboard/notebook photos into lightweight searchable docs!
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = notes.map((n) => {
+        const title = escapeHtml(n.title || "Lecture Notes");
+        const date = escapeHtml(n.created_at || "Recent");
+        const savingsPct = escapeHtml(n.savings_pct || "99.8%");
+        const savedMb = (Number(n.bytes_saved || 0) / (1024 * 1024)).toFixed(1);
+        const noteId = escapeHtml(n.note_id || "");
+
+        return `
+          <div class="retro-card" style="padding: 8px 10px; margin-bottom: 6px; background: rgba(255,255,255,0.7); display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--c-parchment-border);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div>
+                <strong style="color: var(--c-wood-border); font-size: 12px;">📝 ${title}</strong>
+                <div style="font-size: 10px; color: var(--c-ink-muted);">Saved ${date}</div>
+              </div>
+              <span class="retro-tag retro-tag-clean" style="font-size: 10px; padding: 1px 5px;">⚡ ${savingsPct} Saved (${savedMb} MB)</span>
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 4px; justify-content: flex-end;">
+              <button class="retro-btn retro-btn-sm btn-vault-view" data-note-id="${noteId}" style="background: #2563eb; color: #fff; font-size: 10px; padding: 2px 7px;">
+                👁️ View Note
+              </button>
+              <button class="retro-btn retro-btn-wood retro-btn-sm btn-vault-copy" data-note-id="${noteId}" style="font-size: 10px; padding: 2px 7px;">
+                📋 Copy Markdown
+              </button>
+              <button class="retro-btn retro-btn-danger retro-btn-sm btn-vault-del" data-note-id="${noteId}" style="font-size: 10px; padding: 2px 6px;">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Bind events for view, copy, and delete
+      container.querySelectorAll(".btn-vault-view").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const nid = btn.getAttribute("data-note-id");
+          const target = notes.find((x) => x.note_id === nid);
+          if (target) this.openViewNoteModal(target);
+        });
+      });
+
+      container.querySelectorAll(".btn-vault-copy").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const nid = btn.getAttribute("data-note-id");
+          const target = notes.find((x) => x.note_id === nid);
+          if (target && target.markdown) {
+            navigator.clipboard.writeText(target.markdown).then(() => {
+              btn.textContent = "✓ Copied!";
+              setTimeout(() => { btn.textContent = "📋 Copy Markdown"; }, 2000);
+            }).catch(() => {
+              alert("Markdown copied to clipboard!");
+            });
+          }
+        });
+      });
+
+      container.querySelectorAll(".btn-vault-del").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const nid = btn.getAttribute("data-note-id");
+          if (!confirm("Are you sure you want to remove this digitized note from your vault?")) return;
+          try {
+            const delRes = await fetch("/api/notes/delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ note_id: nid })
+            }).then((r) => r.json());
+            if (delRes.status === "success") {
+              await this.renderNotesVault();
+            }
+          } catch (err) {
+            alert("Failed to delete note: " + err.message);
+          }
+        });
+      });
+
+    } catch (e) {
+      console.warn("Failed to render notes vault:", e);
+    }
+  }
+
+  openViewNoteModal(note) {
+    if (this.audioSynth) this.audioSynth.playBlip();
+    const modal = document.createElement("div");
+    modal.className = "retro-modal-backdrop";
+    modal.id = "modal-view-note";
+    modal.style.zIndex = "10001";
+
+    const title = escapeHtml(note.title || "Digitized Note");
+    const date = escapeHtml(note.created_at || "Recent");
+    const origName = escapeHtml(note.original_filename || "Photo");
+    const savingsPct = escapeHtml(note.savings_pct || "99.8%");
+    const markdown = note.markdown || "";
+
+    modal.innerHTML = `
+      <div class="retro-card retro-modal" style="max-width: 600px;">
+        <div class="retro-modal-header">
+          <span>📓 ${title}</span>
+          <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-view-note-close">✕</button>
+        </div>
+        <div class="retro-modal-body" style="font-size: 12px; line-height: 1.5;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; color: var(--c-ink-muted);">
+            <div>Transcribed from <strong>${origName}</strong> on ${date}</div>
+            <span class="retro-tag retro-tag-clean">${savingsPct} Storage Saved</span>
+          </div>
+          <div style="font-size: 10.5px; background: rgba(67, 56, 202, 0.08); border-left: 3px solid #4338ca; padding: 6px 10px; border-radius: 4px; margin-bottom: 10px; color: var(--c-wood-border);">
+            ☁️ <strong>Saved in Vault & Google Cloud Firestore:</strong> You can copy this clean markdown directly into Google Classroom, Notion, or Obsidian.
+          </div>
+          <textarea class="retro-input" id="view-note-md" rows="12" readonly style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px; background: #fff;">${escapeHtml(markdown)}</textarea>
+        </div>
+        <div class="retro-modal-actions">
+          <button class="retro-btn retro-btn-wood" id="btn-view-note-dismiss">Close</button>
+          <button class="retro-btn retro-btn-gold" id="btn-view-note-copy">📋 Copy Markdown</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    modal.querySelector("#btn-view-note-close")?.addEventListener("click", close);
+    modal.querySelector("#btn-view-note-dismiss")?.addEventListener("click", close);
+
+    const btnCopy = modal.querySelector("#btn-view-note-copy");
+    btnCopy?.addEventListener("click", () => {
+      navigator.clipboard.writeText(markdown).then(() => {
+        btnCopy.textContent = "✓ Copied to Clipboard!";
+        setTimeout(() => { btnCopy.textContent = "📋 Copy Markdown"; }, 2000);
+      }).catch(() => {
+        alert("Markdown copied to clipboard!");
+      });
     });
   }
 
@@ -1565,7 +1754,7 @@ class StudentDashboardView {
       modal.innerHTML = `
         <div class="retro-card retro-modal" style="max-width: 540px;">
           <div class="retro-modal-header">
-            <span>🏫 School Commons Shared Resource Pool (Item 2)</span>
+            <span>🏫 School Commons Shared Resource Pool</span>
             <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-pool-close">✕</button>
           </div>
           <div class="retro-modal-body" style="font-size: 11.5px; line-height: 1.5;">

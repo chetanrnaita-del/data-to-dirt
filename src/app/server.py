@@ -138,7 +138,7 @@ except ImportError:
 
 
 try:
-    from flask import Flask, request, jsonify, send_from_directory, make_response
+    from flask import Flask, request, jsonify, send_from_directory, make_response, session
     from flask_cors import CORS
     HAS_FLASK = True
 except ImportError:
@@ -3431,6 +3431,11 @@ def create_flask_app():
                 except Exception:
                     pass
             state.setdefault("completed_deletions", []).append(queue_item)
+            if firestore_db.is_connected:
+                try:
+                    firestore_db.record_direct_sweep(queue_item)
+                except Exception as fe:
+                    print(f"[!] Firestore direct sweep record notice: {fe}")
             log_security_audit_event(
                 "DIRECT_STUDENT_SWEEP",
                 actor=actual_student_id,
@@ -3534,6 +3539,23 @@ def create_flask_app():
                 except Exception:
                     pass
 
+            sweep_record = {
+                "request_id": f"SWEEP-{uuid.uuid4().hex[:6].upper()}",
+                "student_id": actual_student_id,
+                "file_id": fid,
+                "file_name": f.get("name", "Unknown"),
+                "file_size_bytes": sz,
+                "category": category,
+                "status": "SWEPT_DIRECT_BATCH",
+                "completed_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            state.setdefault("completed_deletions", []).append(sweep_record)
+            if firestore_db.is_connected:
+                try:
+                    firestore_db.record_direct_sweep(sweep_record)
+                except Exception:
+                    pass
+
         # Update scanner files
         state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") not in swept_ids]
 
@@ -3577,6 +3599,8 @@ def create_flask_app():
         img_size = int(data.get("file_size_bytes", 8 * 1024 * 1024))
         raw_b64 = data.get("image_base64") or ""
         sample_title = data.get("title") or Path(img_name).stem.replace("_", " ").title()
+        actual_student_id = session.get("user_id") or session.get("student_id") or data.get("student_id") or "STU-001"
+        actual_student_name = session.get("user_name") or session.get("name") or "Student"
 
         # Generate structured clean notes
         topics = [
@@ -3603,6 +3627,8 @@ def create_flask_app():
         note_id = f"NOTE-{uuid.uuid4().hex[:6].upper()}"
         note_entry = {
             "note_id": note_id,
+            "student_id": actual_student_id,
+            "student_name": actual_student_name,
             "title": sample_title,
             "original_filename": img_name,
             "original_size_bytes": img_size,
@@ -3617,6 +3643,12 @@ def create_flask_app():
         clean_notes.append(note_entry)
         save_state(state)
 
+        if firestore_db.is_connected:
+            try:
+                firestore_db.save_clean_note(note_entry)
+            except Exception as fe:
+                print(f"[!] Firestore save_clean_note notice: {fe}")
+
         return jsonify({
             "status": "success",
             "note": note_entry,
@@ -3626,10 +3658,48 @@ def create_flask_app():
     @app.route("/api/notes/list", methods=["GET"])
     def api_notes_list():
         state = load_state()
+        local_notes = state.get("clean_notes", [])
+        actual_student_id = session.get("user_id") or session.get("student_id") or request.args.get("student_id")
+
+        if firestore_db.is_connected:
+            try:
+                cloud_notes = firestore_db.get_clean_notes(actual_student_id or "")
+                if cloud_notes:
+                    cloud_ids = {n.get("note_id") for n in cloud_notes if n.get("note_id")}
+                    merged = list(cloud_notes)
+                    for ln in local_notes:
+                        if ln.get("note_id") not in cloud_ids:
+                            if not actual_student_id or ln.get("student_id") == actual_student_id:
+                                merged.append(ln)
+                    return jsonify({"status": "success", "notes": merged})
+            except Exception as fe:
+                print(f"[!] Firestore get_clean_notes notice: {fe}")
+
+        filtered_notes = [n for n in local_notes if not actual_student_id or n.get("student_id") == actual_student_id] if actual_student_id else local_notes
         return jsonify({
             "status": "success",
-            "notes": state.get("clean_notes", [])
+            "notes": filtered_notes
         })
+
+    @app.route("/api/notes/delete", methods=["POST"])
+    def api_notes_delete():
+        data = request.get_json() or {}
+        note_id = data.get("note_id")
+        if not note_id:
+            return jsonify({"status": "error", "message": "note_id is required"}), 400
+
+        state = load_state()
+        notes = state.get("clean_notes", [])
+        state["clean_notes"] = [n for n in notes if n.get("note_id") != note_id]
+        save_state(state)
+
+        if firestore_db.is_connected:
+            try:
+                firestore_db.delete_clean_note(note_id)
+            except Exception as fe:
+                print(f"[!] Firestore delete_clean_note notice: {fe}")
+
+        return jsonify({"status": "success", "message": f"Note '{note_id}' removed from vault."})
 
     @app.route("/api/school/curriculum_pool", methods=["GET", "POST"])
     def api_school_curriculum_pool():
@@ -3648,15 +3718,23 @@ def create_flask_app():
             scanner_files = state.get("scanner", {}).get("files", [])
             state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") != file_id]
 
-            pooled = state.setdefault("school_pooled_assets", [])
-            pooled.append({
+            pooled_item = {
                 "pool_id": f"POOL-{uuid.uuid4().hex[:6].upper()}",
                 "file_name": file_name,
                 "student_id": student_id,
                 "bytes_pooled": file_size,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-            })
+            }
+            pooled = state.setdefault("school_pooled_assets", [])
+            pooled.append(pooled_item)
             save_state(state)
+
+            if firestore_db.is_connected:
+                try:
+                    firestore_db.record_pooled_curriculum_asset(pooled_item)
+                except Exception as fe:
+                    print(f"[!] Firestore record_pooled_curriculum_asset notice: {fe}")
+
             return jsonify({
                 "status": "success",
                 "message": f"Successfully linked '{file_name}' to Grade Commons! {format_bytes(file_size)} freed from private storage.",
@@ -3665,6 +3743,19 @@ def create_flask_app():
 
         # GET: return pooled stats
         pooled = state.get("school_pooled_assets", [])
+        if firestore_db.is_connected:
+            try:
+                cloud_pooled = firestore_db.get_pooled_curriculum_assets()
+                if cloud_pooled:
+                    pooled_ids = {p.get("pool_id") for p in cloud_pooled}
+                    merged = list(cloud_pooled)
+                    for p in pooled:
+                        if p.get("pool_id") not in pooled_ids:
+                            merged.append(p)
+                    pooled = merged
+            except Exception as fe:
+                print(f"[!] Firestore get_pooled_curriculum_assets notice: {fe}")
+
         total_pooled_bytes = sum(p.get("bytes_pooled", 0) for p in pooled)
         return jsonify({
             "status": "success",

@@ -647,6 +647,109 @@ class FirestoreDB:
         })
         return True
 
+    # --------------------------------------------------------------------------
+    # Clean Digitized Notes Vault (Item 5)
+    # --------------------------------------------------------------------------
+
+    def save_clean_note(self, note_data: Dict[str, Any]) -> str:
+        """Stores a digitized whiteboard/handwritten note in the cloud Firestore clean_notes collection."""
+        note_id = note_data.get("note_id") or f"NOTE-{int(time.time()*1000)}"
+        if not self.is_connected:
+            return note_id
+
+        doc_ref = self.db.collection("clean_notes").document(note_id)
+        payload = dict(note_data)
+        payload["note_id"] = note_id
+        if "created_at_server" not in payload:
+            payload["created_at_server"] = firestore.SERVER_TIMESTAMP
+        doc_ref.set(payload, merge=True)
+        return note_id
+
+    def get_clean_notes(self, student_id: str = "", limit: int = 100) -> List[Dict[str, Any]]:
+        """Retrieves digitized clean notes for a student from Cloud Firestore."""
+        if not self.is_connected:
+            return []
+
+        try:
+            query = self.db.collection("clean_notes")
+            if student_id:
+                if FieldFilter:
+                    query = query.where(filter=FieldFilter("student_id", "==", student_id))
+                else:
+                    query = query.where("student_id", "==", student_id)
+            docs = query.limit(limit).stream()
+            notes = []
+            for d in docs:
+                data = d.to_dict()
+                if "created_at_server" in data:
+                    data.pop("created_at_server", None)
+                notes.append(data)
+            return sorted(notes, key=lambda x: x.get("created_at", ""), reverse=True)
+        except Exception as e:
+            print(f"[!] Firestore get_clean_notes error: {e}")
+            return []
+
+    def delete_clean_note(self, note_id: str) -> bool:
+        """Removes a clean note from Cloud Firestore."""
+        if not self.is_connected:
+            return False
+        try:
+            self.db.collection("clean_notes").document(note_id).delete()
+            return True
+        except Exception as e:
+            print(f"[!] Firestore delete_clean_note error: {e}")
+            return False
+
+    # --------------------------------------------------------------------------
+    # School Commons Pooled Resources (Item 2)
+    # --------------------------------------------------------------------------
+
+    def record_pooled_curriculum_asset(self, asset_data: Dict[str, Any]) -> str:
+        """Stores a shared curriculum pool asset in Cloud Firestore."""
+        pool_id = asset_data.get("pool_id") or f"POOL-{int(time.time()*1000)}"
+        if not self.is_connected:
+            return pool_id
+
+        doc_ref = self.db.collection("school_pooled_assets").document(pool_id)
+        payload = dict(asset_data)
+        payload["pool_id"] = pool_id
+        payload["timestamp_server"] = firestore.SERVER_TIMESTAMP
+        doc_ref.set(payload, merge=True)
+        return pool_id
+
+    def get_pooled_curriculum_assets(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetches pooled curriculum assets from Cloud Firestore."""
+        if not self.is_connected:
+            return []
+        try:
+            docs = self.db.collection("school_pooled_assets").limit(limit).stream()
+            assets = []
+            for d in docs:
+                data = d.to_dict()
+                data.pop("timestamp_server", None)
+                assets.append(data)
+            return assets
+        except Exception as e:
+            print(f"[!] Firestore get_pooled_curriculum_assets error: {e}")
+            return []
+
+    # --------------------------------------------------------------------------
+    # Completed Direct Sweeps & History (Item 15)
+    # --------------------------------------------------------------------------
+
+    def record_direct_sweep(self, sweep_data: Dict[str, Any]) -> str:
+        """Stores completed direct and batch sweeps in Cloud Firestore completed_deletions."""
+        req_id = sweep_data.get("request_id") or f"SWEEP-{int(time.time()*1000)}"
+        if not self.is_connected:
+            return req_id
+
+        doc_ref = self.db.collection("completed_deletions").document(req_id)
+        payload = dict(sweep_data)
+        payload["request_id"] = req_id
+        payload["completed_at"] = firestore.SERVER_TIMESTAMP
+        doc_ref.set(payload, merge=True)
+        return req_id
+
 
 # Global Firestore Singleton
 firestore_db = FirestoreDB()

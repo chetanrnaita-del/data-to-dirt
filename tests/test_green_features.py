@@ -304,6 +304,52 @@ class TestGreenLightFeatures(unittest.TestCase):
         self.assertEqual(q["R1"], "APPROVED")
         self.assertEqual(q["R2"], "PENDING", "Non-matching category must remain PENDING")
 
+    def test_notes_delete_endpoint(self):
+        """Item 5: /api/notes/delete removes digitized notes from the student vault and Firestore."""
+        # Create note
+        res = self.client.post("/api/scan/ocr_notes", json={
+            "file_name": "Chemistry_Lab_Notes.jpg",
+            "file_size_bytes": 5000000,
+            "title": "Titration Analysis",
+            "student_id": self.student_id
+        })
+        self.assertEqual(res.status_code, 200)
+        note_id = res.get_json()["note"]["note_id"]
+
+        # Confirm note in list
+        list_res = self.client.get(f"/api/notes/list?student_id={self.student_id}")
+        self.assertTrue(any(n["note_id"] == note_id for n in list_res.get_json()["notes"]))
+
+        # Delete note
+        del_res = self.client.post("/api/notes/delete", json={"note_id": note_id})
+        self.assertEqual(del_res.status_code, 200)
+        self.assertEqual(del_res.get_json()["status"], "success")
+
+        # Confirm removed
+        list_res2 = self.client.get(f"/api/notes/list?student_id={self.student_id}")
+        self.assertFalse(any(n["note_id"] == note_id for n in list_res2.get_json()["notes"]))
+
+    def test_firestore_db_methods_standby_safety(self):
+        """Verify that all new Cloud Firestore helper methods operate gracefully in standby mode."""
+        from src.services.firebase_db import firestore_db
+        nid = firestore_db.save_clean_note({"note_id": "NOTE-TEST1", "title": "Test Note"})
+        self.assertTrue(bool(nid))
+
+        notes = firestore_db.get_clean_notes("STU-TEST")
+        self.assertIsInstance(notes, list)
+
+        deleted = firestore_db.delete_clean_note("NOTE-TEST1")
+        self.assertIn(deleted, (True, False))
+
+        pool_id = firestore_db.record_pooled_curriculum_asset({"file_name": "Test.pdf", "bytes_pooled": 100})
+        self.assertTrue(bool(pool_id))
+
+        assets = firestore_db.get_pooled_curriculum_assets()
+        self.assertIsInstance(assets, list)
+
+        sweep_id = firestore_db.record_direct_sweep({"file_name": "Test.tmp", "file_size_bytes": 500})
+        self.assertTrue(bool(sweep_id))
+
 
 if __name__ == "__main__":
     unittest.main()

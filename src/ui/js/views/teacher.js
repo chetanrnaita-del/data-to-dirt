@@ -292,7 +292,7 @@ class TeacherConfirmationView {
       }
     });
 
-    // Category bulk approvals (Item 15)
+    // Category bulk approvals
     const setupCategoryBatch = (btnId, catName, defaultText) => {
       document.getElementById(btnId)?.addEventListener("click", async () => {
         const btn = document.getElementById(btnId);
