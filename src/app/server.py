@@ -4117,11 +4117,17 @@ def create_flask_app():
                 print(f"[!] Telemetry error: {te}")
 
             # Check 1 GB threshold
-            ecofund = state["ecofund"]
-            thresh = ecofund["threshold_bytes"]
+            ecofund = state.setdefault("ecofund", {})
+            thresh = ecofund.setdefault("threshold_bytes", TREE_DONATION_THRESHOLD_BYTES)
+            ecofund.setdefault("budget_usd", 100.00)
+            ecofund.setdefault("balance_usd", 100.00)
+            ecofund.setdefault("cost_per_tree_usd", 1.50)
+            ecofund.setdefault("trees_planted", 0)
+            ecofund.setdefault("cumulative_waste_bytes", 0)
+            ecofund.setdefault("donations_history", [])
             while ecofund["cumulative_waste_bytes"] >= thresh * (ecofund["trees_planted"] + 1):
                 ecofund["trees_planted"] += 1
-                ecofund["balance_usd"] = max(0.0, round(ecofund["balance_usd"] - ecofund["cost_per_tree_usd"], 2))
+                ecofund["balance_usd"] = max(0.0, round(ecofund.get("balance_usd", 100.0) - ecofund.get("cost_per_tree_usd", 1.50), 2))
                 donation_triggered = True
                 new_tree_info = {
                     "tree_id": f"TN-{1000 + ecofund['trees_planted']}",
@@ -4302,11 +4308,17 @@ def create_flask_app():
         state["teacher_queue"] = queue
 
         # Check tree donation threshold
-        ecofund = state["ecofund"]
-        thresh = ecofund.get("threshold_bytes", TREE_DONATION_THRESHOLD_BYTES)
+        ecofund = state.setdefault("ecofund", {})
+        thresh = ecofund.setdefault("threshold_bytes", TREE_DONATION_THRESHOLD_BYTES)
+        ecofund.setdefault("budget_usd", 100.00)
+        ecofund.setdefault("balance_usd", 100.00)
+        ecofund.setdefault("cost_per_tree_usd", 1.50)
+        ecofund.setdefault("trees_planted", 0)
+        ecofund.setdefault("cumulative_waste_bytes", 0)
+        ecofund.setdefault("donations_history", [])
         while ecofund["cumulative_waste_bytes"] >= thresh * (ecofund["trees_planted"] + 1):
             ecofund["trees_planted"] += 1
-            ecofund["balance_usd"] = max(0.0, round(ecofund["balance_usd"] - ecofund["cost_per_tree_usd"], 2))
+            ecofund["balance_usd"] = max(0.0, round(ecofund.get("balance_usd", 100.0) - ecofund.get("cost_per_tree_usd", 1.50), 2))
             new_tree_info = {
                 "tree_id": f"TN-{1000 + ecofund['trees_planted']}",
                 "species": "Mangrove (Rhizophora mucronata)",
@@ -4565,7 +4577,7 @@ def create_flask_app():
             class_items = all_items
 
         # Aggregate verified data cleared:
-        student_bytes_total = sum(int(s.get("bytes_cleared", 0) or 0) for s in valid_students)
+        student_bytes_total = sum(int(s.get("bytes_cleared", 0) or s.get("bytes_cleaned", 0) or 0) for s in valid_students)
         queue_approved_bytes = sum(
             int(it.get("file_size_bytes", 0) or 0)
             for it in class_items
@@ -4585,7 +4597,7 @@ def create_flask_app():
         total_carbon_offset_kg = total_carbon_offset_grams / 1000.0
 
         # Trees funded
-        student_trees = sum(int(s.get("trees", 0) or 0) for s in valid_students)
+        student_trees = sum(int(s.get("trees_planted", 0) or s.get("trees", 0) or 0) for s in valid_students)
         ecofund_trees = state.get("ecofund", {}).get("trees_planted", 0)
         if student_trees > 0:
             total_trees_funded = student_trees
@@ -5604,9 +5616,12 @@ def create_flask_app():
             except Exception as fe:
                 print(f"[!] Analytics firestore aggregation notice: {fe}")
 
+        total_stu_bytes = sum(int(s.get("bytes_cleared", 0) or s.get("bytes_cleaned", 0) or 0) for s in state.get("students", []))
         ecofund = state.get("ecofund", {})
-        if firestore_db.is_connected and total_firestore_bytes > 0:
-            effective_bytes = total_firestore_bytes
+        if total_stu_bytes > 0:
+            effective_bytes = total_stu_bytes
+        elif firestore_db.is_connected and total_firestore_bytes > 0:
+            effective_bytes = max(total_firestore_bytes, ecofund.get("cumulative_waste_bytes", 0))
         else:
             effective_bytes = max(
                 kpis.get("total_bytes_cleaned", 0),
@@ -5618,7 +5633,7 @@ def create_flask_app():
         # Calculate exact CO2e avoided using Singapore grid constant: 0.28 kWh/GB * 405.7 g/kWh / 1000.0
         co2_kg = (effective_bytes / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
         kpis["total_carbon_offset_kg"] = round(co2_kg, 4) if co2_kg < 1.0 else round(co2_kg, 2)
-        total_stu_trees = sum(int(s.get("trees", 0) or 0) for s in state.get("students", []))
+        total_stu_trees = sum(int(s.get("trees_planted", 0) or s.get("trees", 0) or 0) for s in state.get("students", []))
         if total_stu_trees > 0:
             kpis["total_trees_funded"] = total_stu_trees
         elif ecofund.get("trees_planted", 0) > 0:

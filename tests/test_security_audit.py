@@ -386,7 +386,7 @@ class TestSecurityAudit(unittest.TestCase):
         self.assertIn("url.pathname.startsWith('/auth/')", sw_content)
         self.assertIn("url.pathname.startsWith('/api/')", sw_content)
         self.assertIn("CLEAR_CACHES", sw_content)
-        self.assertTrue("data-to-dirt-v102" in sw_content or "data-to-dirt-v105" in sw_content or "data-to-dirt-v106" in sw_content or "data-to-dirt-v107" in sw_content)
+        self.assertTrue(any(v in sw_content for v in ["data-to-dirt-v102", "data-to-dirt-v105", "data-to-dirt-v106", "data-to-dirt-v107", "data-to-dirt-v108", "data-to-dirt-v109"]))
 
         app_js_path = pathlib.Path(__file__).resolve().parent.parent / "src" / "ui" / "js" / "app.js"
         with open(app_js_path, "r", encoding="utf-8") as f:
