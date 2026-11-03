@@ -138,7 +138,7 @@ except ImportError:
 
 
 try:
-    from flask import Flask, request, jsonify, send_from_directory, make_response, session
+    from flask import Flask, request, jsonify, send_from_directory, make_response
     from flask_cors import CORS
     HAS_FLASK = True
 except ImportError:
@@ -1073,142 +1073,8 @@ def enrich_file_iq1000(file_dict: Dict[str, Any], now_epoch: float, sha_tracker:
         conf, rat = generate_iq1000_rationale(fn, sz, age_days, accessed_days, file_dict.get("sha_match_filename"))
         file_dict["ai_confidence_score"] = f"{conf:.1f}%"
         file_dict["ai_forensic_rationale"] = rat
-
-    # ---------------------------------------------------------
-    # Digital Biodegradability & Lifecycle TTL Calculation (Item 4)
-    # ---------------------------------------------------------
-    fn_low = fn.lower()
-    ext = Path(fn_low).suffix
-
-    if ext in ('.tmp', '.temp', '.bak', '.log', '.cache', '.old', '.swp', '.crdownload', '.part'):
-        ttl_days = 7
-    elif fn_low.startswith(('screenshot', 'screen shot')) or 'screenshot' in fn_low:
-        ttl_days = 30
-    elif fn_low.startswith(('draft', 'copy of', 'untitled', 'new doc', 'temp', 'test_')):
-        ttl_days = 14
-    elif ext in ('.dmg', '.iso', '.pkg', '.exe', '.deb', '.tar', '.gz', '.zip', '.rar', '.7z'):
-        ttl_days = 30
-    elif ext in ('.mov', '.mp4', '.avi', '.mkv', '.webm', '.m4v'):
-        ttl_days = 90
-    elif ext in ('.pdf', '.docx', '.pptx', '.xlsx', '.gdoc', '.gsheet'):
-        ttl_days = 180
-    else:
-        ttl_days = 60
-
-    file_age = file_dict.get("age_days", age_days)
-    decay_pct = min(100, int((file_age / max(1, ttl_days)) * 100))
-    is_expired = decay_pct >= 100
-
-    file_dict["ttl_days"] = ttl_days
-    file_dict["decay_pct"] = decay_pct
-    file_dict["is_expired"] = is_expired
-    file_dict["biodegradability_tag"] = "🍂 Expired (Ready to Compost)" if is_expired else f"⏳ {decay_pct}% Decayed ({file_age}/{ttl_days}d)"
-
-    # ---------------------------------------------------------
-    # 3-Tier Confidence Routing (Item 15 & Page 3)
-    # ---------------------------------------------------------
-    is_academic = any(k in fn_low for k in ["essay", "thesis", "exam", "syllabus", "final_project", "graded", "homework", "hw_", "assignment", "report", "coursework", "presentation_final"])
-    if is_academic or file_dict.get("is_confidential"):
-        file_dict["tier"] = "TIER_3_ACADEMIC"
-        file_dict["can_instant_sweep"] = False
-        file_dict["sweep_route"] = "TEACHER_APPROVAL"
-        file_dict["tier_label"] = "Requires Teacher Review"
-    elif file_dict.get("sha_match") or is_expired or ext in ('.tmp', '.temp', '.bak', '.cache', '.dmg', '.pkg', '.exe', '.old'):
-        file_dict["tier"] = "TIER_1_JUNK"
-        file_dict["can_instant_sweep"] = True
-        file_dict["sweep_route"] = "DIRECT_TRASH"
-        file_dict["tier_label"] = "⚡ Instant Safe Sweep"
-    else:
-        file_dict["tier"] = "TIER_2_CLUTTER"
-        file_dict["can_instant_sweep"] = True
-        file_dict["sweep_route"] = "DIRECT_TRASH"
-        file_dict["tier_label"] = "⚡ Instant Sweep"
-
-    # ---------------------------------------------------------
-    # Perceptual Asset Pooling (Meme/Stock pHash) (Item 10)
-    # ---------------------------------------------------------
-    known_memes = {
-        "drake": ("Drake Hotline Bling Meme Template", "Drake_Hotline_Bling.jpg"),
-        "distracted_boyfriend": ("Distracted Boyfriend Stock Template", "Distracted_Boyfriend.jpg"),
-        "two_buttons": ("Daily Struggle Two Buttons Meme", "Two_Buttons.jpg"),
-        "doge": ("Doge Classic Meme Template", "Doge.jpg"),
-        "world_map": ("Wikimedia Physical World Map High-Res", "World_Map_Detailed.jpg"),
-        "periodic_table": ("Wikimedia Interactive Periodic Table", "Periodic_Table_Clean.png"),
-        "solar_system": ("NASA Solar System High-Res Diagram", "Solar_System.jpg"),
-        "school_crest": ("Official School Commons Crest", "School_Emblem.png"),
-    }
-    matched_meme = next((v for k, v in known_memes.items() if k in fn_low), None)
-    if matched_meme and ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
-        file_dict["is_public_asset"] = True
-        file_dict["public_asset_name"] = matched_meme[0]
-        file_dict["public_asset_url"] = f"https://commons.wikimedia.org/wiki/Special:FilePath/{matched_meme[1]}"
-        file_dict["phash"] = hashlib.md5(f"phash_{fn_low}".encode()).hexdigest()[:16]
-    else:
-        file_dict["is_public_asset"] = False
-
-    # ---------------------------------------------------------
-    # Public School Shared-Drive Deduplication / Curriculum Pooling (Item 2)
-    # ---------------------------------------------------------
-    curriculum_keywords = ["textbook", "syllabus", "lab_manual", "curriculum", "unit_guide", "grade5_math", "bio101", "formula_sheet", "safety_rules"]
-    if any(k in fn_low for k in curriculum_keywords) or (file_dict.get("sha_match") and ext in ('.pdf', '.docx', '.pptx')):
-        file_dict["is_school_curriculum_duplicate"] = True
-        file_dict["shared_pool_name"] = "Grade Commons Resource Pool"
-        file_dict["shared_pool_link"] = "https://drive.google.com/drive/folders/school-shared-commons"
-        file_dict["pool_savings_mb"] = round(sz / (1024 * 1024), 2)
-    else:
-        file_dict["is_school_curriculum_duplicate"] = False
-
-    # ---------------------------------------------------------
-    # Screenshot Classification (Item 13)
-    # ---------------------------------------------------------
-    if fn_low.startswith(('screenshot', 'screen shot')) or 'screenshot' in fn_low:
-        file_dict["is_screenshot"] = True
-    else:
-        file_dict["is_screenshot"] = False
-
+        
     return file_dict
-
-
-def group_screenshot_bursts(files: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Groups screenshots created close in time into burst stacks, marking duplicates for 1-click pruning."""
-    screenshots = [f for f in files if f.get("is_screenshot")]
-    if len(screenshots) < 2:
-        return files
-
-    screenshots_sorted = sorted(screenshots, key=lambda x: x.get("last_modified_epoch_s", 0))
-    current_burst = []
-    burst_id_counter = 1
-
-    def apply_burst(burst_items, bid):
-        for idx, item in enumerate(burst_items):
-            item["burst_group_id"] = bid
-            item["burst_total_count"] = len(burst_items)
-            if idx == len(burst_items) - 1:
-                item["is_burst_primary"] = True
-                item["is_burst_duplicate"] = False
-            else:
-                item["is_burst_primary"] = False
-                item["is_burst_duplicate"] = True
-                item["can_instant_sweep"] = True
-
-    for sc in screenshots_sorted:
-        t = sc.get("last_modified_epoch_s", 0)
-        if not current_burst:
-            current_burst.append(sc)
-        else:
-            prev_t = current_burst[-1].get("last_modified_epoch_s", 0)
-            if abs(t - prev_t) <= 300:  # Within 5 minutes
-                current_burst.append(sc)
-            else:
-                if len(current_burst) > 1:
-                    apply_burst(current_burst, f"BURST-{burst_id_counter:03d}")
-                    burst_id_counter += 1
-                current_burst = [sc]
-
-    if len(current_burst) > 1:
-        apply_burst(current_burst, f"BURST-{burst_id_counter:03d}")
-
-    return files
 
 
 def log_security_audit_event(action: str, actor: str = "system", details: str = "", ip: str = "") -> Dict[str, Any]:
@@ -2554,7 +2420,6 @@ def create_flask_app():
             for f in display_files:
                 enrich_file_iq1000(f, now_epoch, sha_tracker)
             
-            display_files = group_screenshot_bursts(display_files)
             state["scanner"]["files"] = display_files
             state["scanner"]["current_folder"] = "System Storage (Entire Device & Cloud Sync)"
             state["scanner"]["state"] = "COMPLETED"
@@ -2742,7 +2607,6 @@ def create_flask_app():
                 }
                 all_files.append(enrich_file_iq1000(f_obj, now_epoch, picker_sha_tracker))
                 
-            all_files = group_screenshot_bursts(all_files)
             state["scanner"]["files"] = all_files
             state["scanner"]["current_folder"] = "Google Drive (Picker Selected)"
             state["scanner"]["state"] = "COMPLETED"
@@ -2826,7 +2690,6 @@ def create_flask_app():
                 }
                 all_files.append(enrich_file_iq1000(f_obj, now_epoch, browser_sha_tracker))
             
-            all_files = group_screenshot_bursts(all_files)
             state["scanner"]["files"] = all_files
             state["scanner"]["current_folder"] = "Mobile Device / Tablet"
             state["scanner"]["state"] = "COMPLETED"
@@ -2861,7 +2724,6 @@ def create_flask_app():
                     f["age_days"] = max(0, int((now_epoch - modified_epoch) / 86400))
                     enrich_file_iq1000(f, now_epoch, local_sha_tracker)
 
-                all_files = group_screenshot_bursts(all_files)
                 state["scanner"]["files"] = all_files
                 state["scanner"]["current_folder"] = global_scanner._active_path or target_path
                 state["scanner"]["state"] = "COMPLETED"
@@ -3168,7 +3030,6 @@ def create_flask_app():
             for item in scanned_items:
                 enrich_file_iq1000(item, now, drive_sha_tracker)
                 
-            scanned_items = group_screenshot_bursts(scanned_items)
             state["scanner"]["files"] = scanned_items
             state["scanner"]["current_folder"] = "Google Drive"
             state["scanner"]["state"] = "COMPLETED"
@@ -3415,45 +3276,6 @@ def create_flask_app():
         except Exception as te:
             print(f"[!] Telemetry error: {te}")
 
-        is_direct_sweep = bool(data.get("is_direct_sweep") or data.get("direct"))
-        if is_direct_sweep:
-            queue_item["status"] = "SWEPT_DIRECT"
-            scanner_files = state.get("scanner", {}).get("files", [])
-            state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") != file_id]
-            fpath = queue_item.get("file_path")
-            if fpath and os.path.exists(fpath):
-                try:
-                    if HAS_SEND2TRASH:
-                        send2trash.send2trash(fpath)
-                    else:
-                        os.remove(fpath)
-                    queue_item["recycled_success"] = True
-                except Exception:
-                    pass
-            state.setdefault("completed_deletions", []).append(queue_item)
-            if firestore_db.is_connected:
-                try:
-                    firestore_db.record_direct_sweep(queue_item)
-                except Exception as fe:
-                    print(f"[!] Firestore direct sweep record notice: {fe}")
-            log_security_audit_event(
-                "DIRECT_STUDENT_SWEEP",
-                actor=actual_student_id,
-                details=f"Direct student sweep of {file_name} ({format_bytes(file_size)})"
-            )
-            save_state(state)
-            return jsonify({
-                "status": "swept_directly",
-                "request_id": req_id,
-                "is_direct_sweep": True,
-                "file_id": file_id,
-                "file_name": file_name,
-                "bytes_cleaned": file_size,
-                "eco_points": target_student.get("eco_points", 0),
-                "ai_evaluation": queue_item["ai_evaluation"],
-                "message": f"Successfully swept '{file_name}' to trash with 30-day safety net. +{pts} Eco-points awarded!"
-            })
-
         state["teacher_queue"].append(queue_item)
         save_state(state)
 
@@ -3466,395 +3288,6 @@ def create_flask_app():
             "status": "queued_for_teacher",
             "request_id": req_id,
             "ai_evaluation": queue_item["ai_evaluation"]
-        })
-
-    @app.route("/api/deletion/batch_sweep", methods=["POST"])
-    def api_deletion_batch_sweep():
-        auth_header = request.headers.get("Authorization", "")
-        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else request.args.get("token")
-        session = default_auth_service.validate_token(token) if token else None
-        user_role = (session.get("role") if session else "").lower()
-
-        data = request.get_json() or {}
-        actual_student_id = session.get("user_id") if (session and user_role == "student") else (data.get("student_id") or "STU-001")
-        req_stu = (data.get("student_id") or "").strip()
-        if user_role == "student" and req_stu and req_stu.lower() != actual_student_id.lower():
-            return jsonify({"status": "error", "message": "Forbidden: Cannot batch sweep for another student."}), 403
-
-        state = load_state()
-        target_student = resolve_student_in_state(state, actual_student_id)
-        scanner_files = state.get("scanner", {}).get("files", [])
-
-        file_ids = set(data.get("file_ids") or [])
-        category = (data.get("category") or "all_junk").lower()
-
-        # Filter candidate files to sweep
-        to_sweep = []
-        for f in scanner_files:
-            fid = f.get("file_id")
-            if file_ids and fid in file_ids:
-                to_sweep.append(f)
-            elif not file_ids:
-                if category == "all_junk" and (f.get("can_instant_sweep") or f.get("tier") in ("TIER_1_JUNK", "TIER_2_CLUTTER") or f.get("sha_match")):
-                    to_sweep.append(f)
-                elif category == "duplicates" and f.get("sha_match"):
-                    to_sweep.append(f)
-                elif category == "expired" and f.get("is_expired"):
-                    to_sweep.append(f)
-                elif category == "burst_duplicates" and f.get("is_burst_duplicate"):
-                    to_sweep.append(f)
-                elif category == "screenshots" and f.get("is_screenshot"):
-                    to_sweep.append(f)
-
-        if not to_sweep:
-            return jsonify({
-                "status": "noop",
-                "message": "No matching candidate files found for batch sweep.",
-                "files_swept": 0,
-                "bytes_cleaned": 0
-            })
-
-        swept_ids = set()
-        total_bytes = 0
-        total_pts = 0
-        total_trees = 0
-
-        for f in to_sweep:
-            fid = f.get("file_id")
-            sz = int(f.get("size_bytes", 0))
-            pts = int((sz / (1024 * 1024)) * 0.5) + 20
-            trees = int(sz // (1024**3))
-            swept_ids.add(fid)
-            total_bytes += sz
-            total_pts += pts
-            total_trees += trees
-
-            fpath = f.get("file_path") or f.get("absolute_path")
-            if fpath and os.path.exists(fpath):
-                try:
-                    if HAS_SEND2TRASH:
-                        send2trash.send2trash(fpath)
-                    else:
-                        os.remove(fpath)
-                except Exception:
-                    pass
-
-            sweep_record = {
-                "request_id": f"SWEEP-{uuid.uuid4().hex[:6].upper()}",
-                "student_id": actual_student_id,
-                "file_id": fid,
-                "file_name": f.get("name", "Unknown"),
-                "file_size_bytes": sz,
-                "category": category,
-                "status": "SWEPT_DIRECT_BATCH",
-                "completed_at": time.strftime("%Y-%m-%d %H:%M:%S")
-            }
-            state.setdefault("completed_deletions", []).append(sweep_record)
-            if firestore_db.is_connected:
-                try:
-                    firestore_db.record_direct_sweep(sweep_record)
-                except Exception:
-                    pass
-
-        # Update scanner files
-        state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") not in swept_ids]
-
-        # Credit user stats
-        target_student["bytes_cleared"] = target_student.get("bytes_cleared", 0) + total_bytes
-        target_student["eco_points"] = target_student.get("eco_points", 0) + total_pts
-        target_student["daily_deletions_today"] = target_student.get("daily_deletions_today", 0) + len(to_sweep)
-        target_student["streak_days"] = target_student.get("streak_days", 0) + 1
-
-        ecofund = state.get("ecofund", {})
-        ecofund["cumulative_waste_bytes"] = ecofund.get("cumulative_waste_bytes", 0) + total_bytes
-
-        if firestore_db.is_connected and actual_student_id:
-            try:
-                firestore_db.update_user_stats(actual_student_id, total_bytes, total_pts, total_trees)
-            except Exception as fe:
-                print(f"[!] Firestore batch sweep credit notice: {fe}")
-
-        log_security_audit_event(
-            "BATCH_STUDENT_SWEEP",
-            actor=actual_student_id,
-            details=f"Batch swept {len(to_sweep)} files ({format_bytes(total_bytes)}) in category '{category}'"
-        )
-        save_state(state)
-
-        return jsonify({
-            "status": "success",
-            "message": f"Successfully swept {len(to_sweep)} files ({format_bytes(total_bytes)}). +{total_pts} Eco-points awarded!",
-            "files_swept": len(to_sweep),
-            "bytes_cleaned": total_bytes,
-            "bytes_formatted": format_bytes(total_bytes),
-            "eco_points_earned": total_pts,
-            "carbon_avoided_g": calculate_carbon_avoided_g(total_bytes),
-            "remaining_files": len(state["scanner"]["files"])
-        })
-
-    @app.route("/api/scan/ocr_notes", methods=["POST"])
-    def api_scan_ocr_notes():
-        data = request.get_json() or {}
-        img_name = data.get("file_name", "Whiteboard_Notes.jpg")
-        img_size = int(data.get("file_size_bytes", 8 * 1024 * 1024))
-        raw_b64 = data.get("image_base64") or ""
-        sample_title = data.get("title") or Path(img_name).stem.replace("_", " ").title()
-        actual_student_id = session.get("user_id") or session.get("student_id") or data.get("student_id") or "STU-001"
-        actual_student_name = session.get("user_name") or session.get("name") or "Student"
-
-        # Generate structured clean notes
-        topics = [
-            f"# {sample_title}",
-            "\n## Key Concepts & Summary",
-            "- Core Lecture Takeaways transcribed directly from whiteboard capture.",
-            "- Concept A: Fundamental principles and definitions extracted cleanly.",
-            "- Concept B: Mathematical formulation and primary equations identified.",
-            "- Concept C: Experimental results and procedural observations.",
-            "\n## Action Items & Homework",
-            "- [x] Review unit summary and textbook reference reading.",
-            "- [ ] Complete practice questions 1-8 before next lab session.",
-            f"\n---\n*Digitized by Data-to-Dirt Neural OCR Engine • Original Photo ({format_bytes(img_size)}) replaced with 1.4 KB structured doc.*"
-        ]
-        markdown_content = "\n".join(topics)
-        doc_size = len(markdown_content.encode("utf-8"))
-        bytes_saved = max(0, img_size - doc_size)
-        savings_pct = round((bytes_saved / max(1, img_size)) * 100, 2)
-        carbon_avoided = calculate_carbon_avoided_g(bytes_saved)
-        eco_points = 50
-
-        state = load_state()
-        clean_notes = state.setdefault("clean_notes", [])
-        note_id = f"NOTE-{uuid.uuid4().hex[:6].upper()}"
-        note_entry = {
-            "note_id": note_id,
-            "student_id": actual_student_id,
-            "student_name": actual_student_name,
-            "title": sample_title,
-            "original_filename": img_name,
-            "original_size_bytes": img_size,
-            "doc_size_bytes": doc_size,
-            "bytes_saved": bytes_saved,
-            "savings_pct": f"{savings_pct}%",
-            "carbon_avoided_g": carbon_avoided,
-            "eco_points": eco_points,
-            "markdown": markdown_content,
-            "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
-        }
-        clean_notes.append(note_entry)
-        save_state(state)
-
-        if firestore_db.is_connected:
-            try:
-                firestore_db.save_clean_note(note_entry)
-            except Exception as fe:
-                print(f"[!] Firestore save_clean_note notice: {fe}")
-
-        return jsonify({
-            "status": "success",
-            "note": note_entry,
-            "message": f"Transcribed '{img_name}' ({format_bytes(img_size)}) into {doc_size} B structured notes ({savings_pct}% storage saved)!"
-        })
-
-    @app.route("/api/notes/list", methods=["GET"])
-    def api_notes_list():
-        state = load_state()
-        local_notes = state.get("clean_notes", [])
-        actual_student_id = session.get("user_id") or session.get("student_id") or request.args.get("student_id")
-
-        if firestore_db.is_connected:
-            try:
-                cloud_notes = firestore_db.get_clean_notes(actual_student_id or "")
-                if cloud_notes:
-                    cloud_ids = {n.get("note_id") for n in cloud_notes if n.get("note_id")}
-                    merged = list(cloud_notes)
-                    for ln in local_notes:
-                        if ln.get("note_id") not in cloud_ids:
-                            if not actual_student_id or ln.get("student_id") == actual_student_id:
-                                merged.append(ln)
-                    return jsonify({"status": "success", "notes": merged})
-            except Exception as fe:
-                print(f"[!] Firestore get_clean_notes notice: {fe}")
-
-        filtered_notes = [n for n in local_notes if not actual_student_id or n.get("student_id") == actual_student_id] if actual_student_id else local_notes
-        return jsonify({
-            "status": "success",
-            "notes": filtered_notes
-        })
-
-    @app.route("/api/notes/delete", methods=["POST"])
-    def api_notes_delete():
-        data = request.get_json() or {}
-        note_id = data.get("note_id")
-        if not note_id:
-            return jsonify({"status": "error", "message": "note_id is required"}), 400
-
-        state = load_state()
-        notes = state.get("clean_notes", [])
-        state["clean_notes"] = [n for n in notes if n.get("note_id") != note_id]
-        save_state(state)
-
-        if firestore_db.is_connected:
-            try:
-                firestore_db.delete_clean_note(note_id)
-            except Exception as fe:
-                print(f"[!] Firestore delete_clean_note notice: {fe}")
-
-        return jsonify({"status": "success", "message": f"Note '{note_id}' removed from vault."})
-
-    @app.route("/api/school/curriculum_pool", methods=["GET", "POST"])
-    def api_school_curriculum_pool():
-        state = load_state()
-        if request.method == "POST":
-            data = request.get_json() or {}
-            file_id = data.get("file_id")
-            student_id = data.get("student_id", "STU-001")
-            file_name = data.get("file_name", "Curriculum_Resource.pdf")
-            file_size = int(data.get("file_size_bytes", 25 * 1024 * 1024))
-
-            # Pool to shared commons
-            target_student = resolve_student_in_state(state, student_id)
-            target_student["bytes_cleared"] = target_student.get("bytes_cleared", 0) + file_size
-            target_student["eco_points"] = target_student.get("eco_points", 0) + 35
-            scanner_files = state.get("scanner", {}).get("files", [])
-            state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") != file_id]
-
-            pooled_item = {
-                "pool_id": f"POOL-{uuid.uuid4().hex[:6].upper()}",
-                "file_name": file_name,
-                "student_id": student_id,
-                "bytes_pooled": file_size,
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-            }
-            pooled = state.setdefault("school_pooled_assets", [])
-            pooled.append(pooled_item)
-            save_state(state)
-
-            if firestore_db.is_connected:
-                try:
-                    firestore_db.record_pooled_curriculum_asset(pooled_item)
-                except Exception as fe:
-                    print(f"[!] Firestore record_pooled_curriculum_asset notice: {fe}")
-
-            return jsonify({
-                "status": "success",
-                "message": f"Successfully linked '{file_name}' to Grade Commons! {format_bytes(file_size)} freed from private storage.",
-                "eco_points_earned": 35
-            })
-
-        # GET: return pooled stats
-        pooled = state.get("school_pooled_assets", [])
-        if firestore_db.is_connected:
-            try:
-                cloud_pooled = firestore_db.get_pooled_curriculum_assets()
-                if cloud_pooled:
-                    pooled_ids = {p.get("pool_id") for p in cloud_pooled}
-                    merged = list(cloud_pooled)
-                    for p in pooled:
-                        if p.get("pool_id") not in pooled_ids:
-                            merged.append(p)
-                    pooled = merged
-            except Exception as fe:
-                print(f"[!] Firestore get_pooled_curriculum_assets notice: {fe}")
-
-        total_pooled_bytes = sum(p.get("bytes_pooled", 0) for p in pooled)
-        return jsonify({
-            "status": "success",
-            "total_assets_pooled": len(pooled),
-            "communal_bytes_saved": total_pooled_bytes,
-            "communal_formatted": format_bytes(total_pooled_bytes),
-            "grade_level": "Grade 5 Commons",
-            "sample_assets": [
-                {"name": "Biology_Ch4_Ecosystems.pdf", "students_linked": 28, "total_saved": "420 MB"},
-                {"name": "Grade5_Mathematics_Workbook.pdf", "students_linked": 34, "total_saved": "850 MB"},
-                {"name": "Lab_Safety_Protocol_2026.pdf", "students_linked": 42, "total_saved": "336 MB"}
-            ]
-        })
-
-    @app.route("/api/scan/pool_public_asset", methods=["POST"])
-    def api_scan_pool_public_asset():
-        data = request.get_json() or {}
-        file_id = data.get("file_id")
-        student_id = data.get("student_id", "STU-001")
-        file_name = data.get("file_name", "Drake_Meme.jpg")
-        file_size = int(data.get("file_size_bytes", 2 * 1024 * 1024))
-        public_url = data.get("public_url", "https://commons.wikimedia.org/wiki/Special:FilePath/Drake_Hotline_Bling.jpg")
-
-        state = load_state()
-        target_student = resolve_student_in_state(state, student_id)
-        target_student["bytes_cleared"] = target_student.get("bytes_cleared", 0) + file_size
-        target_student["eco_points"] = target_student.get("eco_points", 0) + 25
-
-        # Remove local file from scanner
-        scanner_files = state.get("scanner", {}).get("files", [])
-        state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") != file_id]
-
-        save_state(state)
-        return jsonify({
-            "status": "success",
-            "message": f"Local image replaced with 1-byte dynamic web pointer. Freed {format_bytes(file_size)}!",
-            "public_url": public_url,
-            "eco_points_earned": 25
-        })
-
-    @app.route("/api/scan/polyglot_strip", methods=["POST"])
-    def api_scan_polyglot_strip():
-        data = request.get_json() or {}
-        file_id = data.get("file_id")
-        file_name = data.get("file_name", "Worksheet_ES.pdf")
-        root_file_name = data.get("root_file_name", "Worksheet_EN.pdf")
-        file_size = int(data.get("file_size_bytes", 1500 * 1024))
-        student_id = data.get("student_id", "STU-001")
-
-        state = load_state()
-        target_student = resolve_student_in_state(state, student_id)
-        target_student["bytes_cleared"] = target_student.get("bytes_cleared", 0) + file_size
-        target_student["eco_points"] = target_student.get("eco_points", 0) + 20
-
-        scanner_files = state.get("scanner", {}).get("files", [])
-        state["scanner"]["files"] = [f for f in scanner_files if f.get("file_id") != file_id]
-
-        save_state(state)
-        return jsonify({
-            "status": "success",
-            "message": f"Stripped translation '{file_name}'. Access retained via dynamic translation of '{root_file_name}'. Freed {format_bytes(file_size)}!",
-            "root_file": root_file_name,
-            "eco_points_earned": 20
-        })
-
-    @app.route("/api/scan/polyglot_translate", methods=["POST"])
-    def api_scan_polyglot_translate():
-        data = request.get_json() or {}
-        text = data.get("text", "")
-        target_lang = data.get("target_lang", "es").lower()
-
-        translations = {
-            "es": f"[Traducción al español de Data-to-Dirt]:\n{text}\n\n(Rehidratado dinámicamente bajo demanda para ahorrar carbono.)",
-            "fr": f"[Traduction française Data-to-Dirt]:\n{text}\n\n(Réhydraté dynamiquement à la demande pour économiser du carbone.)",
-            "hi": f"[Data-to-Dirt हिंदी अनुवाद]:\n{text}\n\n(कार्बन बचाने के लिए मांग पर गतिशील रूप से पुनः उत्पन्न किया गया।)",
-        }
-        res = translations.get(target_lang, f"[Dynamic {target_lang.upper()} Rehydration]:\n{text}")
-        return jsonify({
-            "status": "success",
-            "target_lang": target_lang,
-            "translated_content": res
-        })
-
-    @app.route("/api/biodegradability/status", methods=["GET"])
-    def api_biodegradability_status():
-        state = load_state()
-        files = state.get("scanner", {}).get("files", [])
-        expired_files = [f for f in files if f.get("is_expired")]
-        expiring_soon = [f for f in files if (not f.get("is_expired") and f.get("decay_pct", 0) >= 80)]
-        expired_bytes = sum(f.get("size_bytes", 0) for f in expired_files)
-
-        return jsonify({
-            "status": "success",
-            "expired_count": len(expired_files),
-            "expired_bytes": expired_bytes,
-            "expired_bytes_formatted": format_bytes(expired_bytes),
-            "expiring_soon_count": len(expiring_soon),
-            "carbon_to_reclaim_g": calculate_carbon_avoided_g(expired_bytes),
-            "recommended_action": "compost_all" if expired_files else "none"
         })
 
     @app.route("/api/auth/login", methods=["POST"])
@@ -4766,26 +4199,11 @@ def create_flask_app():
         target_class = normalize_grade(data.get("class_code") or request.args.get("class_code") or "")
         if target_class in ["all", "*", "any"]:
             target_class = ""
-        target_category = (data.get("category") or request.args.get("category") or "").strip().lower()
 
         for item in queue:
             if item.get("status") == "PENDING":
                 if target_class and normalize_grade(item.get("class_code") or "grade5") != target_class:
                     continue
-                if target_category and target_category not in ["all", "*"]:
-                    fn_item = (item.get("file_name") or "").lower()
-                    cat_item = (item.get("category") or "").lower()
-                    if target_category == "duplicate":
-                        if not (cat_item == "duplicate" or item.get("sha_match") or "duplicate" in fn_item):
-                            continue
-                    elif target_category == "screenshot":
-                        if not ("screenshot" in fn_item or "screen shot" in fn_item or cat_item == "screenshot"):
-                            continue
-                    elif target_category == "expired":
-                        if not (item.get("is_expired") or "expired" in cat_item):
-                            continue
-                    elif target_category not in fn_item and target_category not in cat_item:
-                        continue
                 item["status"] = "APPROVED"
                 item["decided_by"] = teacher_id
                 item["decided_at"] = time.time()

@@ -15,9 +15,6 @@ class RetroTreeRenderer {
     this.stageName = "Prepared Soil";
     this.animTime = 0;
     this.isLevelingUp = false;
-    this.smogLevel = 0; // 0 (pristine) to 100 (heavy smog)
-    this.isClearingSmog = false;
-    this.smogClearProgress = 0;
   }
 
   init() {
@@ -42,25 +39,6 @@ class RetroTreeRenderer {
     this.currentStage = Math.max(0, Math.min(5, stage));
     this.progressPct = progressPct;
     if (stageName) this.stageName = stageName;
-  }
-
-  setSmogLevel(level = 0) {
-    this.smogLevel = Math.max(0, Math.min(100, Math.round(level)));
-  }
-
-  triggerSmogClearing() {
-    this.isClearingSmog = true;
-    this.smogClearProgress = 1.0;
-    if (window.RetroAudio) {
-      window.RetroAudio.playVictoryFanfare();
-    }
-    if (window.ParticleEngine && this.canvas) {
-      const rect = this.canvas.getBoundingClientRect();
-      window.ParticleEngine.emitConfetti(rect.left + rect.width / 2, rect.top + 60, 40);
-    }
-    setTimeout(() => {
-      this.isClearingSmog = false;
-    }, 2400);
   }
 
   triggerLevelUp() {
@@ -94,9 +72,6 @@ class RetroTreeRenderer {
 
     ctx.clearRect(0, 0, w, h);
 
-    // 1. Atmospheric Sky & Digital Smog Layer
-    this.drawAtmosphere(ctx, w, h);
-
     // Baseline grass soil ground
     const groundY = h - 36;
     this.drawGround(ctx, w, groundY);
@@ -129,95 +104,6 @@ class RetroTreeRenderer {
       case 5:
         this.drawStage5_GoldenTree(ctx, centerX, groundY);
         break;
-    }
-    ctx.restore();
-
-    // 2. Wind Streaks when clearing smog
-    if (this.isClearingSmog) {
-      this.drawClearingWind(ctx, w, h);
-    }
-
-    // 3. Biome Status Pill Badge (Top Left)
-    this.drawSmogBadge(ctx);
-  }
-
-  drawAtmosphere(ctx, w, h) {
-    const smogRatio = this.smogLevel / 100;
-    
-    // Pristine Sky vs Smoggy Gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    if (smogRatio > 0.4) {
-      grad.addColorStop(0, `rgba(55, 65, 81, ${0.4 + smogRatio * 0.4})`);
-      grad.addColorStop(1, `rgba(30, 41, 59, 0.9)`);
-    } else {
-      grad.addColorStop(0, "rgba(28, 35, 56, 0.6)");
-      grad.addColorStop(1, "rgba(17, 41, 21, 0.85)");
-    }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Sunbeams if clean air
-    if (smogRatio < 0.25) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(254, 240, 138, 0.12)";
-      ctx.lineWidth = 14;
-      for (let i = 0; i < 4; i++) {
-        const rayOffset = (this.animTime * 6 + i * 40) % 180;
-        ctx.beginPath();
-        ctx.moveTo(w - 20, 0);
-        ctx.lineTo(w - 180 + rayOffset, h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // Smog floating particles if polluted
-    if (smogRatio > 0.15) {
-      ctx.fillStyle = `rgba(156, 163, 175, ${0.15 + smogRatio * 0.25})`;
-      for (let i = 0; i < 8; i++) {
-        const sx = ((this.animTime * (12 + i * 2) + i * 45) % (w + 40)) - 20;
-        const sy = 25 + (i * 18) + Math.sin(this.animTime * 2 + i) * 6;
-        const sr = 12 + (i % 4) * 4;
-        ctx.beginPath();
-        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-  }
-
-  drawClearingWind(ctx, w, h) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(186, 230, 253, 0.65)";
-    ctx.lineWidth = 2.5;
-    for (let i = 0; i < 6; i++) {
-      const wx = ((this.animTime * 180 + i * 50) % (w + 100)) - 50;
-      const wy = 40 + i * 24;
-      ctx.beginPath();
-      ctx.moveTo(wx, wy);
-      ctx.lineTo(wx + 45, wy - 3);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  drawSmogBadge(ctx) {
-    ctx.save();
-    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-    ctx.fillRect(8, 8, 126, 20);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(8, 8, 126, 20);
-
-    ctx.font = "bold 9.5px monospace";
-    if (this.smogLevel > 50) {
-      ctx.fillStyle = "#f87171";
-      ctx.fillText(`🏭 Smog: ${this.smogLevel}% Heavy`, 14, 21);
-    } else if (this.smogLevel > 15) {
-      ctx.fillStyle = "#fbbf24";
-      ctx.fillText(`🌫️ Smog: ${this.smogLevel}% Mod`, 14, 21);
-    } else {
-      ctx.fillStyle = "#4ade80";
-      ctx.fillText(`🌱 Sky: 100% Pristine`, 14, 21);
     }
     ctx.restore();
   }

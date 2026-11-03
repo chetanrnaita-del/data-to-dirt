@@ -153,21 +153,6 @@ class StudentDashboardView {
                 <div class="pixel-progress-fill" id="tree-progress-fill" style="width: 0%;"></div>
               </div>
             </div>
-
-            <!-- Digital Smog Virtual Biome Telemetry Widget -->
-            <div class="retro-inset" style="padding: 8px 10px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; border-radius: 4px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 16px;">🌫️</span>
-                <div>
-                  <div style="font-weight: bold; font-size: 11px; color: var(--c-wood-border);">Virtual Biome Atmosphere</div>
-                  <div style="font-size: 10px; color: var(--c-ink-muted);" id="biome-smog-text">Atmosphere: 100% Pristine</div>
-                </div>
-              </div>
-              <div style="display: flex; gap: 6px; font-size: 10px; font-family: monospace;">
-                <span class="retro-tag" id="tag-energy-saved" style="background: rgba(37,99,235,0.1); color: #1d4ed8; padding: 2px 6px;">⚡ 0.000 kWh Saved</span>
-                <span class="retro-tag" id="tag-lightbulb-hours" style="background: rgba(234,179,8,0.1); color: #b45309; padding: 2px 6px;">💡 0h LED</span>
-              </div>
-            </div>
           </div>
 
           <!-- AI Drive Cleaner Card -->
@@ -185,12 +170,6 @@ class StudentDashboardView {
                 </button>
                 <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-scan-local" title="Browse / Select Files on Device">
                   <span id="btn-scan-local-text">📱 Device</span>
-                </button>
-                <button class="retro-btn retro-btn-sm" id="btn-scan-ocr-notes" style="background: #4338ca; color: #fff; padding: 3px 8px; font-size: 11px; font-weight: bold;" title="Digitize Whiteboard or Written Notes into Clean Docs">
-                  📸 OCR Notes
-                </button>
-                <button class="retro-btn retro-btn-sm" id="btn-school-commons-pool" style="background: #0284c7; color: #fff; padding: 3px 8px; font-size: 11px; font-weight: bold;" title="View & Pool Shared Grade Curriculum Files">
-                  🏫 School Pool
                 </button>
                 <input type="file" id="device-file-input" multiple style="position: fixed; top: -1000px; left: -1000px; opacity: 0; pointer-events: none; width: 1px; height: 1px;" />
                 <input type="file" id="device-folder-input" webkitdirectory directory multiple style="position: fixed; top: -1000px; left: -1000px; opacity: 0; pointer-events: none; width: 1px; height: 1px;" />
@@ -280,24 +259,6 @@ class StudentDashboardView {
             </div>
           </div>
 
-          <!-- Digitized Notes Vault Card -->
-          <div class="retro-card" id="notes-vault-card" style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--c-parchment-border); padding-bottom: 6px;">
-              <div style="font-weight: bold; font-size: 13px; color: var(--c-wood-border); display: flex; align-items: center; gap: 6px;">
-                <span>📓 My Digitized Notes Vault</span>
-                <span id="notes-vault-count" class="retro-tag" style="background: rgba(67, 56, 202, 0.1); color: #4338ca; font-size: 10px; padding: 1px 6px;">0 Notes</span>
-              </div>
-              <button class="retro-btn retro-btn-sm" id="btn-vault-add-ocr" style="background: #4338ca; color: #fff; font-size: 10px; padding: 2px 7px;">
-                + Digitize Photo
-              </button>
-            </div>
-            <div id="notes-vault-list" class="retro-inset" style="max-height: 220px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px;">
-              <div style="text-align: center; padding: 14px; color: var(--c-ink-light); font-size: 11px;">
-                Loading your digitized notes from Google Cloud Firestore...
-              </div>
-            </div>
-          </div>
-
           <!-- Classroom Impact Summary Box -->
           <div class="retro-card" style="font-size: 12px; color: var(--c-ink-muted); line-height: 1.5;">
             <div style="font-weight: bold; color: var(--c-wood-border); margin-bottom: 4px;">🌍 Real-World Impact Equivalency</div>
@@ -330,21 +291,6 @@ class StudentDashboardView {
         this.openChangePasswordModal();
       });
     }
-
-    document.getElementById("btn-scan-ocr-notes")?.addEventListener("click", () => {
-      if (this.audioSynth) this.audioSynth.playBlip();
-      this.openOcrNotesModal();
-    });
-
-    document.getElementById("btn-school-commons-pool")?.addEventListener("click", () => {
-      if (this.audioSynth) this.audioSynth.playBlip();
-      this.openSchoolCommonsModal();
-    });
-
-    document.getElementById("btn-vault-add-ocr")?.addEventListener("click", () => {
-      if (this.audioSynth) this.audioSynth.playBlip();
-      this.openOcrNotesModal();
-    });
 
     const isIPad = /iPad/i.test(navigator.userAgent) || 
       (navigator.maxTouchPoints > 1 && (navigator.platform === 'MacIntel' || navigator.userAgent.includes('Macintosh')));
@@ -523,7 +469,6 @@ class StudentDashboardView {
       this.leaderboard = lbRes.leaderboard || [];
       this.updateStatsUI();
       this.updateLeaderboardUI();
-      await this.renderNotesVault();
     } catch (e) {
       console.warn("Failed to fetch student data:", e);
     }
@@ -581,41 +526,6 @@ class StudentDashboardView {
         this.stats.tree_growth_stage_name
       );
     }
-
-    // Update Digital Smog Biome & Computational Energy Metrics
-    const uncleanedBytes = (this.scannedFiles || []).reduce((acc, f) => acc + (f.size_bytes || 0), 0);
-    const expiredCount = (this.scannedFiles || []).filter(f => f.is_expired).length;
-    let smogPct = 0;
-    if (uncleanedBytes > 0) {
-      smogPct = Math.min(100, Math.round((uncleanedBytes / (300 * 1024 * 1024)) * 70 + (expiredCount * 4)));
-    }
-    if (window.TreeRenderer) {
-      window.TreeRenderer.setSmogLevel(smogPct);
-    }
-
-    const elSmogText = document.getElementById("biome-smog-text");
-    if (elSmogText) {
-      if (smogPct > 50) {
-        elSmogText.textContent = `Smog Index: ${smogPct}% (Heavy dark data bloat)`;
-        elSmogText.style.color = "#dc2626";
-      } else if (smogPct > 15) {
-        elSmogText.textContent = `Smog Index: ${smogPct}% (Moderate haze, sweep to clear)`;
-        elSmogText.style.color = "#d97706";
-      } else {
-        elSmogText.textContent = `Atmosphere: 100% Pristine (Zero bloat)`;
-        elSmogText.style.color = "#16a34a";
-      }
-    }
-
-    const clearedBytes = Number(this.stats.bytes_cleared || 0);
-    const kwhSaved = (clearedBytes / (1024 ** 3)) * 0.28;
-    const ledHours = Math.round(kwhSaved * 100);
-
-    const elEnergyTag = document.getElementById("tag-energy-saved");
-    if (elEnergyTag) elEnergyTag.textContent = `⚡ ${kwhSaved.toFixed(3)} kWh Saved`;
-
-    const elLedTag = document.getElementById("tag-lightbulb-hours");
-    if (elLedTag) elLedTag.textContent = `💡 ${ledHours}h LED`;
 
     // Streaks and limits
     const elStreak = document.getElementById("streak-days-val");
@@ -1116,44 +1026,6 @@ class StudentDashboardView {
       return;
     }
 
-    const junkFiles = this.scannedFiles.filter(f => f.can_instant_sweep || f.tier === "TIER_1_JUNK" || f.sha_match);
-    const expiredFiles = this.scannedFiles.filter(f => f.is_expired);
-    const burstDuplicates = this.scannedFiles.filter(f => f.is_burst_duplicate);
-    const publicAssets = this.scannedFiles.filter(f => f.is_public_asset);
-    const curriculumFiles = this.scannedFiles.filter(f => f.is_school_curriculum_duplicate);
-
-    const quickActionsHtml = `
-      <div style="background: rgba(45, 106, 54, 0.08); border: 1.5px solid var(--c-pine); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
-          <span style="font-weight: bold; font-size: 11.5px; color: var(--c-wood-border);">⚡ Keep-or-Sweep Smart Automations</span>
-          <span style="font-size: 10px; color: var(--c-ink-muted);">${junkFiles.length} junk files ready for instant 1-click clearing</span>
-        </div>
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          ${junkFiles.length > 0 ? `
-            <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-batch-sweep-junk" style="font-size: 10.5px; padding: 4px 10px; font-weight: bold;" title="Directly sweep all clones, temp files and cache without waiting for teacher review">
-              ⚡ Sweep All Junk (${junkFiles.length})
-            </button>
-          ` : ""}
-          ${expiredFiles.length > 0 ? `
-            <button class="retro-btn retro-btn-gold retro-btn-sm" id="btn-batch-compost-expired" style="font-size: 10.5px; padding: 4px 10px; font-weight: bold;" title="Compost all files that have passed their digital biodegradability expiration date">
-              🍂 Compost Expired (${expiredFiles.length})
-            </button>
-          ` : ""}
-          ${burstDuplicates.length > 0 ? `
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-batch-prune-bursts" style="font-size: 10.5px; padding: 4px 10px; font-weight: bold;" title="Prune duplicate burst screenshots, keeping only the best 1">
-              📸 Prune Bursts (${burstDuplicates.length})
-            </button>
-          ` : ""}
-          <button class="retro-btn retro-btn-sm" id="btn-open-ocr-tool" style="font-size: 10.5px; padding: 4px 8px; background: #4338ca; color: #fff;" title="Transcribe whiteboard and notebook photos into lightweight text docs">
-            📸 OCR Notes
-          </button>
-          <button class="retro-btn retro-btn-sm" id="btn-open-school-pool" style="font-size: 10.5px; padding: 4px 8px; background: #0284c7; color: #fff;" title="View school shared curriculum pool">
-            🏫 Shared Pool
-          </button>
-        </div>
-      </div>
-    `;
-
     const headerHtml = `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 8px; font-size: 11px; font-weight: bold; color: var(--c-wood-border); background: rgba(0,0,0,0.04); border-radius: 4px;">
         <span>🎯 Cleanable Dark Data (${this.scannedFiles.length} candidates listed)</span>
@@ -1161,17 +1033,16 @@ class StudentDashboardView {
       </div>
     `;
 
-    container.innerHTML = quickActionsHtml + headerHtml + this.scannedFiles
+    container.innerHTML = headerHtml + this.scannedFiles
       .map((file) => {
         const tagClass = file.category === "heavy_media" ? "retro-tag-heavy" : file.category === "transient_trash" ? "retro-tag-stale" : file.is_confidential ? "retro-tag-confidential" : "retro-tag-duplicate";
         const icon = file.icon || (file.category === "heavy_media" ? "🎥" : file.category === "duplicate" ? "📄" : "📦");
         const carbonStr = file.carbon_g != null ? file.carbon_g : ((file.size_bytes / (1024**3)) * 0.28 * 405.7).toFixed(1);
         const shaShort = file.sha256_short || (file.sha256 ? `${file.sha256.substring(0, 8)}...${file.sha256.substring(file.sha256.length - 6)}` : "Verified");
-        const isAcademic = file.tier === "TIER_3_ACADEMIC" || file.is_confidential;
 
         return `
           <div class="retro-inset" style="margin-bottom: 8px; padding: 10px 12px; background: rgba(255, 255, 255, 0.85); border: 1.5px solid var(--c-wood-border);">
-            <!-- Row 1: Icon, Title, Badges, Clean / Sweep Buttons -->
+            <!-- Row 1: Icon, Title, Badges, Clean Button -->
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
               <div style="display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0;">
                 <span style="font-size: 18px; line-height: 1.2;" title="${file.category}">${icon}</span>
@@ -1179,10 +1050,6 @@ class StudentDashboardView {
                   <div style="font-weight: bold; font-size: 13px; color: var(--c-ink-text); word-break: break-all; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
                     <span>${file.is_confidential ? "🔒 [CONFIDENTIAL] " : ""}${escapeHtml(file.file_name)}</span>
                     ${file.sha_match ? `<span class="retro-tag retro-tag-duplicate" style="font-size: 9px; background: #e02424; color: #fff; font-weight: bold; padding: 1px 5px; border-radius: 3px;">🎯 EXACT SHA-256 CLONE</span>` : ""}
-                    ${file.is_burst_duplicate ? `<span class="retro-tag" style="font-size: 9px; background: #ea580c; color: #fff; font-weight: bold; padding: 1px 5px; border-radius: 3px;">📸 BURST CLONE</span>` : ""}
-                    ${file.is_expired ? `<span class="retro-tag retro-tag-stale" style="font-size: 9px; padding: 1px 5px; background: #92400e; color: #fff;">🍂 EXPIRED</span>` : ""}
-                    ${file.is_public_asset ? `<span class="retro-tag" style="font-size: 9px; background: #4f46e5; color: #fff; padding: 1px 5px;">🌐 PUBLIC MEME</span>` : ""}
-                    ${file.is_school_curriculum_duplicate ? `<span class="retro-tag" style="font-size: 9px; background: #0284c7; color: #fff; padding: 1px 5px;">🏫 COMMONS MATCH</span>` : ""}
                   </div>
                   <div style="font-size: 10px; color: var(--c-ink-muted); margin-top: 2px; font-family: monospace; word-break: break-all;">
                     📂 ${escapeHtml(file.file_path || file.absolute_path || file.storage_source || "Local / Cloud Storage")}
@@ -1190,28 +1057,19 @@ class StudentDashboardView {
                 </div>
               </div>
 
-              <div style="flex-shrink: 0; display: flex; gap: 4px; align-items: center;">
+              <div style="flex-shrink: 0;">
                 ${
                   file.is_confidential
                     ? `<span style="font-size: 11px; color: var(--c-ink-light); font-style: italic;">Protected</span>`
-                    : isAcademic
-                    ? `<button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-file" data-id="${escapeHtml(file.file_id)}" style="padding: 4px 10px; font-weight: bold;" title="Academic file requires teacher review">
-                        🎓 Review & Queue
+                    : `<button class="retro-btn retro-btn-danger retro-btn-sm btn-delete-file" data-id="${escapeHtml(file.file_id)}" style="padding: 4px 10px; font-weight: bold;">
+                        🗑️ Clean
                       </button>`
-                    : `
-                      <button class="retro-btn retro-btn-green retro-btn-sm btn-instant-sweep" data-id="${escapeHtml(file.file_id)}" style="padding: 4px 10px; font-weight: bold;" title="Instant safe sweep to trash with 30-day safety net">
-                        ⚡ Sweep
-                      </button>
-                      <button class="retro-btn retro-btn-wood retro-btn-sm btn-delete-file" data-id="${escapeHtml(file.file_id)}" style="padding: 4px 6px; font-size: 10px;" title="Provide custom removal reason">
-                        ✍️
-                      </button>
-                    `
                 }
               </div>
             </div>
 
-            <!-- Row 2: Comprehensive Forensic Telemetry Grid (Size, Dates, SHA, Carbon, Decay) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin-top: 8px; padding: 6px 8px; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.15); border-radius: 4px; font-size: 10.5px;">
+            <!-- Row 2: Comprehensive Forensic Telemetry Grid (Size, Dates, SHA, Carbon) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-top: 8px; padding: 6px 8px; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.15); border-radius: 4px; font-size: 10.5px;">
               <div>
                 <span style="color: var(--c-ink-muted);">📊 Size:</span>
                 <strong style="color: var(--c-ink-text);">${file.size_formatted}</strong>
@@ -1222,8 +1080,8 @@ class StudentDashboardView {
                 <strong style="color: var(--c-ink-text);">${file.modified_date || `${file.age_days}d ago`}</strong>
               </div>
               <div>
-                <span style="color: var(--c-ink-muted);">🍂 Decay:</span>
-                <strong style="color: ${file.is_expired ? '#dc2626' : 'var(--c-ink-text)'};">${file.biodegradability_tag || 'Active'}</strong>
+                <span style="color: var(--c-ink-muted);">👁️ Last Opened:</span>
+                <strong style="color: var(--c-ink-text);">${file.accessed_date || "Unaccessed"}</strong>
               </div>
               <div>
                 <span style="color: var(--c-ink-muted);">🌱 Avoided CO₂:</span>
@@ -1235,28 +1093,6 @@ class StudentDashboardView {
                 ${file.sha_match_filename ? `<span style="color: #c81e1e; font-size: 9.5px; font-weight: bold; overflow: hidden; text-overflow: ellipsis;">Identical clone of: ${file.sha_match_filename}</span>` : ""}
               </div>
             </div>
-
-            <!-- Public Asset / School Pool Actions (Items 2 & 10) -->
-            ${
-              file.is_public_asset ? `
-                <div style="margin-top: 6px; padding: 4px 8px; background: rgba(79, 70, 229, 0.08); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 10.5px;">
-                  <span>🌐 Identical public asset found: <strong>${escapeHtml(file.public_asset_name || 'Public Meme/Stock')}</strong></span>
-                  <button class="retro-btn retro-btn-sm btn-pool-meme" data-id="${escapeHtml(file.file_id)}" data-url="${escapeHtml(file.public_asset_url || '')}" style="background: #4f46e5; color: #fff; padding: 2px 8px; font-size: 9.5px; font-weight: bold;">
-                    Convert to Web Hotlink (Save 100%)
-                  </button>
-                </div>
-              ` : ""
-            }
-            ${
-              file.is_school_curriculum_duplicate ? `
-                <div style="margin-top: 6px; padding: 4px 8px; background: rgba(2, 132, 199, 0.08); border: 1px solid rgba(2, 132, 199, 0.2); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 10.5px;">
-                  <span>🏫 School Commons Match: Textbook shared across grade.</span>
-                  <button class="retro-btn retro-btn-sm btn-pool-curriculum" data-id="${escapeHtml(file.file_id)}" data-name="${escapeHtml(file.file_name)}" data-size="${file.size_bytes}" style="background: #0284c7; color: #fff; padding: 2px 8px; font-size: 9.5px; font-weight: bold;">
-                    Pool to Commons (Free ${file.size_formatted})
-                  </button>
-                </div>
-              ` : ""
-            }
 
             <!-- Row 3: IQ 1000 AI Forensic Verdict -->
             <div style="margin-top: 6px; padding: 6px 8px; border-left: 3px solid #1a56db; background: rgba(26, 86, 219, 0.05); border-radius: 0 4px 4px 0; font-size: 10.5px; line-height: 1.4;">
@@ -1275,54 +1111,7 @@ class StudentDashboardView {
       })
       .join("");
 
-    // Bind Instant Direct Sweep buttons
-    container.querySelectorAll(".btn-instant-sweep").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const fileId = e.currentTarget.getAttribute("data-id");
-        const file = this.scannedFiles.find((f) => f.file_id === fileId);
-        if (file) {
-          await this.executeInstantSweep(file);
-        }
-      });
-    });
-
-    // Bind Batch Sweep buttons
-    container.querySelector("#btn-batch-sweep-junk")?.addEventListener("click", async () => {
-      await this.executeBatchSweep("all_junk");
-    });
-    container.querySelector("#btn-batch-compost-expired")?.addEventListener("click", async () => {
-      await this.executeBatchSweep("expired");
-    });
-    container.querySelector("#btn-batch-prune-bursts")?.addEventListener("click", async () => {
-      await this.executeBatchSweep("burst_duplicates");
-    });
-
-    // Bind Meme & School Pooling
-    container.querySelectorAll(".btn-pool-meme").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const fileId = e.currentTarget.getAttribute("data-id");
-        const url = e.currentTarget.getAttribute("data-url");
-        await this.executePoolAsset(fileId, url);
-      });
-    });
-    container.querySelectorAll(".btn-pool-curriculum").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const fileId = e.currentTarget.getAttribute("data-id");
-        const name = e.currentTarget.getAttribute("data-name");
-        const sz = Number(e.currentTarget.getAttribute("data-size") || 0);
-        await this.executePoolCurriculum(fileId, name, sz);
-      });
-    });
-
-    // Bind OCR & School Pool Modals
-    container.querySelector("#btn-open-ocr-tool")?.addEventListener("click", () => {
-      this.openOcrNotesModal();
-    });
-    container.querySelector("#btn-open-school-pool")?.addEventListener("click", () => {
-      this.openSchoolCommonsModal();
-    });
-
-    // Bind clean / review modal buttons
+    // Bind clean buttons
     container.querySelectorAll(".btn-delete-file").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const fileId = e.currentTarget.getAttribute("data-id");
@@ -1333,467 +1122,6 @@ class StudentDashboardView {
         }
       });
     });
-  }
-
-  async executeInstantSweep(file) {
-    try {
-      const token = localStorage.getItem("d2d_session_token") || "";
-      const res = await fetch("/api/deletion/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": token ? `Bearer ${token}` : ""
-        },
-        body: JSON.stringify({
-          file_id: file.file_id,
-          file_name: file.file_name,
-          file_size: file.size_bytes,
-          file_path: file.file_path || file.absolute_path,
-          reason: file.ai_forensic_rationale || file.dark_data_reason || "Direct AI junk sweep",
-          is_direct_sweep: true,
-          student_id: localStorage.getItem("d2d_user_id") || this.userId || "",
-          student_name: localStorage.getItem("d2d_student_name") || this.studentName || "",
-          class_code: localStorage.getItem("d2d_class_code") || this.classCode || ""
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || data.error || "Failed to sweep file.");
-        return;
-      }
-
-      // Visceral Feedback
-      if (window.RetroAudio) window.RetroAudio.playDeletionPoof();
-      document.body.classList.add("screen-shake");
-      setTimeout(() => document.body.classList.remove("screen-shake"), 400);
-
-      // Trigger Smog Clearing in Virtual Biome
-      if (window.TreeRenderer) {
-        window.TreeRenderer.triggerSmogClearing();
-      }
-
-      // Remove swept file from UI list
-      this.scannedFiles = this.scannedFiles.filter((f) => f.file_id !== file.file_id);
-      await this.fetchData();
-      this.renderScannedFiles();
-    } catch (e) {
-      console.error("Instant sweep error:", e);
-    }
-  }
-
-  async executeBatchSweep(category) {
-    try {
-      const token = localStorage.getItem("d2d_session_token") || "";
-      const res = await fetch("/api/deletion/batch_sweep", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": token ? `Bearer ${token}` : ""
-        },
-        body: JSON.stringify({
-          category: category,
-          student_id: localStorage.getItem("d2d_user_id") || this.userId || ""
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Failed to batch sweep.");
-        return;
-      }
-
-      if (window.RetroAudio) window.RetroAudio.playVictoryFanfare();
-      if (window.ParticleEngine) {
-        window.ParticleEngine.emitConfetti(window.innerWidth / 2, window.innerHeight / 3, 60);
-      }
-      if (window.TreeRenderer) {
-        window.TreeRenderer.triggerSmogClearing();
-      }
-
-      // Remove swept items from state
-      if (category === "all_junk") {
-        this.scannedFiles = this.scannedFiles.filter(f => !(f.can_instant_sweep || f.tier === "TIER_1_JUNK" || f.sha_match));
-      } else if (category === "expired") {
-        this.scannedFiles = this.scannedFiles.filter(f => !f.is_expired);
-      } else if (category === "burst_duplicates") {
-        this.scannedFiles = this.scannedFiles.filter(f => !f.is_burst_duplicate);
-      }
-
-      await this.fetchData();
-      this.renderScannedFiles();
-    } catch (e) {
-      console.error("Batch sweep error:", e);
-    }
-  }
-
-  async executePoolAsset(fileId, publicUrl) {
-    try {
-      const token = localStorage.getItem("d2d_session_token") || "";
-      const file = this.scannedFiles.find(f => f.file_id === fileId);
-      const res = await fetch("/api/scan/pool_public_asset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({
-          file_id: fileId,
-          file_name: file?.file_name || "Meme.jpg",
-          file_size_bytes: file?.size_bytes || 2048000,
-          public_url: publicUrl,
-          student_id: localStorage.getItem("d2d_user_id") || this.userId || ""
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        if (window.RetroAudio) window.RetroAudio.playBlip();
-        this.scannedFiles = this.scannedFiles.filter(f => f.file_id !== fileId);
-        await this.fetchData();
-        this.renderScannedFiles();
-      }
-    } catch (e) {
-      console.error("Pool asset error:", e);
-    }
-  }
-
-  async executePoolCurriculum(fileId, fileName, sizeBytes) {
-    try {
-      const token = localStorage.getItem("d2d_session_token") || "";
-      const res = await fetch("/api/school/curriculum_pool", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({
-          file_id: fileId,
-          file_name: fileName,
-          file_size_bytes: sizeBytes,
-          student_id: localStorage.getItem("d2d_user_id") || this.userId || ""
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        if (window.RetroAudio) window.RetroAudio.playVictoryFanfare();
-        this.scannedFiles = this.scannedFiles.filter(f => f.file_id !== fileId);
-        await this.fetchData();
-        this.renderScannedFiles();
-      }
-    } catch (e) {
-      console.error("Pool curriculum error:", e);
-    }
-  }
-
-  openOcrNotesModal() {
-    document.getElementById("modal-ocr-notes")?.remove();
-    const modal = document.createElement("div");
-    modal.className = "retro-modal-backdrop";
-    modal.id = "modal-ocr-notes";
-    modal.style.zIndex = "10000";
-
-    modal.innerHTML = `
-      <div class="retro-card retro-modal" style="max-width: 580px;">
-        <div class="retro-modal-header">
-          <span>📸 Whiteboard & Notes OCR Converter</span>
-          <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-ocr-close">✕</button>
-        </div>
-        <div class="retro-modal-body" style="font-size: 11.5px; line-height: 1.5;">
-          <div style="margin-bottom: 8px; color: var(--c-ink-muted);">
-            High-res camera photos of whiteboards and notebooks take 8MB–15MB each.
-            Our OCR engine transcribes text, formulas, and diagrams into a clean, searchable markdown doc (~1.5 KB), achieving <strong>99.8% carbon & storage savings</strong>!
-          </div>
-
-          <div style="font-size: 11px; background: rgba(67, 56, 202, 0.08); border-left: 3px solid #4338ca; padding: 8px 10px; border-radius: 4px; margin-bottom: 12px; color: var(--c-wood-border);">
-            ☁️ <strong>Saved to Notes Vault & Google Cloud:</strong> Converted notes are permanently saved to your personal <strong>Digitized Notes Vault</strong> below and synced with Firebase Firestore so you can view, copy, or export them anytime while saving megabytes of carbon-intensive photo storage.
-          </div>
-
-          <div style="background: rgba(0,0,0,0.03); border: 1.5px dashed var(--c-wood-border); border-radius: 6px; padding: 14px; text-align: center; margin-bottom: 12px;">
-            <input type="file" id="ocr-file-input" accept="image/*" style="display: none;" />
-            <button class="retro-btn retro-btn-green" id="btn-select-ocr-img">📁 Select Whiteboard / Note Photo</button>
-            <div style="font-size: 10px; color: var(--c-ink-light); margin-top: 6px;">Supports JPG, PNG, HEIC from phone or camera</div>
-          </div>
-
-          <div id="ocr-result-area" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <strong style="color: var(--c-wood-border);">Transcribed Structured Notes:</strong>
-              <span id="ocr-savings-badge" class="retro-tag retro-tag-clean">99.8% Storage Saved</span>
-            </div>
-            <textarea id="ocr-markdown-preview" class="retro-input" rows="8" style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px;"></textarea>
-          </div>
-        </div>
-        <div class="retro-modal-actions">
-          <button class="retro-btn retro-btn-wood" id="btn-ocr-cancel">Close</button>
-          <button class="retro-btn retro-btn-gold" id="btn-ocr-save" style="display: none;">💾 Save Clean Note & Earn +50 Pts</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const close = () => modal.remove();
-    modal.querySelector("#btn-ocr-close")?.addEventListener("click", close);
-    modal.querySelector("#btn-ocr-cancel")?.addEventListener("click", close);
-
-    const fileInput = modal.querySelector("#ocr-file-input");
-    const btnSelect = modal.querySelector("#btn-select-ocr-img");
-    const resultArea = modal.querySelector("#ocr-result-area");
-    const preview = modal.querySelector("#ocr-markdown-preview");
-    const btnSave = modal.querySelector("#btn-ocr-save");
-    const savingsBadge = modal.querySelector("#ocr-savings-badge");
-
-    btnSelect?.addEventListener("click", () => fileInput?.click());
-
-    fileInput?.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      btnSelect.disabled = true;
-      btnSelect.textContent = "Transcribing with Neural OCR...";
-
-      try {
-        const res = await fetch("/api/scan/ocr_notes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            file_name: file.name,
-            file_size_bytes: file.size,
-            student_id: localStorage.getItem("d2d_user_id") || "STU-001",
-            student_name: localStorage.getItem("d2d_student_name") || "Student",
-            title: file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ")
-          })
-        });
-        const data = await res.json();
-        if (data.status === "success" && data.note) {
-          resultArea.style.display = "block";
-          preview.value = data.note.markdown;
-          savingsBadge.textContent = `${data.note.savings_pct} Saved (${(data.note.bytes_saved / (1024*1024)).toFixed(2)} MB)`;
-          btnSave.style.display = "inline-block";
-          btnSelect.textContent = "✓ Digitization Complete";
-        }
-      } catch (err) {
-        alert("OCR transcription failed: " + err.message);
-        btnSelect.disabled = false;
-        btnSelect.textContent = "📁 Select Whiteboard / Note Photo";
-      }
-    });
-
-    btnSave?.addEventListener("click", async () => {
-      if (window.RetroAudio) window.RetroAudio.playVictoryFanfare();
-      if (window.ParticleEngine) window.ParticleEngine.emitConfetti();
-      alert("🎉 Clean structured note saved to your Notes Vault and Google Cloud Firestore! +50 Eco-credits credited to your account.");
-      close();
-      await this.fetchData();
-      await this.renderNotesVault();
-    });
-  }
-
-  async renderNotesVault() {
-    const container = document.getElementById("notes-vault-list");
-    const countBadge = document.getElementById("notes-vault-count");
-    if (!container) return;
-
-    try {
-      const token = localStorage.getItem("d2d_session_token");
-      const userId = localStorage.getItem("d2d_user_id");
-      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-      const res = await fetch(`/api/notes/list?student_id=${encodeURIComponent(userId || "")}`, { headers });
-      const data = await res.json();
-      const notes = data.notes || [];
-
-      if (countBadge) {
-        countBadge.textContent = `${notes.length} Note${notes.length === 1 ? "" : "s"}`;
-      }
-
-      if (notes.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 14px; color: var(--c-ink-light); font-size: 11px;">
-            No notes digitized yet. Click '+ Digitize Photo' or '📸 OCR Notes' above to convert whiteboard/notebook photos into lightweight searchable docs!
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = notes.map((n) => {
-        const title = escapeHtml(n.title || "Lecture Notes");
-        const date = escapeHtml(n.created_at || "Recent");
-        const savingsPct = escapeHtml(n.savings_pct || "99.8%");
-        const savedMb = (Number(n.bytes_saved || 0) / (1024 * 1024)).toFixed(1);
-        const noteId = escapeHtml(n.note_id || "");
-
-        return `
-          <div class="retro-card" style="padding: 8px 10px; margin-bottom: 6px; background: rgba(255,255,255,0.7); display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--c-parchment-border);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-              <div>
-                <strong style="color: var(--c-wood-border); font-size: 12px;">📝 ${title}</strong>
-                <div style="font-size: 10px; color: var(--c-ink-muted);">Saved ${date}</div>
-              </div>
-              <span class="retro-tag retro-tag-clean" style="font-size: 10px; padding: 1px 5px;">⚡ ${savingsPct} Saved (${savedMb} MB)</span>
-            </div>
-            <div style="display: flex; gap: 6px; margin-top: 4px; justify-content: flex-end;">
-              <button class="retro-btn retro-btn-sm btn-vault-view" data-note-id="${noteId}" style="background: #2563eb; color: #fff; font-size: 10px; padding: 2px 7px;">
-                👁️ View Note
-              </button>
-              <button class="retro-btn retro-btn-wood retro-btn-sm btn-vault-copy" data-note-id="${noteId}" style="font-size: 10px; padding: 2px 7px;">
-                📋 Copy Markdown
-              </button>
-              <button class="retro-btn retro-btn-danger retro-btn-sm btn-vault-del" data-note-id="${noteId}" style="font-size: 10px; padding: 2px 6px;">
-                🗑️
-              </button>
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      // Bind events for view, copy, and delete
-      container.querySelectorAll(".btn-vault-view").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const nid = btn.getAttribute("data-note-id");
-          const target = notes.find((x) => x.note_id === nid);
-          if (target) this.openViewNoteModal(target);
-        });
-      });
-
-      container.querySelectorAll(".btn-vault-copy").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const nid = btn.getAttribute("data-note-id");
-          const target = notes.find((x) => x.note_id === nid);
-          if (target && target.markdown) {
-            navigator.clipboard.writeText(target.markdown).then(() => {
-              btn.textContent = "✓ Copied!";
-              setTimeout(() => { btn.textContent = "📋 Copy Markdown"; }, 2000);
-            }).catch(() => {
-              alert("Markdown copied to clipboard!");
-            });
-          }
-        });
-      });
-
-      container.querySelectorAll(".btn-vault-del").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const nid = btn.getAttribute("data-note-id");
-          if (!confirm("Are you sure you want to remove this digitized note from your vault?")) return;
-          try {
-            const delRes = await fetch("/api/notes/delete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ note_id: nid })
-            }).then((r) => r.json());
-            if (delRes.status === "success") {
-              await this.renderNotesVault();
-            }
-          } catch (err) {
-            alert("Failed to delete note: " + err.message);
-          }
-        });
-      });
-
-    } catch (e) {
-      console.warn("Failed to render notes vault:", e);
-    }
-  }
-
-  openViewNoteModal(note) {
-    if (this.audioSynth) this.audioSynth.playBlip();
-    const modal = document.createElement("div");
-    modal.className = "retro-modal-backdrop";
-    modal.id = "modal-view-note";
-    modal.style.zIndex = "10001";
-
-    const title = escapeHtml(note.title || "Digitized Note");
-    const date = escapeHtml(note.created_at || "Recent");
-    const origName = escapeHtml(note.original_filename || "Photo");
-    const savingsPct = escapeHtml(note.savings_pct || "99.8%");
-    const markdown = note.markdown || "";
-
-    modal.innerHTML = `
-      <div class="retro-card retro-modal" style="max-width: 600px;">
-        <div class="retro-modal-header">
-          <span>📓 ${title}</span>
-          <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-view-note-close">✕</button>
-        </div>
-        <div class="retro-modal-body" style="font-size: 12px; line-height: 1.5;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; color: var(--c-ink-muted);">
-            <div>Transcribed from <strong>${origName}</strong> on ${date}</div>
-            <span class="retro-tag retro-tag-clean">${savingsPct} Storage Saved</span>
-          </div>
-          <div style="font-size: 10.5px; background: rgba(67, 56, 202, 0.08); border-left: 3px solid #4338ca; padding: 6px 10px; border-radius: 4px; margin-bottom: 10px; color: var(--c-wood-border);">
-            ☁️ <strong>Saved in Vault & Google Cloud Firestore:</strong> You can copy this clean markdown directly into Google Classroom, Notion, or Obsidian.
-          </div>
-          <textarea class="retro-input" id="view-note-md" rows="12" readonly style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px; background: #fff;">${escapeHtml(markdown)}</textarea>
-        </div>
-        <div class="retro-modal-actions">
-          <button class="retro-btn retro-btn-wood" id="btn-view-note-dismiss">Close</button>
-          <button class="retro-btn retro-btn-gold" id="btn-view-note-copy">📋 Copy Markdown</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const close = () => modal.remove();
-    modal.querySelector("#btn-view-note-close")?.addEventListener("click", close);
-    modal.querySelector("#btn-view-note-dismiss")?.addEventListener("click", close);
-
-    const btnCopy = modal.querySelector("#btn-view-note-copy");
-    btnCopy?.addEventListener("click", () => {
-      navigator.clipboard.writeText(markdown).then(() => {
-        btnCopy.textContent = "✓ Copied to Clipboard!";
-        setTimeout(() => { btnCopy.textContent = "📋 Copy Markdown"; }, 2000);
-      }).catch(() => {
-        alert("Markdown copied to clipboard!");
-      });
-    });
-  }
-
-  async openSchoolCommonsModal() {
-    document.getElementById("modal-school-commons")?.remove();
-    const modal = document.createElement("div");
-    modal.className = "retro-modal-backdrop";
-    modal.id = "modal-school-commons";
-    modal.style.zIndex = "10000";
-
-    try {
-      const res = await fetch("/api/school/curriculum_pool").then(r => r.json());
-      const pooledAssets = res.sample_assets || [];
-
-      modal.innerHTML = `
-        <div class="retro-card retro-modal" style="max-width: 540px;">
-          <div class="retro-modal-header">
-            <span>🏫 School Commons Shared Resource Pool</span>
-            <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-pool-close">✕</button>
-          </div>
-          <div class="retro-modal-body" style="font-size: 11.5px; line-height: 1.5;">
-            <div style="margin-bottom: 10px; color: var(--c-ink-muted);">
-              When 100 students each store an identical 20MB textbook chapter PDF, that consumes 2,000MB of school quota.
-              Our <strong>Communal Deduplication Pool</strong> links students to a shared master copy, saving massive storage!
-            </div>
-
-            <div class="retro-inset" style="padding: 10px; background: rgba(0,0,0,0.03); margin-bottom: 12px;">
-              <div style="font-weight: bold; color: var(--c-wood-border); margin-bottom: 6px;">Grade 5 Active Curriculum Commons:</div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                ${pooledAssets.map(a => `
-                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; background: #fff; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1);">
-                    <div>
-                      <strong>${escapeHtml(a.name)}</strong>
-                      <div style="font-size: 10px; color: var(--c-ink-muted);">${a.students_linked} students linked</div>
-                    </div>
-                    <span class="retro-tag retro-tag-clean" style="font-size: 9.5px;">Saved ${a.total_saved}</span>
-                  </div>
-                `).join("")}
-              </div>
-            </div>
-            <div style="font-size: 10.5px; color: var(--c-pine); font-style: italic;">
-              💡 Scanned files that match curriculum textbook SHA-256 hashes are automatically highlighted in your scan results!
-            </div>
-          </div>
-          <div class="retro-modal-actions">
-            <button class="retro-btn retro-btn-wood" id="btn-pool-dismiss">Close</button>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(modal);
-      const close = () => modal.remove();
-      modal.querySelector("#btn-pool-close")?.addEventListener("click", close);
-      modal.querySelector("#btn-pool-dismiss")?.addEventListener("click", close);
-    } catch (err) {
-      console.error(err);
-    }
   }
 
   openDeletionReasonModal(file) {

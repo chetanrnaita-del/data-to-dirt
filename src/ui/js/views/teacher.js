@@ -190,12 +190,6 @@ class TeacherConfirmationView {
               <button class="retro-btn retro-btn-green retro-btn-sm" id="btn-approve-all-pending" title="One-click approve all pending student deletions">
                 ⚡ Approve All Pending
               </button>
-              <button class="retro-btn retro-btn-sm" id="btn-approve-all-dups" style="background: #e02424; color: #fff; font-size: 11px; padding: 3px 8px; font-weight: bold;" title="One-click bulk approve all duplicate files in queue">
-                📑 Bulk Duplicates
-              </button>
-              <button class="retro-btn retro-btn-sm" id="btn-approve-all-screenshots" style="background: #d97706; color: #fff; font-size: 11px; padding: 3px 8px; font-weight: bold;" title="One-click bulk approve all screenshots in queue">
-                📸 Bulk Screenshots
-              </button>
               <input type="text" id="t-search-input" class="retro-input" placeholder="Search filename, reason, student..." style="padding: 4px 8px; font-size: 12px; width: 180px;" />
               <button class="retro-btn retro-btn-wood retro-btn-sm" id="btn-sort-confidence" title="Sort by AI Confidence (Low/High)">
                 🤖 AI Score: <span id="sort-order-label">Lowest First</span>
@@ -291,38 +285,6 @@ class TeacherConfirmationView {
         }
       }
     });
-
-    // Category bulk approvals
-    const setupCategoryBatch = (btnId, catName, defaultText) => {
-      document.getElementById(btnId)?.addEventListener("click", async () => {
-        const btn = document.getElementById(btnId);
-        if (btn) { btn.disabled = true; btn.textContent = "Processing..."; }
-        try {
-          const sel = document.getElementById("t-class-filter-select");
-          const cCode = sel ? sel.value : (this.selectedClassCode || "all");
-          const res = await fetch("/api/teacher/decide_all", {
-            method: "POST",
-            headers: this.getAuthHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({
-              teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001",
-              class_code: cCode,
-              category: catName
-            })
-          }).then(r => r.json());
-          if (this.audioSynth) this.audioSynth.playVictoryFanfare();
-          if (this.particleEngine) this.particleEngine.emitConfetti();
-          this.showToast(`⚡ ${res.message || `All ${catName} files approved!`}`, "success");
-          await this.fetchData();
-        } catch (e) {
-          this.showToast(`Error batch approving: ${e.message}`, "error");
-        } finally {
-          if (btn) { btn.disabled = false; btn.textContent = defaultText; }
-        }
-      });
-    };
-
-    setupCategoryBatch("btn-approve-all-dups", "duplicate", "📑 Bulk Duplicates");
-    setupCategoryBatch("btn-approve-all-screenshots", "screenshot", "📸 Bulk Screenshots");
 
     // Student directory & creation
     document.getElementById("btn-t-manage-students")?.addEventListener("click", () => {
