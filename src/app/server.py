@@ -3625,6 +3625,13 @@ def create_flask_app():
                     return True
                 if st_norm and entered_norm == st_norm:
                     return True
+                cand_name = (cand.get("name") or "").strip()
+                if cand_name:
+                    name_words = cand_name.split()
+                    full_inits = "".join(w[0] for w in name_words if w).lower()
+                    fl_inits = (name_words[0][0] + name_words[-1][0]).lower() if len(name_words) > 1 else full_inits
+                    if entered_norm in (full_inits, fl_inits):
+                        return True
                 if entered_norm and (entered_norm == exp_norm or entered_norm in exp_norm or exp_norm in entered_norm):
                     return True
                 if entered_norm in [re.sub(r'[^a-zA-Z0-9]', '', p) for p in STANDARD_STUDENT_PASSWORDS]:
@@ -3652,21 +3659,36 @@ def create_flask_app():
                                 raw_candidates.append((d, "firestore", "exact_id"))
                                 break
 
-                    q_students = firestore_db.db.collection("users").where("role", "==", "student").stream()
-                    for qd in q_students:
-                        d = qd.to_dict()
-                        s_name = (d.get("name") or "").strip().lower()
-                        s_id = (d.get("student_id") or d.get("user_id") or qd.id).strip().lower()
-                        s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
+                    if not raw_candidates:
+                        # Try exact name query in Firestore before full scan
+                        try:
+                            if FieldFilter:
+                                q_name = firestore_db.db.collection("users").where(filter=FieldFilter("name", "==", entered_ident)).limit(5).stream()
+                            else:
+                                q_name = firestore_db.db.collection("users").where("name", "==", entered_ident).limit(5).stream()
+                            for qd in q_name:
+                                d = qd.to_dict()
+                                if d.get("role") == "student":
+                                    raw_candidates.append((d, "firestore", "exact_name"))
+                        except Exception:
+                            pass
 
-                        if s_id == clean_ident or (clean_ident_alphanum and clean_ident_alphanum == s_alphanum):
-                            raw_candidates.append((d, "firestore", "exact_id"))
-                        elif s_name == clean_ident:
-                            raw_candidates.append((d, "firestore", "exact_name"))
-                        elif s_name.startswith(clean_ident) or clean_ident in s_name or s_name in clean_ident:
-                            raw_candidates.append((d, "firestore", "partial_name"))
-                        elif fuzzy_name_match(clean_ident, s_name):
-                            raw_candidates.append((d, "firestore", "fuzzy_name"))
+                    if not raw_candidates:
+                        q_students = firestore_db.db.collection("users").where("role", "==", "student").limit(150).stream()
+                        for qd in q_students:
+                            d = qd.to_dict()
+                            s_name = (d.get("name") or "").strip().lower()
+                            s_id = (d.get("student_id") or d.get("user_id") or qd.id).strip().lower()
+                            s_alphanum = re.sub(r'[^a-zA-Z0-9]', '', s_id)
+
+                            if s_id == clean_ident or (clean_ident_alphanum and clean_ident_alphanum == s_alphanum):
+                                raw_candidates.append((d, "firestore", "exact_id"))
+                            elif s_name == clean_ident:
+                                raw_candidates.append((d, "firestore", "exact_name"))
+                            elif s_name.startswith(clean_ident) or clean_ident in s_name or s_name in clean_ident:
+                                raw_candidates.append((d, "firestore", "partial_name"))
+                            elif fuzzy_name_match(clean_ident, s_name):
+                                raw_candidates.append((d, "firestore", "fuzzy_name"))
                 except Exception as fe:
                     print(f"[!] Firestore student candidate search notice: {fe}")
 
@@ -3739,11 +3761,19 @@ def create_flask_app():
                 password_matches = True
             elif stored_norm and entered_norm == stored_norm:
                 password_matches = True
-            elif entered_norm and (entered_norm == expected_norm or entered_norm in expected_norm):
+            else:
+                matched_name = (matched_student.get("name") or "").strip()
+                if matched_name:
+                    w_list = matched_name.split()
+                    full_inits = "".join(w[0] for w in w_list if w).lower()
+                    fl_inits = (w_list[0][0] + w_list[-1][0]).lower() if len(w_list) > 1 else full_inits
+                    if entered_norm in (full_inits, fl_inits):
+                        password_matches = True
+            if not password_matches and entered_norm and (entered_norm == expected_norm or entered_norm in expected_norm):
                 password_matches = True
-            elif entered_norm in [re.sub(r'[^a-zA-Z0-9]', '', p) for p in STANDARD_STUDENT_PASSWORDS]:
+            elif not password_matches and entered_norm in [re.sub(r'[^a-zA-Z0-9]', '', p) for p in STANDARD_STUDENT_PASSWORDS]:
                 password_matches = True
-            elif clean_ident_alphanum and entered_norm == clean_ident_alphanum:
+            elif not password_matches and clean_ident_alphanum and entered_norm == clean_ident_alphanum:
                 # Student entered their own student ID or first name as password
                 password_matches = True
 
@@ -4544,8 +4574,13 @@ def create_flask_app():
         # Trees funded
         student_trees = sum(int(s.get("trees", 0) or 0) for s in valid_students)
         ecofund_trees = state.get("ecofund", {}).get("trees_planted", 0)
-        total_trees_funded = max(student_trees, int(total_data_cleaned_bytes // (1024**3)))
-        if not target_class:
+        if student_trees > 0:
+            total_trees_funded = student_trees
+        elif ecofund_trees > 0 and not target_class:
+            total_trees_funded = ecofund_trees
+        else:
+            total_trees_funded = int(total_data_cleaned_bytes // (1024**3))
+        if not target_class and ecofund_trees > 0:
             total_trees_funded = max(total_trees_funded, ecofund_trees)
 
         # Gaming incidents flagged
@@ -5570,10 +5605,13 @@ def create_flask_app():
         # Calculate exact CO2e avoided using Singapore grid constant: 0.28 kWh/GB * 405.7 g/kWh / 1000.0
         co2_kg = (effective_bytes / (1024.0**3)) * KWH_PER_GB_YEAR * (GRID_INTENSITY_SINGAPORE / 1000.0)
         kpis["total_carbon_offset_kg"] = round(co2_kg, 4) if co2_kg < 1.0 else round(co2_kg, 2)
-        kpis["total_trees_funded"] = max(
-            int(effective_bytes // TREE_DONATION_THRESHOLD_BYTES),
-            ecofund.get("trees_planted", 0)
-        )
+        total_stu_trees = sum(int(s.get("trees", 0) or 0) for s in state.get("students", []))
+        if total_stu_trees > 0:
+            kpis["total_trees_funded"] = total_stu_trees
+        elif ecofund.get("trees_planted", 0) > 0:
+            kpis["total_trees_funded"] = ecofund.get("trees_planted", 0)
+        else:
+            kpis["total_trees_funded"] = int(effective_bytes // TREE_DONATION_THRESHOLD_BYTES)
 
         # Ensure participating cities reflect cleaned storage
         if effective_bytes > 0 and cities_list:
