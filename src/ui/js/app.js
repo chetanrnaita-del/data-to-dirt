@@ -188,6 +188,10 @@ class DataToDirtApp {
     if (classCodeFromUrl) {
       localStorage.setItem("d2d_class_code", classCodeFromUrl);
     }
+    const roleFromUrl = urlParams.get("role");
+    if (roleFromUrl && ["student", "teacher", "admin"].includes(roleFromUrl)) {
+      localStorage.setItem("d2d_role", roleFromUrl);
+    }
 
     // Check if user is already logged in
     const existingToken = localStorage.getItem("d2d_session_token");
@@ -199,19 +203,21 @@ class DataToDirtApp {
     if (urlParams.get("oauth") || tokenFromUrl) {
       const activeProvider = providerFromUrl || localStorage.getItem("d2d_google_provider") || "school";
       const isPersonal = activeProvider === "personal";
-      const roleToUse = (savedRole && ["student", "teacher", "admin"].includes(savedRole)) ? savedRole : "student";
-      const userToUse = savedUserId || (isPersonal ? "Personal User" : (roleToUse === "teacher" ? "teacher_bio101" : "guest"));
+      const roleToUse = (roleFromUrl && ["student", "teacher", "admin"].includes(roleFromUrl))
+        ? roleFromUrl
+        : ((savedRole && ["student", "teacher", "admin"].includes(savedRole)) ? savedRole : "student");
+      const userToUse = savedUserId || (roleToUse === "teacher" ? `teacher_${classCodeFromUrl || localStorage.getItem("d2d_class_code") || "grade10"}` : (isPersonal ? "Personal User" : "guest"));
       const pinToUse = savedPin || (roleToUse === "teacher" ? "teacher123" : "student123");
       const classToUse = classCodeFromUrl || localStorage.getItem("d2d_class_code") || "grade5";
 
       console.log(`[+] Auto-preserving active ${roleToUse} dashboard on OAuth return (${activeProvider})...`);
-      // Acquire active session token in background if missing
-      if (!existingToken && !sessionTokenFromUrl) {
+      // If role is teacher/admin, acquire active session token for that role to avoid stale student tokens
+      if (!existingToken && !sessionTokenFromUrl || (roleToUse === "teacher" || roleToUse === "admin")) {
         try {
           const authRes = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: (isPersonal ? "personal" : roleToUse), pin: pinToUse, user_id: userToUse })
+            body: JSON.stringify({ role: roleToUse, pin: pinToUse, user_id: userToUse })
           });
           const authData = await authRes.json();
           if (authRes.ok && authData.token) {

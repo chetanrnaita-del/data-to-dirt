@@ -721,6 +721,72 @@ class TestTeacherDirectDeletionWithAiAnalysis(unittest.TestCase):
         self.assertGreater(ai_eval.get("confidence_score"), 0.9)
         self.assertTrue(len(ai_eval.get("summary", "")) > 10)
 
+    def test_teacher_direct_deletion_elevates_with_header_pin_if_stale_student_token(self):
+        """Teacher direct deletion succeeds when X-Teacher-Pin is provided even if Bearer token was a student token."""
+        from src.services.auth import default_auth_service
+        stu_session = default_auth_service.create_session(role="student", user_id="test_student_desync", class_code="grade10")
+        stu_token = stu_session["token"]
+
+        headers = {
+            "Authorization": f"Bearer {stu_token}",
+            "X-Teacher-Pin": "teacher123"
+        }
+        payload = {
+            "file_id": "file_test_direct_elevate_01",
+            "file_name": "Tranche 3 - Ignicion Senior Playbook.pdf",
+            "file_size": 4500000,
+            "file_path": "/tmp/playbook.pdf",
+            "is_drive": False,
+            "teacher_id": "teacher_grade10"
+        }
+        res = self.client.post("/api/teacher/deletion/direct", headers=headers, json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "success")
+
+    def test_teacher_direct_deletion_elevates_with_body_pin_if_stale_student_token(self):
+        """Teacher direct deletion succeeds when teacher_pin is in JSON body even if Bearer token was a student token."""
+        from src.services.auth import default_auth_service
+        stu_session = default_auth_service.create_session(role="student", user_id="test_student_desync_2", class_code="grade10")
+        stu_token = stu_session["token"]
+
+        headers = {
+            "Authorization": f"Bearer {stu_token}"
+        }
+        payload = {
+            "file_id": "file_test_direct_elevate_02",
+            "file_name": "Tranche 3 - Ignicion Senior Playbook.pdf",
+            "file_size": 4500000,
+            "file_path": "/tmp/playbook2.pdf",
+            "is_drive": False,
+            "teacher_id": "teacher_grade10",
+            "teacher_pin": "teacher123"
+        }
+        res = self.client.post("/api/teacher/deletion/direct", headers=headers, json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "success")
+
+    def test_teacher_direct_deletion_rejects_student_token_without_teacher_pin(self):
+        """Teacher direct deletion strictly rejects requests with student token and no teacher credentials."""
+        from src.services.auth import default_auth_service
+        stu_session = default_auth_service.create_session(role="student", user_id="test_student_desync_3", class_code="grade10")
+        stu_token = stu_session["token"]
+
+        headers = {
+            "Authorization": f"Bearer {stu_token}"
+        }
+        payload = {
+            "file_id": "file_test_direct_reject",
+            "file_name": "student_forbidden.pdf",
+            "file_size": 1000000,
+            "is_drive": False
+        }
+        res = self.client.post("/api/teacher/deletion/direct", headers=headers, json=payload)
+        self.assertEqual(res.status_code, 403)
+        data = res.get_json()
+        self.assertIn("Forbidden", data.get("error", ""))
+
 
 class TestStudentDeletion(unittest.TestCase):
     def setUp(self):

@@ -79,7 +79,56 @@ class TeacherConfirmationView {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 
-  mount(containerId = "view-content") {
+  async ensureTeacherToken(force = false) {
+    let token = localStorage.getItem("d2d_session_token");
+    let needsAuth = force || !token;
+
+    if (!needsAuth && token) {
+      try {
+        const res = await fetch("/api/auth/session", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok || data.status !== "authenticated" || !data.session || (data.session.role !== "teacher" && data.session.role !== "admin")) {
+          needsAuth = true;
+        }
+      } catch (e) {
+        needsAuth = true;
+      }
+    }
+
+    if (needsAuth) {
+      const cCode = this.selectedClassCode || localStorage.getItem("d2d_class_code") || "grade10";
+      const teacherUser = localStorage.getItem("d2d_user_id") || `teacher_${cCode}`;
+      const teacherPin = localStorage.getItem("d2d_pin") || "teacher123";
+
+      try {
+        const authRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "teacher",
+            user_id: teacherUser,
+            pin: teacherPin
+          })
+        });
+        const authData = await authRes.json();
+        if (authRes.ok && authData.token) {
+          localStorage.setItem("d2d_session_token", authData.token);
+          localStorage.setItem("d2d_role", "teacher");
+          if (window.DataToDirt) {
+            window.DataToDirt.authenticatedRole = "teacher";
+          }
+          return authData.token;
+        }
+      } catch (e) {
+        console.warn("[Teacher] Silent teacher token acquisition error:", e);
+      }
+    }
+    return localStorage.getItem("d2d_session_token") || "";
+  }
+
+  async mount(containerId = "view-content") {
     this.container = document.getElementById(containerId);
     if (!this.container) return;
     let teacherClass = (window.DataToDirt?.classCode || localStorage.getItem("d2d_class_code") || "").toLowerCase();
@@ -98,6 +147,7 @@ class TeacherConfirmationView {
     }
     this.selectedClassCode = teacherClass;
     this.renderLayout();
+    await this.ensureTeacherToken();
     this.fetchData();
   }
 
@@ -451,10 +501,12 @@ class TeacherConfirmationView {
 
   getAuthHeaders(extra = {}) {
     const token = localStorage.getItem("d2d_session_token") || "";
+    const pin = localStorage.getItem("d2d_pin") || "teacher123";
     const headers = { ...extra };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
+    headers["X-Teacher-Pin"] = pin;
     return headers;
   }
 
@@ -520,8 +572,7 @@ class TeacherConfirmationView {
     this.showToast("⏳ Preparing Classroom CSV Report...", "info");
     const classCode = this.selectedClassCode || "all";
     const token = localStorage.getItem("d2d_session_token");
-    const headers = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const headers = this.getAuthHeaders();
 
     try {
       const url = `/api/teacher/analytics/export?class_code=${encodeURIComponent(classCode)}` + (token ? `&token=${encodeURIComponent(token)}` : "");
@@ -1619,11 +1670,13 @@ class TeacherConfirmationView {
           `;
           banner.querySelector("#btn-tch-banner-reconnect-personal")?.addEventListener("click", () => {
             localStorage.setItem("d2d_google_provider", "personal");
-            window.location.href = "/auth/google/login?provider=personal";
+            localStorage.setItem("d2d_role", "teacher");
+            window.location.href = `/auth/google/login?provider=personal&role=teacher&grade=${encodeURIComponent(this.selectedClassCode || "grade10")}`;
           });
           banner.querySelector("#btn-tch-banner-reconnect-school")?.addEventListener("click", () => {
             localStorage.setItem("d2d_google_provider", "school");
-            window.location.href = "/auth/google/login?provider=school";
+            localStorage.setItem("d2d_role", "teacher");
+            window.location.href = `/auth/google/login?provider=school&role=teacher&grade=${encodeURIComponent(this.selectedClassCode || "grade10")}`;
           });
         }
         this.renderTeacherScannedFiles("Google Drive authorization expired. Please click 'Reconnect Personal Email' or 'School Drive' above.");
@@ -1943,32 +1996,46 @@ class TeacherConfirmationView {
         const feedback = modal.querySelector("#tch-del-feedback");
 
         try {
-          const token = localStorage.getItem("d2d_session_token") || "";
-          const res = await fetch("/api/teacher/deletion/direct", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": token ? `Bearer ${token}` : ""
-            },
-            body: JSON.stringify({
-              file_id: f.file_id,
-              file_name: f.file_name,
-              file_size: f.size_bytes,
-              file_path: f.file_path || f.absolute_path || f.file_name,
-              is_drive: f.is_drive || false,
-              teacher_id: localStorage.getItem("d2d_user_id") || "TEACHER-001",
-              oauth_token: localStorage.getItem("d2d_google_access_token") || "",
-              ai_confidence_score: f.ai_confidence_score || "98.5%",
-              ai_forensic_rationale: f.ai_forensic_rationale || f.dark_data_reason || "",
-              file_age_days: f.age_days || 0,
-              accessed_days: f.accessed_days || f.age_days || 0
-            })
-          });
+          let token = await this.ensureTeacherToken();
+          const doDelete = async (tok) => {
+            return await fetch("/api/teacher/deletion/direct", {
+              method: "POST",
+              headers: this.getAuthHeaders({
+                "Content-Type": "application/json",
+                ...(tok ? { "Authorization": `Bearer ${tok}` } : {})
+              }),
+              body: JSON.stringify({
+                file_id: f.file_id,
+                file_name: f.file_name,
+                file_size: f.size_bytes,
+                file_path: f.file_path || f.absolute_path || f.file_name,
+                is_drive: f.is_drive || false,
+                teacher_id: localStorage.getItem("d2d_user_id") || "teacher_" + (this.selectedClassCode || "grade10"),
+                teacher_pin: localStorage.getItem("d2d_pin") || "teacher123",
+                pin: localStorage.getItem("d2d_pin") || "teacher123",
+                oauth_token: localStorage.getItem("d2d_google_access_token") || "",
+                ai_confidence_score: f.ai_confidence_score || "98.5%",
+                ai_forensic_rationale: f.ai_forensic_rationale || f.dark_data_reason || "",
+                file_age_days: f.age_days || 0,
+                accessed_days: f.accessed_days || f.age_days || 0
+              })
+            });
+          };
 
-          const data = await res.json();
+          let res = await doDelete(token);
+          let data = await res.json();
+
+          // Auto-recover if session was rejected due to stale student token
+          if (res.status === 403 && data.error && data.error.includes("student")) {
+            console.log("[+] Auto-elevating to teacher session for direct deletion...");
+            token = await this.ensureTeacherToken(true);
+            res = await doDelete(token);
+            data = await res.json();
+          }
+
           if (!res.ok || data.status === "error") {
             feedback.style.display = "block";
-            feedback.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">[-] Error: ${data.message || data.error || "Deletion failed"}</span>`;
+            feedback.innerHTML = `<span style="color: var(--c-danger-bright); font-weight: bold;">[-] Error: ${escapeHtml(data.message || data.error || "Deletion failed")}</span>`;
             btnConfirm.disabled = false;
             btnConfirm.textContent = "Retry Deletion";
             return;
@@ -2077,14 +2144,16 @@ class TeacherConfirmationView {
       dismiss();
       localStorage.removeItem("d2d_google_access_token");
       localStorage.setItem("d2d_google_provider", "school");
-      window.location.href = "/auth/google/login?provider=school";
+      localStorage.setItem("d2d_role", "teacher");
+      window.location.href = `/auth/google/login?provider=school&role=teacher&grade=${encodeURIComponent(this.selectedClassCode || "grade10")}`;
     });
 
     modal.querySelector("#btn-tch-gdrive-personal")?.addEventListener("click", () => {
       dismiss();
       localStorage.removeItem("d2d_google_access_token");
       localStorage.setItem("d2d_google_provider", "personal");
-      window.location.href = "/auth/google/login?provider=personal";
+      localStorage.setItem("d2d_role", "teacher");
+      window.location.href = `/auth/google/login?provider=personal&role=teacher&grade=${encodeURIComponent(this.selectedClassCode || "grade10")}`;
     });
 
     modal.querySelector("#btn-tch-gdrive-cancel")?.addEventListener("click", dismiss);

@@ -1469,6 +1469,9 @@ def create_flask_app():
             provider = "school"
 
         target_grade = normalize_grade(request.args.get("grade") or request.args.get("class_code") or "grade5")
+        target_role = (request.args.get("role") or "").lower().strip()
+        if not target_role or target_role not in ["student", "teacher", "admin"]:
+            target_role = session.get("oauth_role") or "student"
 
         client_id = get_google_client_id(provider)
         if not client_id:
@@ -1478,13 +1481,15 @@ def create_flask_app():
         redirect_uri = _get_oauth_redirect_uri()
         session["oauth_redirect_uri"] = redirect_uri
         session["oauth_provider"] = provider
-        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}")
+        session["oauth_role"] = target_role
+        print(f"[OAUTH DEBUG] Initiating login with provider = {provider}, redirect_uri = {redirect_uri}, grade = {target_grade}, role = {target_role}")
 
-        # Pack redirect_uri, provider, grade, and timestamp into signed state parameter
+        # Pack redirect_uri, provider, grade, role, and timestamp into signed state parameter
         state_payload = {
             "redirect_uri": redirect_uri,
             "provider": provider,
             "grade": target_grade,
+            "role": target_role,
             "ts": time.time()
         }
         state_str = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
@@ -1513,22 +1518,28 @@ def create_flask_app():
             print(f"[OAUTH NOTICE] Google OAuth callback returned notice: {err_desc}")
             return redirect(f"/?oauth=error&msg={urllib.parse.quote(str(err_desc))}")
 
-        # 1. Extract verified redirect_uri, provider, and grade from state parameter
+        # 1. Extract verified redirect_uri, provider, grade, and role from state parameter
         redirect_uri = None
         provider = "school"
         target_grade = "grade5"
+        target_role = "student"
         if state_param:
             try:
                 decoded_json = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
                 redirect_uri = decoded_json.get("redirect_uri")
                 provider = decoded_json.get("provider", "school")
                 target_grade = normalize_grade(decoded_json.get("grade") or "grade5")
-                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}")
+                raw_role = (decoded_json.get("role") or "").lower().strip()
+                if raw_role in ["student", "teacher", "admin"]:
+                    target_role = raw_role
+                print(f"[OAUTH DEBUG] Restored redirect_uri from OAuth state: {redirect_uri}, provider: {provider}, grade: {target_grade}, role: {target_role}")
             except Exception as ex:
                 print(f"[OAUTH WARN] Could not decode state param: {ex}")
 
         if not provider or provider not in ("school", "personal"):
             provider = session.get("oauth_provider", "school")
+        if target_role == "student" and session.get("oauth_role") in ["teacher", "admin"]:
+            target_role = session.get("oauth_role")
 
         client_id = get_google_client_id(provider)
         client_secret = get_google_client_secret(provider)
@@ -1552,18 +1563,19 @@ def create_flask_app():
                 print(f"[OAUTH DEBUG] Reusing successfully exchanged code for {code[:12]}...")
                 session["google_access_token"] = cached_token
                 session["oauth_provider"] = provider
+                session["oauth_role"] = target_role
                 profile = _resolve_google_user_profile(cached_token, provider, target_grade)
                 session_user_id = profile["student_id"]
                 session_user_name = profile["name"]
                 session_class_code = profile["class_code"]
                 session_tok = ""
                 try:
-                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code=session_class_code, name=session_user_name)
+                    oauth_sess = default_auth_service.create_session(role=target_role, user_id=session_user_id, class_code=session_class_code, name=session_user_name)
                     session_tok = oauth_sess.get("token", "")
                 except Exception as ex:
                     print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
                 cached_ref = session.get("google_refresh_token") or ""
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&class_code={urllib.parse.quote(session_class_code)}&refresh_token={urllib.parse.quote(cached_ref)}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(cached_token)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&class_code={urllib.parse.quote(session_class_code)}&role={urllib.parse.quote(target_role)}&refresh_token={urllib.parse.quote(cached_ref)}")
 
         if not redirect_uri:
             redirect_uri = session.get("oauth_redirect_uri") or _get_oauth_redirect_uri()
@@ -1587,6 +1599,7 @@ def create_flask_app():
                 ref_tok = token_info.get("refresh_token", "")
                 session["google_access_token"] = tok
                 session["oauth_provider"] = provider
+                session["oauth_role"] = target_role
                 if ref_tok:
                     session["google_refresh_token"] = ref_tok
                     session[f"google_refresh_token_{provider}"] = ref_tok
@@ -1599,11 +1612,11 @@ def create_flask_app():
                 session_class_code = profile["class_code"]
                 session_tok = ""
                 try:
-                    oauth_sess = default_auth_service.create_session(role="student", user_id=session_user_id, class_code=session_class_code, name=session_user_name)
+                    oauth_sess = default_auth_service.create_session(role=target_role, user_id=session_user_id, class_code=session_class_code, name=session_user_name)
                     session_tok = oauth_sess.get("token", "")
                 except Exception as ex:
                     print(f"[OAUTH WARN] Could not create OAuth session: {ex}")
-                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&class_code={urllib.parse.quote(session_class_code)}&refresh_token={urllib.parse.quote(ref_tok)}")
+                return redirect(f"/?oauth=success&token={urllib.parse.quote(tok)}&provider={provider}&session_token={urllib.parse.quote(session_tok)}&user_id={urllib.parse.quote(session_user_id)}&user_name={urllib.parse.quote(session_user_name)}&class_code={urllib.parse.quote(session_class_code)}&role={urllib.parse.quote(target_role)}&refresh_token={urllib.parse.quote(ref_tok)}")
         except urllib.error.HTTPError as e:
             error_body = ""
             try:

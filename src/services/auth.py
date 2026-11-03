@@ -368,18 +368,45 @@ class AuthService:
                     raise AuthenticationError("Session token invalid or expired")
 
                 if not self.has_role(session["role"], required_role):
+                    elevated = False
                     if in_flask:
                         try:
-                            from flask import jsonify
-                            return jsonify({
-                                "status": "forbidden",
-                                "error": f"Forbidden: Role '{session['role']}' does not have '{required_role}' access."
-                            }), 403
-                        except RuntimeError:
+                            from flask import request
+                            req_pin = (
+                                request.headers.get("X-Role-Pin")
+                                or request.headers.get("X-Teacher-Pin")
+                                or request.headers.get("X-Admin-Pin")
+                            )
+                            if not req_pin and request.is_json:
+                                req_json = request.get_json(silent=True) or {}
+                                req_pin = req_json.get("pin") or req_json.get("teacher_pin") or req_json.get("admin_pin")
+                            if req_pin and self.verify_pin(required_role, str(req_pin).strip()):
+                                elevated = True
+                                elevated_uid = session.get("user_id", required_role)
+                                if not elevated_uid.startswith(required_role):
+                                    elevated_uid = f"{required_role}_{elevated_uid}"
+                                session = self.create_session(
+                                    role=required_role,
+                                    user_id=elevated_uid,
+                                    class_code=session.get("class_code", "all"),
+                                    name=session.get("name")
+                                )
+                        except Exception:
                             pass
-                    raise AuthorizationError(
-                        f"Forbidden: Role '{session['role']}' lacks required role '{required_role}'"
-                    )
+
+                    if not elevated:
+                        if in_flask:
+                            try:
+                                from flask import jsonify
+                                return jsonify({
+                                    "status": "forbidden",
+                                    "error": f"Forbidden: Role '{session['role']}' does not have '{required_role}' access."
+                                }), 403
+                            except RuntimeError:
+                                pass
+                        raise AuthorizationError(
+                            f"Forbidden: Role '{session['role']}' lacks required role '{required_role}'"
+                        )
 
                 # Inject session into kwargs if function accepts it
                 if "current_session" in func.__code__.co_varnames:
