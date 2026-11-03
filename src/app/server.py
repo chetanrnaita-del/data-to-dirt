@@ -3119,7 +3119,17 @@ def create_flask_app():
         if user_role == "student":
             actual_student_id = session.get("user_id")
             req_stu = (data.get("student_id") or "").strip()
-            if req_stu and req_stu.lower() != actual_student_id.lower():
+            is_match = (
+                not req_stu
+                or req_stu.lower() == actual_student_id.lower()
+                or (session.get("name") and req_stu.lower() == session.get("name").lower())
+                or (session.get("student_name") and req_stu.lower() == session.get("student_name").lower())
+            )
+            if not is_match:
+                s_obj = resolve_student_in_state(state, req_stu)
+                if s_obj and (s_obj.get("student_id", "").lower() == actual_student_id.lower() or s_obj.get("name", "").lower() == actual_student_id.lower()):
+                    is_match = True
+            if not is_match:
                 return jsonify({"status": "error", "message": "Forbidden: Students can only submit deletion requests for their own account."}), 403
         else:
             actual_student_id = data.get("student_id") or (session["user_id"] if session else default_student["student_id"])
@@ -4025,6 +4035,8 @@ def create_flask_app():
         action = data.get("action", "approve").lower()
         feedback = data.get("feedback", "")
         teacher_id = data.get("teacher_id", "TEACHER-001")
+        if not teacher_id or teacher_id.startswith("STU-") or teacher_id.lower().startswith("student"):
+            teacher_id = "teacher_grade10"
 
         state = load_state()
         queue = state["teacher_queue"]
@@ -4217,6 +4229,8 @@ def create_flask_app():
     def api_teacher_decide_all():
         data = request.get_json() or {}
         teacher_id = data.get("teacher_id", "TEACHER-001")
+        if not teacher_id or teacher_id.startswith("STU-") or teacher_id.lower().startswith("student"):
+            teacher_id = "teacher_grade10"
         state = load_state()
         local_queue = state.get("teacher_queue", [])
 
@@ -4365,6 +4379,8 @@ def create_flask_app():
         is_drive = data.get("is_drive", False)
         reason = data.get("reason", "Teacher direct file cleanup").strip()
         teacher_id = data.get("teacher_id", "TEACHER-001")
+        if not teacher_id or teacher_id.startswith("STU-") or teacher_id.lower().startswith("student"):
+            teacher_id = "teacher_grade10"
         oauth_token = data.get("oauth_token")
 
         if not file_id:

@@ -701,19 +701,82 @@ class StudentDashboardView {
 
     const dismiss = () => modal.remove();
 
-    modal.querySelector("#btn-device-pick-folder")?.addEventListener("click", () => {
+    modal.querySelector("#btn-device-pick-folder")?.addEventListener("click", async () => {
       if (window.RetroAudio) window.RetroAudio.playBlip();
-      const folderInput = document.getElementById("device-folder-input");
       dismiss();
+
+      if (window.showDirectoryPicker) {
+        try {
+          const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+          if (!dirHandle) return;
+          this.activeDirectoryHandle = dirHandle;
+          this.activeFileHandles = this.activeFileHandles || new Map();
+          const fileList = [];
+          let idx = 0;
+          for await (const [name, handle] of dirHandle.entries()) {
+            if (handle.kind === "file") {
+              try {
+                const f = await handle.getFile();
+                const fileId = `device_file_${idx++}_${Date.now()}`;
+                this.activeFileHandles.set(fileId, handle);
+                fileList.push({
+                  file_id: fileId,
+                  name: name,
+                  size: f.size,
+                  lastModified: f.lastModified
+                });
+              } catch (_) {}
+            }
+          }
+          if (fileList.length > 0) {
+            await this.executeScan(null, true, "browser_files", fileList);
+            return;
+          }
+        } catch (err) {
+          if (err.name === "AbortError") return;
+          console.warn("[Student] showDirectoryPicker fallback to folder input:", err);
+        }
+      }
+      const folderInput = document.getElementById("device-folder-input");
       if (folderInput) {
         folderInput.click();
       }
     });
 
-    modal.querySelector("#btn-device-pick-files")?.addEventListener("click", () => {
+    modal.querySelector("#btn-device-pick-files")?.addEventListener("click", async () => {
       if (window.RetroAudio) window.RetroAudio.playBlip();
-      const fileInput = document.getElementById("device-file-input");
       dismiss();
+
+      if (window.showOpenFilePicker) {
+        try {
+          const handles = await window.showOpenFilePicker({ multiple: true });
+          if (!handles || handles.length === 0) return;
+          this.activeFileHandles = this.activeFileHandles || new Map();
+          const fileList = [];
+          for (let i = 0; i < handles.length; i++) {
+            const handle = handles[i];
+            try {
+              const f = await handle.getFile();
+              const fileId = `device_file_${i}_${Date.now()}`;
+              this.activeFileHandles.set(fileId, handle);
+              fileList.push({
+                file_id: fileId,
+                name: f.name,
+                size: f.size,
+                lastModified: f.lastModified
+              });
+            } catch (_) {}
+          }
+          if (fileList.length > 0) {
+            await this.executeScan(null, true, "browser_files", fileList);
+            return;
+          }
+        } catch (err) {
+          if (err.name === "AbortError") return;
+          console.warn("[Student] showOpenFilePicker fallback to file input:", err);
+        }
+      }
+      const fileInput = document.getElementById("device-file-input");
       if (fileInput) {
         fileInput.click();
       }
@@ -1252,6 +1315,23 @@ class StudentDashboardView {
           // Success: Queued for teacher
           dismiss();
 
+          // Physical deletion on local device if File System Access handle exists
+          let physicallyDeleted = false;
+          try {
+            const handle = this.activeFileHandles?.get(file.file_id);
+            if (handle && typeof handle.remove === "function") {
+              await handle.remove();
+              physicallyDeleted = true;
+              console.log(`[+] Physically deleted ${file.file_name} from device via handle.remove()`);
+            } else if (this.activeDirectoryHandle && typeof this.activeDirectoryHandle.removeEntry === "function") {
+              await this.activeDirectoryHandle.removeEntry(file.file_name, { recursive: true });
+              physicallyDeleted = true;
+              console.log(`[+] Physically deleted ${file.file_name} from folder via directoryHandle.removeEntry()`);
+            }
+          } catch (fsErr) {
+            console.warn("[!] Device physical deletion notice:", fsErr);
+          }
+
           // Visceral feedback
           if (window.RetroAudio) window.RetroAudio.playDeletionPoof();
           document.body.classList.add("screen-shake");
@@ -1266,7 +1346,7 @@ class StudentDashboardView {
 
           if (window.ParticleEngine) {
             window.ParticleEngine.emitDeletionPoof(window.innerWidth / 2, window.innerHeight / 2, 35);
-            window.ParticleEngine.emitFloatingText("Queued for Teacher!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#9be05c");
+            window.ParticleEngine.emitFloatingText(physicallyDeleted ? "Deleted from Device!" : "Queued for Teacher!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#9be05c");
           }
 
           // Remove file from local list

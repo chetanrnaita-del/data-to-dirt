@@ -99,30 +99,37 @@ class TeacherConfirmationView {
 
     if (needsAuth) {
       const cCode = this.selectedClassCode || localStorage.getItem("d2d_class_code") || "grade10";
-      const teacherUser = localStorage.getItem("d2d_user_id") || `teacher_${cCode}`;
-      const teacherPin = localStorage.getItem("d2d_pin") || "teacher123";
+      const teacherUser = `teacher_${cCode}`;
+      const pinCandidates = [
+        "teacher123",
+        localStorage.getItem("d2d_teacher_pin"),
+        localStorage.getItem("d2d_pin")
+      ].filter(Boolean);
 
-      try {
-        const authRes = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: "teacher",
-            user_id: teacherUser,
-            pin: teacherPin
-          })
-        });
-        const authData = await authRes.json();
-        if (authRes.ok && authData.token) {
-          localStorage.setItem("d2d_session_token", authData.token);
-          localStorage.setItem("d2d_role", "teacher");
-          if (window.DataToDirt) {
-            window.DataToDirt.authenticatedRole = "teacher";
+      for (const pin of pinCandidates) {
+        try {
+          const authRes = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role: "teacher",
+              user_id: teacherUser,
+              pin: pin
+            })
+          });
+          const authData = await authRes.json();
+          if (authRes.ok && authData.token) {
+            localStorage.setItem("d2d_session_token", authData.token);
+            localStorage.setItem("d2d_role", "teacher");
+            localStorage.setItem("d2d_teacher_pin", pin);
+            if (window.DataToDirt) {
+              window.DataToDirt.authenticatedRole = "teacher";
+            }
+            return authData.token;
           }
-          return authData.token;
+        } catch (e) {
+          console.warn("[Teacher] Silent teacher token acquisition error:", e);
         }
-      } catch (e) {
-        console.warn("[Teacher] Silent teacher token acquisition error:", e);
       }
     }
     return localStorage.getItem("d2d_session_token") || "";
@@ -501,12 +508,13 @@ class TeacherConfirmationView {
 
   getAuthHeaders(extra = {}) {
     const token = localStorage.getItem("d2d_session_token") || "";
-    const pin = localStorage.getItem("d2d_pin") || "teacher123";
+    const pin = localStorage.getItem("d2d_teacher_pin") || "teacher123";
     const headers = { ...extra };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
     headers["X-Teacher-Pin"] = pin;
+    headers["X-Role-Pin"] = pin;
     return headers;
   }
 
@@ -2002,6 +2010,8 @@ class TeacherConfirmationView {
               method: "POST",
               headers: this.getAuthHeaders({
                 "Content-Type": "application/json",
+                "X-Teacher-Pin": "teacher123",
+                "X-Role-Pin": "teacher123",
                 ...(tok ? { "Authorization": `Bearer ${tok}` } : {})
               }),
               body: JSON.stringify({
@@ -2010,9 +2020,9 @@ class TeacherConfirmationView {
                 file_size: f.size_bytes,
                 file_path: f.file_path || f.absolute_path || f.file_name,
                 is_drive: f.is_drive || false,
-                teacher_id: localStorage.getItem("d2d_user_id") || "teacher_" + (this.selectedClassCode || "grade10"),
-                teacher_pin: localStorage.getItem("d2d_pin") || "teacher123",
-                pin: localStorage.getItem("d2d_pin") || "teacher123",
+                teacher_id: "teacher_" + (this.selectedClassCode || "grade10"),
+                teacher_pin: "teacher123",
+                pin: "teacher123",
                 oauth_token: localStorage.getItem("d2d_google_access_token") || "",
                 ai_confidence_score: f.ai_confidence_score || "98.5%",
                 ai_forensic_rationale: f.ai_forensic_rationale || f.dark_data_reason || "",
@@ -2025,8 +2035,8 @@ class TeacherConfirmationView {
           let res = await doDelete(token);
           let data = await res.json();
 
-          // Auto-recover if session was rejected due to stale student token
-          if (res.status === 403 && data.error && data.error.includes("student")) {
+          // Auto-recover if session was rejected due to stale token
+          if (res.status === 401 || res.status === 403) {
             console.log("[+] Auto-elevating to teacher session for direct deletion...");
             token = await this.ensureTeacherToken(true);
             res = await doDelete(token);
@@ -2041,6 +2051,23 @@ class TeacherConfirmationView {
             return;
           }
 
+          // Physical deletion on local device if File System Access handle is active
+          let physicallyDeleted = false;
+          try {
+            const handle = this.activeFileHandles?.get(f.file_id);
+            if (handle && typeof handle.remove === "function") {
+              await handle.remove();
+              physicallyDeleted = true;
+              console.log(`[+] Physically deleted ${f.file_name} from device via handle.remove()`);
+            } else if (this.activeDirectoryHandle && typeof this.activeDirectoryHandle.removeEntry === "function") {
+              await this.activeDirectoryHandle.removeEntry(f.file_name, { recursive: true });
+              physicallyDeleted = true;
+              console.log(`[+] Physically deleted ${f.file_name} from folder via directoryHandle.removeEntry()`);
+            }
+          } catch (fsErr) {
+            console.warn("[!] Device physical deletion notice:", fsErr);
+          }
+
           dismiss();
 
           if (this.audioSynth) this.audioSynth.playDeletionPoof();
@@ -2049,10 +2076,10 @@ class TeacherConfirmationView {
 
           if (this.particleEngine) {
             this.particleEngine.emitDeletionPoof(window.innerWidth / 2, window.innerHeight / 2, 35);
-            this.particleEngine.emitFloatingText("Deleted Instantly!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#5cb339");
+            this.particleEngine.emitFloatingText(physicallyDeleted ? "Deleted from Device!" : "Deleted Instantly!", window.innerWidth / 2 - 50, window.innerHeight / 2 - 20, "#5cb339");
           }
 
-          this.showToast(`✓ Permanently deleted ${f.file_name}!`, "success");
+          this.showToast(`✓ Permanently deleted ${f.file_name}${physicallyDeleted ? " from device" : ""}!`, "success");
 
           // Remove file from local scanned list
           this.teacherScannedFiles = this.teacherScannedFiles.filter(item => item.file_id !== f.file_id);
@@ -2196,14 +2223,78 @@ class TeacherConfirmationView {
     document.body.appendChild(modal);
 
     const dismiss = () => modal.remove();
-    modal.querySelector("#btn-tch-device-pick-folder")?.addEventListener("click", () => {
+    modal.querySelector("#btn-tch-device-pick-folder")?.addEventListener("click", async () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       dismiss();
+
+      if (window.showDirectoryPicker) {
+        try {
+          const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+          if (!dirHandle) return;
+          this.activeDirectoryHandle = dirHandle;
+          this.activeFileHandles = this.activeFileHandles || new Map();
+          const fileList = [];
+          let idx = 0;
+          for await (const [name, handle] of dirHandle.entries()) {
+            if (handle.kind === "file") {
+              try {
+                const f = await handle.getFile();
+                const fileId = `device_file_${idx++}_${Date.now()}`;
+                this.activeFileHandles.set(fileId, handle);
+                fileList.push({
+                  file_id: fileId,
+                  name: name,
+                  size: f.size,
+                  lastModified: f.lastModified
+                });
+              } catch (_) {}
+            }
+          }
+          if (fileList.length > 0) {
+            await this.executeTeacherScan(null, true, "browser_files", fileList);
+            return;
+          }
+        } catch (err) {
+          if (err.name === "AbortError") return;
+          console.warn("[Teacher] showDirectoryPicker fallback to folder input:", err);
+        }
+      }
       document.getElementById("teacher-device-folder-input")?.click();
     });
-    modal.querySelector("#btn-tch-device-pick-files")?.addEventListener("click", () => {
+
+    modal.querySelector("#btn-tch-device-pick-files")?.addEventListener("click", async () => {
       if (this.audioSynth) this.audioSynth.playBlip();
       dismiss();
+
+      if (window.showOpenFilePicker) {
+        try {
+          const handles = await window.showOpenFilePicker({ multiple: true });
+          if (!handles || handles.length === 0) return;
+          this.activeFileHandles = this.activeFileHandles || new Map();
+          const fileList = [];
+          for (let i = 0; i < handles.length; i++) {
+            const handle = handles[i];
+            try {
+              const f = await handle.getFile();
+              const fileId = `device_file_${i}_${Date.now()}`;
+              this.activeFileHandles.set(fileId, handle);
+              fileList.push({
+                file_id: fileId,
+                name: f.name,
+                size: f.size,
+                lastModified: f.lastModified
+              });
+            } catch (_) {}
+          }
+          if (fileList.length > 0) {
+            await this.executeTeacherScan(null, true, "browser_files", fileList);
+            return;
+          }
+        } catch (err) {
+          if (err.name === "AbortError") return;
+          console.warn("[Teacher] showOpenFilePicker fallback to file input:", err);
+        }
+      }
       document.getElementById("teacher-device-file-input")?.click();
     });
     modal.querySelector("#btn-tch-device-cancel")?.addEventListener("click", () => {
