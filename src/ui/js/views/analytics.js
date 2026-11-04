@@ -117,6 +117,7 @@ class AnalyticsDashboardView {
     }
     headers["X-Role-Pin"] = "admin2026";
     headers["X-Admin-Pin"] = "admin2026";
+    headers["X-Teacher-Pin"] = "teacher123";
     return headers;
   }
 

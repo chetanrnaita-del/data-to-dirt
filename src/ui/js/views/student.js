@@ -370,23 +370,9 @@ class StudentDashboardView {
     if (gradeSelect) {
       gradeSelect.addEventListener("change", async (e) => {
         const newGrade = e.target.value;
-        this.classCode = newGrade;
-        localStorage.setItem("d2d_class_code", newGrade);
-        const token = localStorage.getItem("d2d_session_token");
-        try {
-          await fetch("/api/student/grade", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { "Authorization": `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ student_id: this.userId, class_code: newGrade })
-          });
-        } catch (err) {
-          console.warn("Could not save grade update:", err);
-        }
+        this.selectedLeaderboardGrade = newGrade;
         if (window.RetroAudio) window.RetroAudio.playBlip();
-        await this.fetchData();
+        await this.fetchLeaderboardOnly(newGrade);
       });
     }
 
@@ -436,16 +422,33 @@ class StudentDashboardView {
     }
   }
 
+  async fetchLeaderboardOnly(grade) {
+    try {
+      const token = localStorage.getItem("d2d_session_token");
+      const userId = localStorage.getItem("d2d_user_id");
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const targetGrade = grade || this.selectedLeaderboardGrade || this.classCode || "grade5";
+      const userParam = `?student_id=${encodeURIComponent(userId || "")}&class_code=${encodeURIComponent(targetGrade)}`;
+      const lbRes = await fetch(`/api/student/leaderboard${userParam}`, { headers }).then((r) => r.json());
+      this.leaderboard = lbRes.leaderboard || [];
+      this.updateLeaderboardUI();
+    } catch (e) {
+      console.warn("Failed to fetch leaderboard for grade:", grade, e);
+    }
+  }
+
   async fetchData() {
     try {
       const token = localStorage.getItem("d2d_session_token");
       const userId = localStorage.getItem("d2d_user_id");
-      const classCode = this.classCode || localStorage.getItem("d2d_class_code") || "grade5";
+      const enrolledClass = this.classCode || localStorage.getItem("d2d_class_code") || "grade5";
+      const viewClass = this.selectedLeaderboardGrade || enrolledClass;
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-      const userParam = `?student_id=${encodeURIComponent(userId || "")}&class_code=${encodeURIComponent(classCode)}`;
+      const userParam = `?student_id=${encodeURIComponent(userId || "")}&class_code=${encodeURIComponent(enrolledClass)}`;
+      const lbParam = `?student_id=${encodeURIComponent(userId || "")}&class_code=${encodeURIComponent(viewClass)}`;
       const [statsRes, lbRes] = await Promise.all([
         fetch(`/api/student/stats${userParam}`, { headers }).then((r) => r.json()),
-        fetch(`/api/student/leaderboard${userParam}`, { headers }).then((r) => r.json()),
+        fetch(`/api/student/leaderboard${lbParam}`, { headers }).then((r) => r.json()),
       ]);
 
       this.stats = statsRes;
@@ -462,7 +465,7 @@ class StudentDashboardView {
         this.classCode = statsRes.class_code;
         localStorage.setItem("d2d_class_code", statsRes.class_code);
         const gradeSelect = document.getElementById("student-grade-select");
-        if (gradeSelect) {
+        if (gradeSelect && !this.selectedLeaderboardGrade) {
           gradeSelect.value = this.normalizeGrade(statsRes.class_code);
         }
       }

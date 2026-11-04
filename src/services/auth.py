@@ -359,6 +359,8 @@ class AuthService:
                         if not req_pin and request.is_json:
                             req_json = request.get_json(silent=True) or {}
                             req_pin = req_json.get("pin") or req_json.get("admin_pin") or req_json.get("teacher_pin")
+                        if not req_pin and hasattr(request, "args"):
+                            req_pin = request.args.get("pin") or request.args.get("admin_pin") or request.args.get("teacher_pin")
                     except Exception:
                         pass
 
@@ -413,23 +415,33 @@ class AuthService:
                         elevated_uid = session.get("user_id", "teacher")
                         if not elevated_uid.startswith("teacher"):
                             elevated_uid = f"teacher_{elevated_uid}"
-                        session = self.create_session(
-                            role=ROLE_TEACHER,
-                            user_id=elevated_uid,
-                            class_code=session.get("class_code", "all"),
-                            name=session.get("name")
-                        )
+                        if token and token in self._sessions:
+                            self._sessions[token].role = ROLE_TEACHER
+                            self._sessions[token].user_id = elevated_uid
+                            session = self._sessions[token].to_dict()
+                        else:
+                            session = self.create_session(
+                                role=ROLE_TEACHER,
+                                user_id=elevated_uid,
+                                class_code=session.get("class_code", "all"),
+                                name=session.get("name")
+                            )
                     elif required_role == ROLE_ADMIN and pin_is_admin:
                         elevated = True
                         elevated_uid = session.get("user_id", "admin")
                         if not elevated_uid.startswith("admin"):
                             elevated_uid = f"admin_{elevated_uid}"
-                        session = self.create_session(
-                            role=ROLE_ADMIN,
-                            user_id=elevated_uid,
-                            class_code="all",
-                            name=session.get("name")
-                        )
+                        if token and token in self._sessions:
+                            self._sessions[token].role = ROLE_ADMIN
+                            self._sessions[token].user_id = elevated_uid
+                            session = self._sessions[token].to_dict()
+                        else:
+                            session = self.create_session(
+                                role=ROLE_ADMIN,
+                                user_id=elevated_uid,
+                                class_code="all",
+                                name=session.get("name")
+                            )
 
                     if not elevated:
                         if in_flask:

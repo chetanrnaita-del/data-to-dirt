@@ -751,6 +751,53 @@ def cleanup_ghost_users():
         print(f"[!] Analytics cleanup notice: {e}")
 
 
+def sync_roster_to_firestore():
+    """Syncs the 61 student roster across their respective grades to Cloud Firestore."""
+    if not firestore_db.is_connected:
+        return
+    try:
+        state = load_state()
+        students = state.get("students", [])
+        if not students:
+            return
+        batch = firestore_db.db.batch()
+        count = 0
+        for s in students:
+            sid = s.get("student_id")
+            if not sid:
+                continue
+            doc_ref = firestore_db.db.collection("users").document(sid)
+            data = {
+                "student_id": sid,
+                "user_id": sid,
+                "name": s.get("name"),
+                "role": "student",
+                "class_code": s.get("class_code"),
+                "pin": s.get("pin"),
+                "password": s.get("password"),
+                "bytes_cleared": s.get("bytes_cleared", 0),
+                "trees": s.get("trees_planted", 0),
+                "trees_planted": s.get("trees_planted", 0),
+                "eco_points": s.get("eco_points", 0),
+                "streak_days": s.get("streak_days", 0)
+            }
+            batch.set(doc_ref, data, merge=True)
+            count += 1
+            if count % 400 == 0:
+                batch.commit()
+                batch = firestore_db.db.batch()
+
+        # Ensure Chetan Naita records are pinned to grade10
+        for cid in ["STU-FYBLNN", "STU-QFRM5L"]:
+            doc_ref = firestore_db.db.collection("users").document(cid)
+            batch.set(doc_ref, {"class_code": "grade10"}, merge=True)
+
+        batch.commit()
+        print(f"[✓] Synced {count} roster students to Cloud Firestore across Grades 5-10.")
+    except Exception as e:
+        print(f"[!] Roster firestore sync notice: {e}")
+
+
 def resolve_student_in_state(state: Dict[str, Any], student_id: Optional[str] = None) -> Dict[str, Any]:
     """Resolves and returns the student record in state matching student_id.
     
@@ -1343,6 +1390,11 @@ def create_flask_app():
 
     # Automatically purge timestamp ghost records and mock accounts
     cleanup_ghost_users()
+    if firestore_db.is_connected:
+        try:
+            sync_roster_to_firestore()
+        except Exception:
+            pass
 
     app.secret_key = "datatodirt_secret_key"
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -1926,94 +1978,121 @@ def create_flask_app():
         else:
             class_code = normalize_grade(class_code)
 
+        f_lb = []
         if firestore_db.is_connected:
             try:
                 f_lb = firestore_db.get_class_leaderboard(class_code=class_code, limit=50)
-                if f_lb:
-                    leaderboard = f_lb
             except Exception as e:
                 print(f"[!] Leaderboard firestore error: {e}")
 
-        if not leaderboard:
-            known_students = []
-            if "student" in state:
-                s_def = state["student"]
-                if s_def.get("name"):
-                    known_students.append(s_def)
-            for s in state.get("students", []):
-                sid = str(s.get("student_id") or "")
-                if sid != state.get("student", {}).get("student_id"):
-                    known_students.append(s)
+        known_students = []
+        if "student" in state:
+            s_def = state["student"]
+            if s_def.get("name"):
+                known_students.append(s_def)
+        for s in state.get("students", []):
+            sid = str(s.get("student_id") or "")
+            if sid != state.get("student", {}).get("student_id"):
+                known_students.append(s)
 
-            # STRICT FILTER BY CLASS CODE: Only students in THIS class
-            if class_code.startswith("grade"):
-                filtered_students = [
-                    s for s in known_students 
-                    if normalize_grade(s.get("class_code") or "grade5") == class_code
-                ]
-            else:
-                filtered_students = [
-                    s for s in known_students 
-                    if (s.get("class_code") or "").strip().lower() == class_code
-                ]
+        # STRICT FILTER BY CLASS CODE: Only students in THIS class
+        if class_code.startswith("grade"):
+            filtered_students = [
+                dict(s) for s in known_students 
+                if normalize_grade(s.get("class_code") or "grade5") == class_code
+            ]
+        else:
+            filtered_students = [
+                dict(s) for s in known_students 
+                if (s.get("class_code") or "").strip().lower() == class_code
+            ]
 
-            # Deduplicate students by fuzzy name, student_id, or email
-            deduped_students = []
-            for s in filtered_students:
-                s_id = str(s.get("student_id") or s.get("user_id") or "").strip().lower()
-                s_name = str(s.get("name") or "").strip()
-                s_email = str(s.get("email") or "").strip().lower()
-                
-                existing_match = None
-                for ex in deduped_students:
-                    ex_id = str(ex.get("student_id") or ex.get("user_id") or "").strip().lower()
-                    ex_name = str(ex.get("name") or "").strip()
-                    ex_email = str(ex.get("email") or "").strip().lower()
-                    same_id = bool(s_id and ex_id and s_id == ex_id)
-                    same_email = bool(s_email and ex_email and s_email == ex_email)
-                    # Only merge by name if one is an OAuth temporary ID linking to a named roster record, never two distinct enrolled student accounts
-                    is_oauth_merge = (s_id.startswith("google-") or ex_id.startswith("google-")) and bool(s_name and ex_name and fuzzy_name_match(s_name, ex_name))
-                    if same_id or same_email or is_oauth_merge:
-                        existing_match = ex
-                        break
-                
-                if existing_match:
-                    # Merge points, bytes, streak
-                    existing_match["eco_points"] = max(existing_match.get("eco_points", 0), s.get("eco_points", 0))
-                    existing_match["bytes_cleared"] = max(existing_match.get("bytes_cleared", 0), s.get("bytes_cleared", 0))
-                    existing_match["trees"] = max(existing_match.get("trees", 0) or 0, s.get("trees", 0) or 0)
-                    existing_match["streak_days"] = max(existing_match.get("streak_days", 0), s.get("streak_days", 0))
-                    # Prefer capitalized human name over lowercase or generic ID
-                    if len(s_name) > 0 and s_name[0].isupper() and (not existing_match.get("name") or not existing_match["name"][0].isupper()):
-                        existing_match["name"] = s_name
-                    # Record alias IDs/names
-                    if "aliases" not in existing_match:
-                        existing_match["aliases"] = set()
-                    if s_id: existing_match["aliases"].add(s_id)
-                    if s_name: existing_match["aliases"].add(s_name.lower())
-                    if s_email: existing_match["aliases"].add(s_email)
-                else:
-                    s_copy = dict(s)
-                    s_copy["aliases"] = {s_id, s_name.lower(), s_email} - {""}
-                    deduped_students.append(s_copy)
-
-            leaderboard = []
-            for s in deduped_students:
-                b_cleared = s.get("bytes_cleared", 0)
-                trees_val = s.get("trees")
-                if trees_val is None:
-                    trees_val = int(b_cleared // (1024**3))
-                leaderboard.append({
-                    "user_id": s.get("student_id", ""),
-                    "student_id": s.get("student_id", ""),
-                    "name": s.get("name", s.get("student_id", "Student")),
+        # Merge Firestore students for this class into filtered_students without displacing roster
+        for f_stu in f_lb:
+            f_uid = str(f_stu.get("user_id") or f_stu.get("student_id") or "").strip().lower()
+            f_name = str(f_stu.get("name") or "").strip()
+            # If Chetan Naita and viewing class_code is not grade10, never inject into other grades
+            if "chetan" in f_name.lower() and class_code != "grade10":
+                continue
+            matched = False
+            for loc in filtered_students:
+                loc_uid = str(loc.get("student_id") or loc.get("user_id") or "").strip().lower()
+                loc_name = str(loc.get("name") or "").strip()
+                if (loc_uid and loc_uid == f_uid) or fuzzy_name_match(loc_name, f_name):
+                    loc["bytes_cleared"] = max(loc.get("bytes_cleared", 0), f_stu.get("data_cleared_bytes", 0))
+                    loc["eco_points"] = max(loc.get("eco_points", 0), f_stu.get("eco_points", 0))
+                    loc["trees"] = max(loc.get("trees", 0) or 0, f_stu.get("trees", 0) or 0)
+                    matched = True
+                    break
+            if not matched:
+                filtered_students.append({
+                    "student_id": f_stu.get("user_id"),
+                    "user_id": f_stu.get("user_id"),
+                    "name": f_name,
                     "class_code": class_code,
-                    "eco_points": s.get("eco_points", 0),
-                    "data_cleared_bytes": b_cleared,
-                    "streak_days": s.get("streak_days", 0),
-                    "trees": int(trees_val or 0),
-                    "aliases": list(s.get("aliases", []))
+                    "bytes_cleared": f_stu.get("data_cleared_bytes", 0),
+                    "eco_points": f_stu.get("eco_points", 0),
+                    "trees": f_stu.get("trees", 0),
+                    "streak_days": f_stu.get("streak_days", 1)
                 })
+
+        # Deduplicate students by fuzzy name, student_id, or email
+        deduped_students = []
+        for s in filtered_students:
+            s_id = str(s.get("student_id") or s.get("user_id") or "").strip().lower()
+            s_name = str(s.get("name") or "").strip()
+            s_email = str(s.get("email") or "").strip().lower()
+            
+            existing_match = None
+            for ex in deduped_students:
+                ex_id = str(ex.get("student_id") or ex.get("user_id") or "").strip().lower()
+                ex_name = str(ex.get("name") or "").strip()
+                ex_email = str(ex.get("email") or "").strip().lower()
+                same_id = bool(s_id and ex_id and s_id == ex_id)
+                same_email = bool(s_email and ex_email and s_email == ex_email)
+                # Only merge by name if one is an OAuth temporary ID linking to a named roster record, never two distinct enrolled student accounts
+                is_oauth_merge = (s_id.startswith("google-") or ex_id.startswith("google-")) and bool(s_name and ex_name and fuzzy_name_match(s_name, ex_name))
+                if same_id or same_email or is_oauth_merge:
+                    existing_match = ex
+                    break
+            
+            if existing_match:
+                # Merge points, bytes, streak
+                existing_match["eco_points"] = max(existing_match.get("eco_points", 0), s.get("eco_points", 0))
+                existing_match["bytes_cleared"] = max(existing_match.get("bytes_cleared", 0), s.get("bytes_cleared", 0))
+                existing_match["trees"] = max(existing_match.get("trees", 0) or 0, s.get("trees", 0) or 0)
+                existing_match["streak_days"] = max(existing_match.get("streak_days", 0), s.get("streak_days", 0))
+                # Prefer capitalized human name over lowercase or generic ID
+                if len(s_name) > 0 and s_name[0].isupper() and (not existing_match.get("name") or not existing_match["name"][0].isupper()):
+                    existing_match["name"] = s_name
+                # Record alias IDs/names
+                if "aliases" not in existing_match:
+                    existing_match["aliases"] = set()
+                if s_id: existing_match["aliases"].add(s_id)
+                if s_name: existing_match["aliases"].add(s_name.lower())
+                if s_email: existing_match["aliases"].add(s_email)
+            else:
+                s_copy = dict(s)
+                s_copy["aliases"] = {s_id, s_name.lower(), s_email} - {""}
+                deduped_students.append(s_copy)
+
+        leaderboard = []
+        for s in deduped_students:
+            b_cleared = s.get("bytes_cleared", 0)
+            trees_val = s.get("trees")
+            if trees_val is None:
+                trees_val = int(b_cleared // (1024**3))
+            leaderboard.append({
+                "user_id": s.get("student_id", ""),
+                "student_id": s.get("student_id", ""),
+                "name": s.get("name", s.get("student_id", "Student")),
+                "class_code": class_code,
+                "eco_points": s.get("eco_points", 0),
+                "data_cleared_bytes": b_cleared,
+                "streak_days": s.get("streak_days", 0),
+                "trees": int(trees_val or 0),
+                "aliases": list(s.get("aliases", []))
+            })
 
         # Recalculate formatted data and mark (You)
         user_ident = student_id.strip().lower() if student_id else ""
