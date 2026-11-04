@@ -145,9 +145,13 @@ class DataToDirtApp {
       const token = localStorage.getItem("d2d_session_token");
       if (token && typeof args[0] === 'string' && args[0].startsWith('/api/')) {
         if (typeof args[1].headers.set === 'function') {
-          args[1].headers.set('Authorization', `Bearer ${token}`);
+          if (!args[1].headers.get('Authorization') && !args[1].headers.get('authorization')) {
+            args[1].headers.set('Authorization', `Bearer ${token}`);
+          }
         } else {
-          args[1].headers['Authorization'] = `Bearer ${token}`;
+          if (!args[1].headers['Authorization'] && !args[1].headers['authorization']) {
+            args[1].headers['Authorization'] = `Bearer ${token}`;
+          }
         }
       }
       return originalFetch(...args);

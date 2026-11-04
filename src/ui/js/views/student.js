@@ -716,23 +716,44 @@ class StudentDashboardView {
           this.activeFileHandles = this.activeFileHandles || new Map();
           const fileList = [];
           let idx = 0;
-          for await (const [name, handle] of dirHandle.entries()) {
-            if (handle.kind === "file") {
-              try {
-                const f = await handle.getFile();
-                const fileId = `device_file_${idx++}_${Date.now()}`;
-                this.activeFileHandles.set(fileId, handle);
-                this.activeFileHandles.set(name, handle);
-                this.activeFileHandles.set(`Device/${name}`, handle);
-                fileList.push({
-                  file_id: fileId,
-                  name: name,
-                  size: f.size,
-                  lastModified: f.lastModified
-                });
-              } catch (_) {}
+
+          const scanDir = async (dHandle, pathPrefix = "", depth = 0) => {
+            if (depth > 6) return;
+            for await (const [name, handle] of dHandle.entries()) {
+              if (name.startsWith(".") || name === "node_modules") continue;
+              const relPath = pathPrefix ? `${pathPrefix}/${name}` : name;
+              if (handle.kind === "file") {
+                try {
+                  const f = await handle.getFile();
+                  const fileId = `device_file_${idx++}_${Date.now()}`;
+                  const entryInfo = {
+                    file_id: fileId,
+                    name: relPath,
+                    raw_name: name,
+                    fileHandle: handle,
+                    parentDirHandle: dHandle,
+                    relPath: relPath
+                  };
+                  this.activeFileHandles.set(fileId, entryInfo);
+                  this.activeFileHandles.set(relPath, entryInfo);
+                  this.activeFileHandles.set(name, entryInfo);
+                  this.activeFileHandles.set(`Device/${relPath}`, entryInfo);
+                  this.activeFileHandles.set(`Device/${name}`, entryInfo);
+                  fileList.push({
+                    file_id: fileId,
+                    name: relPath,
+                    size: f.size,
+                    lastModified: f.lastModified
+                  });
+                } catch (_) {}
+              } else if (handle.kind === "directory") {
+                await scanDir(handle, relPath, depth + 1);
+              }
             }
-          }
+          };
+
+          await scanDir(dirHandle);
+
           if (fileList.length > 0) {
             await this.executeScan(null, true, "browser_files", fileList);
             return;
@@ -763,9 +784,17 @@ class StudentDashboardView {
             try {
               const f = await handle.getFile();
               const fileId = `device_file_${i}_${Date.now()}`;
-              this.activeFileHandles.set(fileId, handle);
-              this.activeFileHandles.set(f.name, handle);
-              this.activeFileHandles.set(`Device/${f.name}`, handle);
+              const entryInfo = {
+                file_id: fileId,
+                name: f.name,
+                raw_name: f.name,
+                fileHandle: handle,
+                parentDirHandle: null,
+                relPath: f.name
+              };
+              this.activeFileHandles.set(fileId, entryInfo);
+              this.activeFileHandles.set(f.name, entryInfo);
+              this.activeFileHandles.set(`Device/${f.name}`, entryInfo);
               fileList.push({
                 file_id: fileId,
                 name: f.name,
@@ -1325,23 +1354,82 @@ class StudentDashboardView {
           // Physical deletion on local device if File System Access handle exists
           let physicallyDeleted = false;
           try {
-            const handle = this.activeFileHandles?.get(file.file_id)
+            const entry = this.activeFileHandles?.get(file.file_id)
               || this.activeFileHandles?.get(file.file_name)
               || this.activeFileHandles?.get(file.raw_file_name)
+              || this.activeFileHandles?.get(file.file_path)
+              || this.activeFileHandles?.get(file.absolute_path)
+              || this.activeFileHandles?.get((file.file_name || "").replace(/^Device\//i, ""))
               || this.activeFileHandles?.get((file.file_name || "").split("/").pop());
 
-            if (handle && typeof handle.remove === "function") {
-              await handle.remove();
-              physicallyDeleted = true;
-              console.log(`[+] Physically deleted ${file.file_name} from device via handle.remove()`);
-            } else if (this.activeDirectoryHandle && typeof this.activeDirectoryHandle.removeEntry === "function") {
-              const baseName = (file.file_name || "").split("/").pop();
-              await this.activeDirectoryHandle.removeEntry(baseName, { recursive: true });
-              physicallyDeleted = true;
-              console.log(`[+] Physically deleted ${baseName} from folder via directoryHandle.removeEntry()`);
+            const fileHandle = entry?.fileHandle || (entry && entry.kind === "file" ? entry : null);
+            const parentDir = entry?.parentDirHandle || null;
+            const targetName = entry?.raw_name || (file.file_name || "").split("/").pop();
+            const relPath = entry?.relPath || (file.file_name || "").replace(/^Device\//i, "");
+
+            // 1. Delete via parent directory removeEntry
+            if (!physicallyDeleted && parentDir && typeof parentDir.removeEntry === "function") {
+              try {
+                if (typeof parentDir.queryPermission === "function") {
+                  const q = await parentDir.queryPermission({ mode: "readwrite" });
+                  if (q !== "granted" && typeof parentDir.requestPermission === "function") {
+                    await parentDir.requestPermission({ mode: "readwrite" });
+                  }
+                }
+                await parentDir.removeEntry(targetName, { recursive: true });
+                physicallyDeleted = true;
+                console.log(`[+] Physically deleted ${targetName} via parentDir.removeEntry()`);
+              } catch (err) {
+                console.warn("[!] parentDir.removeEntry notice:", err);
+              }
+            }
+
+            // 2. Delete via fileHandle.remove()
+            if (!physicallyDeleted && fileHandle && typeof fileHandle.remove === "function") {
+              try {
+                if (typeof fileHandle.queryPermission === "function") {
+                  const q = await fileHandle.queryPermission({ mode: "readwrite" });
+                  if (q !== "granted" && typeof fileHandle.requestPermission === "function") {
+                    await fileHandle.requestPermission({ mode: "readwrite" });
+                  }
+                }
+                await fileHandle.remove();
+                physicallyDeleted = true;
+                console.log(`[+] Physically deleted ${targetName} via fileHandle.remove()`);
+              } catch (err) {
+                console.warn("[!] fileHandle.remove notice:", err);
+              }
+            }
+
+            // 3. Delete via root activeDirectoryHandle path traversal
+            if (!physicallyDeleted && this.activeDirectoryHandle && typeof this.activeDirectoryHandle.getDirectoryHandle === "function") {
+              try {
+                const cleanRel = relPath.replace(/^Device\//i, "");
+                const segments = cleanRel.split("/").filter(Boolean);
+                let curDir = this.activeDirectoryHandle;
+                for (let i = 0; i < segments.length - 1; i++) {
+                  curDir = await curDir.getDirectoryHandle(segments[i]);
+                }
+                await curDir.removeEntry(segments[segments.length - 1], { recursive: true });
+                physicallyDeleted = true;
+                console.log(`[+] Physically deleted ${cleanRel} via root activeDirectoryHandle traversal`);
+              } catch (err) {
+                console.warn("[!] root activeDirectoryHandle traversal notice:", err);
+              }
+            }
+
+            // 4. Delete via root activeDirectoryHandle directly if root child
+            if (!physicallyDeleted && this.activeDirectoryHandle && typeof this.activeDirectoryHandle.removeEntry === "function") {
+              try {
+                await this.activeDirectoryHandle.removeEntry(targetName, { recursive: true });
+                physicallyDeleted = true;
+                console.log(`[+] Physically deleted ${targetName} via direct root activeDirectoryHandle`);
+              } catch (err) {
+                console.warn("[!] direct root activeDirectoryHandle notice:", err);
+              }
             }
           } catch (fsErr) {
-            console.warn("[!] Device physical deletion notice:", fsErr);
+            console.warn("[!] Device physical deletion error:", fsErr);
           }
 
           // Visceral feedback

@@ -346,27 +346,31 @@ class AuthService:
                 if required_role == ROLE_STUDENT and not token:
                     return func(*args, **kwargs)
 
-                # Check for PIN in Flask request headers/body for direct PIN authentication or elevation
-                req_pin = None
+                # Check for PIN in Flask request headers/body/query for direct PIN authentication or elevation
+                pin_candidates = []
                 if in_flask:
                     try:
                         from flask import request
-                        req_pin = (
-                            request.headers.get("X-Role-Pin")
-                            or request.headers.get("X-Admin-Pin")
-                            or request.headers.get("X-Teacher-Pin")
-                        )
-                        if not req_pin and request.is_json:
+                        for h in ("X-Admin-Pin", "X-Teacher-Pin", "X-Role-Pin"):
+                            val = request.headers.get(h)
+                            if val:
+                                pin_candidates.append(str(val).strip())
+                        if request.is_json:
                             req_json = request.get_json(silent=True) or {}
-                            req_pin = req_json.get("pin") or req_json.get("admin_pin") or req_json.get("teacher_pin")
-                        if not req_pin and hasattr(request, "args"):
-                            req_pin = request.args.get("pin") or request.args.get("admin_pin") or request.args.get("teacher_pin")
+                            for k in ("admin_pin", "teacher_pin", "pin"):
+                                val = req_json.get(k)
+                                if val:
+                                    pin_candidates.append(str(val).strip())
+                        if hasattr(request, "args"):
+                            for k in ("admin_pin", "teacher_pin", "pin"):
+                                val = request.args.get(k)
+                                if val:
+                                    pin_candidates.append(str(val).strip())
                     except Exception:
                         pass
 
-                pin_str = str(req_pin).strip() if req_pin else None
-                pin_is_admin = bool(pin_str and self.verify_pin(ROLE_ADMIN, pin_str))
-                pin_is_teacher = bool(pin_str and (pin_is_admin or self.verify_pin(ROLE_TEACHER, pin_str)))
+                pin_is_admin = any(self.verify_pin(ROLE_ADMIN, p) for p in pin_candidates)
+                pin_is_teacher = any(self.verify_pin(ROLE_ADMIN, p) or self.verify_pin(ROLE_TEACHER, p) for p in pin_candidates)
 
                 session = self.validate_token(token) if token else None
 

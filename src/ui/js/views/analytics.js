@@ -111,13 +111,13 @@ class AnalyticsDashboardView {
 
   getAuthHeaders(extra = {}) {
     const token = localStorage.getItem("d2d_session_token") || "";
-    const headers = { ...extra };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    headers["X-Role-Pin"] = "admin2026";
-    headers["X-Admin-Pin"] = "admin2026";
-    headers["X-Teacher-Pin"] = "teacher123";
+    const headers = {
+      "X-Role-Pin": "admin2026",
+      "X-Admin-Pin": "admin2026",
+      "X-Teacher-Pin": "teacher123",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...extra
+    };
     return headers;
   }
 
