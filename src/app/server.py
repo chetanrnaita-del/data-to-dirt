@@ -2686,8 +2686,9 @@ def create_flask_app():
                 is_dark = bool(reasons)
                 reason = " | ".join(reasons) if reasons else ""
                 
+                file_id = f.get("file_id") or f"device_file_{i}_{int(time.time()*1000)}"
                 f_obj = {
-                    "file_id": f"device_file_{i}_{int(time.time()*1000)}",
+                    "file_id": file_id,
                     "file_name": file_name,
                     "raw_file_name": file_name,
                     "absolute_path": f"Device/{file_name}",

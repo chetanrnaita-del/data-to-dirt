@@ -2054,15 +2054,20 @@ class TeacherConfirmationView {
           // Physical deletion on local device if File System Access handle is active
           let physicallyDeleted = false;
           try {
-            const handle = this.activeFileHandles?.get(f.file_id);
+            const handle = this.activeFileHandles?.get(f.file_id)
+              || this.activeFileHandles?.get(f.file_name)
+              || this.activeFileHandles?.get(f.raw_file_name)
+              || this.activeFileHandles?.get((f.file_name || "").split("/").pop());
+
             if (handle && typeof handle.remove === "function") {
               await handle.remove();
               physicallyDeleted = true;
               console.log(`[+] Physically deleted ${f.file_name} from device via handle.remove()`);
             } else if (this.activeDirectoryHandle && typeof this.activeDirectoryHandle.removeEntry === "function") {
-              await this.activeDirectoryHandle.removeEntry(f.file_name, { recursive: true });
+              const baseName = (f.file_name || "").split("/").pop();
+              await this.activeDirectoryHandle.removeEntry(baseName, { recursive: true });
               physicallyDeleted = true;
-              console.log(`[+] Physically deleted ${f.file_name} from folder via directoryHandle.removeEntry()`);
+              console.log(`[+] Physically deleted ${baseName} from folder via directoryHandle.removeEntry()`);
             }
           } catch (fsErr) {
             console.warn("[!] Device physical deletion notice:", fsErr);
@@ -2241,6 +2246,8 @@ class TeacherConfirmationView {
                 const f = await handle.getFile();
                 const fileId = `device_file_${idx++}_${Date.now()}`;
                 this.activeFileHandles.set(fileId, handle);
+                this.activeFileHandles.set(name, handle);
+                this.activeFileHandles.set(`Device/${name}`, handle);
                 fileList.push({
                   file_id: fileId,
                   name: name,
@@ -2278,6 +2285,8 @@ class TeacherConfirmationView {
               const f = await handle.getFile();
               const fileId = `device_file_${i}_${Date.now()}`;
               this.activeFileHandles.set(fileId, handle);
+              this.activeFileHandles.set(f.name, handle);
+              this.activeFileHandles.set(`Device/${f.name}`, handle);
               fileList.push({
                 file_id: fileId,
                 name: f.name,

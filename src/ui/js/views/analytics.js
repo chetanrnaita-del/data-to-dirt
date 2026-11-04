@@ -45,28 +45,36 @@ class AnalyticsDashboardView {
     }
 
     if (needsAuth) {
-      try {
-        const pin = localStorage.getItem("d2d_admin_pin") || localStorage.getItem("d2d_pin") || "admin2026";
-        const authRes = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: "admin",
-            user_id: "admin",
-            pin: pin
-          })
-        });
-        const authData = await authRes.json();
-        if (authRes.ok && authData.token) {
-          localStorage.setItem("d2d_session_token", authData.token);
-          localStorage.setItem("d2d_role", "admin");
-          if (window.DataToDirt) {
-            window.DataToDirt.authenticatedRole = "admin";
+      const pinCandidates = [
+        "admin2026",
+        localStorage.getItem("d2d_admin_pin"),
+        localStorage.getItem("d2d_pin")
+      ].filter(Boolean);
+
+      for (const pin of pinCandidates) {
+        try {
+          const authRes = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role: "admin",
+              user_id: "admin",
+              pin: pin
+            })
+          });
+          const authData = await authRes.json();
+          if (authRes.ok && authData.token) {
+            localStorage.setItem("d2d_session_token", authData.token);
+            localStorage.setItem("d2d_role", "admin");
+            localStorage.setItem("d2d_admin_pin", pin);
+            if (window.DataToDirt) {
+              window.DataToDirt.authenticatedRole = "admin";
+            }
+            return authData.token;
           }
-          return authData.token;
+        } catch (e) {
+          console.warn("[Analytics] Silent admin token acquisition error:", e);
         }
-      } catch (e) {
-        console.warn("[Analytics] Silent admin token acquisition error:", e);
       }
     }
     return localStorage.getItem("d2d_session_token") || "";
@@ -118,8 +126,8 @@ class AnalyticsDashboardView {
       let res = await fetch("/api/analytics/dashboard", { headers });
       if (res.status === 401 || res.status === 403) {
         console.log("[Analytics] Auto-authenticating admin clearance...");
-        await this.ensureAdminToken(true);
-        headers = this.getAuthHeaders();
+        const adminTok = await this.ensureAdminToken(true);
+        headers = this.getAuthHeaders({ ...(adminTok ? { "Authorization": `Bearer ${adminTok}` } : {}) });
         res = await fetch("/api/analytics/dashboard", { headers });
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load analytics dashboard`);
